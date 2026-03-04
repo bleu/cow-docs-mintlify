@@ -1,0 +1,64 @@
+---
+title: "Custom Orders"
+description: "Build custom conditional order types using the IConditionalOrder and IConditionalOrderGenerator interfaces."
+---
+
+# Custom Orders
+
+Custom orders leverage the `IConditionalOrder` or `IConditionalOrderGenerator` interface to enable sophisticated trading strategies based on on-chain conditions. The framework recommends extending `BaseConditionalOrder` for most implementations, as it handles signature verification automatically.
+
+## Key Interfaces
+
+- **IConditionalOrder** provides the foundational verification method
+- **IConditionalOrderGenerator** extends this by adding order generation capabilities on-chain
+
+The `verify` function checks discrete order validity, while `getTradeableOrder` produces executable orders for the CoW Protocol API.
+
+## BaseConditionalOrder Advantages
+
+This abstract contract streamlines development by automating:
+
+- Order hash verification
+- ERC165 interface support
+
+Developers focus solely on implementing the order generation logic through the `getTradeableOrder` function, which must return a valid `GPv2Order.Data` struct.
+
+## Implementation Examples
+
+### TradeAboveThreshold
+
+Executes when an owner's token balance exceeds a specified threshold, selling the entire balance.
+
+### PerpetualStableSwap
+
+Automatically rebalances between two tokens based on relative holdings, applying a configurable spread.
+
+## Error Communication
+
+Specialized revert errors guide watchtowers on retry behavior:
+
+| Error | Behavior |
+|-------|----------|
+| `PollTryNextBlock` | Temporary condition, retry soon |
+| `PollTryAtBlock` / `PollTryAtEpoch` | Order valid at specific time |
+| `PollNever` | Permanent invalidity, stop monitoring |
+| `OrderNotValid` | Generic failure condition |
+
+## Advanced Features
+
+- **Context-based cabinet storage** for persistent values
+- **`offchainInput` parameters** for dynamic watchtower-provided data
+- **Validity bucketing** prevents hash collisions across sequential queries
+
+## Best Practices
+
+- Maintain gas efficiency in `getTradeableOrder`
+- Ensure deterministic logic within validity buckets
+- Employ clear error messaging
+- Implement proper ERC165 interface support
+
+### Security Considerations
+
+- Validate external calls
+- Manage arithmetic carefully
+- Address reentrancy risks

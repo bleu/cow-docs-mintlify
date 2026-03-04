@@ -1,0 +1,54 @@
+---
+title: "Value Factories"
+description: "Dynamic storage of on-chain snapshots within ComposableCoW's cabinet system using IValueFactory."
+---
+
+# Value Factories
+
+Value Factories enable dynamic storage of on-chain snapshots within ComposableCoW's "cabinet" system, allowing for storing on-chain values in the ComposableCoW cabinet at the time of order creation.
+
+## Key Technical Components
+
+### IValueFactory Interface
+
+The simplest implementation requires a single `getValue()` function that reads on-chain state and returns a `bytes32` value that gets stored in the cabinet.
+
+### Cabinet Storage Structure
+
+ComposableCoW maintains a nested mapping using:
+
+- **First key**: Owner address
+- **Second key**: Context identifier
+- **Value**: Corresponding `bytes32` value
+
+## Primary Use Cases
+
+### 1. Time-based Orders
+
+The `CurrentBlockTimestampFactory` captures block timestamps, enabling time-locked trading strategies and expiration mechanisms.
+
+### 2. Price Snapshots
+
+The `ChainlinkPriceFactory` example demonstrates capturing token prices via oracle data at creation time.
+
+### 3. Balance Snapshots
+
+The `TokenBalanceFactory` stores account balances as contextual references.
+
+### 4. Composite Storage
+
+Multiple values can be packed into single `bytes32` entries for efficiency.
+
+## Implementation Pattern
+
+Orders access cabinet values through:
+
+```solidity
+ComposableCoW(msg.sender).cabinet(owner, ctx)
+```
+
+This allows handlers to retrieve stored context during order generation.
+
+<Warning>
+Value factory calls happen during transaction execution (not view calls), necessitating lightweight computational design to manage gas costs effectively.
+</Warning>

@@ -1,0 +1,108 @@
+---
+title: "Storage Architecture"
+description: "How the Watch Tower persists state using LevelDB"
+---
+
+# Storage Architecture
+
+The Watch Tower uses a key-value database to maintain state about conditional orders and block processing progress.
+
+## Why LevelDB?
+
+The chosen architecture is [LevelDB](https://www.npmjs.com/package/level), a NoSQL key-value store, for several reasons:
+
+### ACID guarantees
+
+LevelDB provides [ACID](https://en.wikipedia.org/wiki/ACID) guarantees, ensuring:
+
+* **Atomicity** - All operations complete or none do
+* **Consistency** - Database remains in a valid state
+* **Isolation** - Concurrent operations don't interfere
+* **Durability** - Committed writes survive crashes
+
+These guarantees are critical for maintaining consistency between the blockchain state and the watch-tower's internal registry.
+
+### Simple interface
+
+LevelDB offers a straightforward key-value API that maps well to the watch-tower's storage needs:
+
+* Store conditional orders by owner
+* Track last processed block
+* Manage notification state
+
+## Batch writes
+
+All database writes are performed atomically using batch operations. The watch-tower groups multiple updates into a single transaction:
+
+```typescript
+const batch = db.batch()
+  .put('CONDITIONAL_ORDER_REGISTRY_VERSION_1', '2')
+  .put('CONDITIONAL_ORDER_REGISTRY_1', ordersJson)
+  .put('LAST_PROCESSED_BLOCK_1', blockJson)
+  .put('LAST_NOTIFIED_ERROR_1', timestamp);
+
+await batch.write();
+```
+
+This ensures that either all changes are persisted or none are, preventing partial updates that could corrupt state.
+
+## Error handling and recovery
+
+The watch-tower implements a robust error handling strategy:
+
+### Write failures
+
+If a batch write fails:
+
+1. The watch-tower throws an error and exits
+2. The database remains in its previous consistent state
+3. No partial updates are committed
+
+### Recovery on restart
+
+When the watch-tower restarts:
+
+1. It reads `LAST_PROCESSED_BLOCK` from the database
+2. It resumes processing from that block number
+3. Events may be reprocessed, but the system becomes eventually consistent
+
+<Warning>
+The watch-tower may reprocess blocks after a crash. Your conditional order handlers should be idempotent to handle duplicate submissions gracefully.
+</Warning>
+
+## Database location
+
+By default, the database is stored at:
+
+```
+$PWD/database
+```
+
+You can customize this location using the `--database-path` CLI option:
+
+```bash
+yarn cli run --database-path /path/to/database
+```
+
+Or via environment variable:
+
+```bash
+DATABASE_PATH=/path/to/database yarn cli run
+```
+
+## Implementation
+
+The storage is implemented as a singleton service (`DBService`) with these key features:
+
+* **Value encoding**: JSON serialization for all values
+* **Create if missing**: Database directory is created automatically
+* **Error handling**: Descriptive errors for open/close failures
+
+The service provides a simple API:
+
+```typescript
+const storage = DBService.getInstance('/path/to/db');
+await storage.open();
+const db = storage.getDB();
+await storage.close();
+```

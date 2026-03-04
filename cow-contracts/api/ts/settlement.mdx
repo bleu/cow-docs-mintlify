@@ -1,0 +1,151 @@
+---
+title: "Settlement"
+description: "TypeScript settlement module API for encoding trades, interactions, and clearing prices"
+---
+
+# Settlement
+
+The Settlement module provides utilities for encoding settlements, managing trades, and building settlement transactions within CoW Protocol.
+
+## SettlementEncoder Class
+
+The primary tool for building settlement calldata. It manages order encoding, trade signatures, interactions, and clearing price calculations.
+
+### Constructor
+
+```typescript
+const encoder = new SettlementEncoder(domain: TypedDataDomain);
+```
+
+### Methods
+
+#### encodeTrade
+
+Converts a signed order into a settlement trade.
+
+```typescript
+encoder.encodeTrade(
+  order: Order,
+  signature: Signature,
+  execution?: TradeExecution
+): void;
+```
+
+#### signEncodeTrade
+
+Signs an order and encodes it simultaneously.
+
+```typescript
+await encoder.signEncodeTrade(
+  order: Order,
+  signer: Signer,
+  scheme: SigningScheme,
+  execution?: TradeExecution
+): Promise<void>;
+```
+
+#### encodeInteraction
+
+Adds interactions at specific execution stages.
+
+```typescript
+encoder.encodeInteraction(
+  interaction: InteractionLike,
+  stage?: InteractionStage
+): void;
+```
+
+#### encodedSettlement
+
+Returns complete settlement parameters as a tuple.
+
+```typescript
+encoder.encodedSettlement(
+  prices: Record<string, BigNumberish>
+): EncodedSettlement;
+```
+
+#### clearingPrices
+
+Converts a price map into an array aligned with the token registry.
+
+```typescript
+encoder.clearingPrices(
+  prices: Record<string, BigNumberish>
+): BigNumberish[];
+```
+
+## TokenRegistry Class
+
+Tracks tokens by maintaining indexed references. Tokens in settlements are referenced by index rather than address to optimize calldata and gas costs.
+
+```typescript
+const registry = new TokenRegistry();
+const index = registry.index(tokenAddress);
+```
+
+## InteractionStage
+
+```typescript
+enum InteractionStage {
+  PRE = 0,   // Before trading (e.g., permit approvals)
+  INTRA = 1, // During token swaps (e.g., AMM operations)
+  POST = 2,  // After settlement completion
+}
+```
+
+## TradeExecution
+
+```typescript
+interface TradeExecution {
+  executedAmount: BigNumberish;
+}
+```
+
+## EncodedSettlement
+
+```typescript
+type EncodedSettlement = [
+  string[],              // tokens
+  BigNumberish[],        // clearingPrices
+  Trade[],               // trades
+  Interaction[][],       // [pre, intra, post] interactions
+];
+```
+
+## Example
+
+```typescript
+import {
+  domain,
+  SettlementEncoder,
+  SigningScheme,
+  InteractionStage,
+  Order,
+  OrderKind,
+} from "@cowprotocol/contracts";
+import { ethers } from "ethers";
+
+const settlementDomain = domain(1, "0x9008D19f58AAbD9eD0D60971565AA8510560ab41");
+const encoder = new SettlementEncoder(settlementDomain);
+
+const order: Order = {
+  sellToken: WETH,
+  buyToken: DAI,
+  sellAmount: ethers.utils.parseEther("1"),
+  buyAmount: ethers.utils.parseEther("2000"),
+  validTo: Math.floor(Date.now() / 1000) + 3600,
+  appData: ethers.constants.HashZero,
+  feeAmount: ethers.utils.parseEther("0.01"),
+  kind: OrderKind.SELL,
+  partiallyFillable: false,
+  receiver: ethers.constants.AddressZero,
+};
+
+await encoder.signEncodeTrade(order, wallet, SigningScheme.EIP712);
+
+const settlement = encoder.encodedSettlement({
+  [WETH]: ethers.utils.parseEther("2000"),
+  [DAI]: ethers.utils.parseEther("1"),
+});
+```

@@ -1,0 +1,114 @@
+---
+title: "Contract Verification"
+description: "Guide for verifying CoW Protocol smart contracts on block explorers and Tenderly"
+---
+
+# Contract Verification
+
+This guide explains how to verify CoW Protocol smart contracts on various block explorers, including Etherscan-based platforms and Tenderly.
+
+## Etherscan-Based Verification
+
+### Supported Explorers
+
+| Network | Explorer |
+|---------|----------|
+| Ethereum | Etherscan |
+| Gnosis Chain | Gnosisscan |
+| Arbitrum | Arbiscan |
+| Optimism | Optimistic Etherscan |
+| Polygon | Polygonscan |
+| BSC | BscScan |
+| Base | Basescan |
+| Avalanche | Snowtrace |
+
+### Batch Verification
+
+Verify all deployed contracts at once:
+
+```bash
+# Set API key for the target network
+export ETHERSCAN_API_KEY=your_api_key
+
+# Run verification
+yarn verify:etherscan --network $NETWORK
+```
+
+### Individual Contract Verification
+
+Certain contracts require constructor arguments for manual verification. The VaultRelayer requires the Balancer Vault address:
+
+```bash
+yarn verify:etherscan --network mainnet --contract GPv2VaultRelayer \
+  --constructor-args "0xBA12222222228d8Ba445958a75a0704d566BF2C8"
+```
+
+<Note>
+The Balancer Vault address `0xBA12222222228d8Ba445958a75a0704d566BF2C8` is consistent across all networks.
+</Note>
+
+## Tenderly Verification
+
+Tenderly provides advanced debugging and monitoring capabilities.
+
+### Setup
+
+```bash
+# Authenticate with Tenderly
+tenderly login
+```
+
+### Verify Contracts
+
+```bash
+# Single contract
+tenderly verify --name GPv2Settlement --address 0x9008D19f58AAbD9eD0D60971565AA8510560ab41
+
+# Batch verification
+tenderly verify --name GPv2Settlement --name GPv2VaultRelayer --name GPv2AllowListAuthentication
+```
+
+## CI/CD Integration
+
+Example GitHub Actions workflow:
+
+```yaml
+name: Verify Contracts
+on:
+  workflow_dispatch:
+    inputs:
+      network:
+        description: "Target network"
+        required: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+      - run: yarn install
+      - run: yarn build
+      - run: yarn verify:etherscan --network ${{ github.event.inputs.network }}
+        env:
+          ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+```
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Already verified | Contract may already be verified on the explorer |
+| Missing constructor arguments | Provide correct constructor args with `--constructor-args` |
+| Invalid API key | Check API key validity and network match |
+| Unsupported network | Verify that the explorer supports the target network |
+
+## Best Practices
+
+- Verify contracts immediately after deployment
+- Maintain deployment artifacts in version control
+- Document constructor arguments thoroughly
+- Test verification scripts before mainnet use
+- Verify across multiple explorers for redundancy

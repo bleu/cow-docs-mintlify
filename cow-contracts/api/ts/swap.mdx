@@ -1,0 +1,158 @@
+---
+title: "Swap"
+description: "TypeScript utilities for encoding Balancer swap requests within CoW Protocol"
+---
+
+# Swap
+
+The swap module provides utilities for encoding Balancer swap requests within CoW Protocol. It enables direct order settlement against Balancer pools via the `swap()` function on the GPv2Settlement contract.
+
+## Interfaces
+
+### Swap
+
+Represents a single Balancer pool interaction:
+
+```typescript
+interface Swap {
+  poolId: string;
+  assetInIndex: number;
+  assetOutIndex: number;
+  amount: BigNumberish;
+  userData?: string;
+}
+```
+
+### BatchSwapStep
+
+The encoded form passed to the settlement contract, using token array indices rather than addresses for gas efficiency:
+
+```typescript
+interface BatchSwapStep {
+  poolId: string;
+  assetInIndex: number;
+  assetOutIndex: number;
+  amount: BigNumberish;
+  userData: string;
+}
+```
+
+### SwapExecution
+
+Provides `limitAmount` for solvers to enforce stricter slippage protection than the original order:
+
+```typescript
+interface SwapExecution {
+  limitAmount: BigNumberish;
+}
+```
+
+### EncodedSwap
+
+A three-element tuple:
+
+```typescript
+type EncodedSwap = [BatchSwapStep[], string[], Trade];
+```
+
+## SwapEncoder Class
+
+Builder class that constructs encoded swap calldata progressively.
+
+### Methods
+
+#### encodeSwapStep
+
+Appends one or more swaps to the encoder's internal state:
+
+```typescript
+encoder.encodeSwapStep(swap: Swap | Swap[]): void;
+```
+
+#### encodeTrade
+
+Incorporates a pre-signed order into the encoding:
+
+```typescript
+encoder.encodeTrade(order: Order, signature: Signature, execution?: SwapExecution): void;
+```
+
+#### signEncodeTrade
+
+Signs an order and encodes it simultaneously:
+
+```typescript
+await encoder.signEncodeTrade(
+  order: Order,
+  signer: Signer,
+  scheme: SigningScheme,
+  execution?: SwapExecution
+): Promise<void>;
+```
+
+#### encodedSwap
+
+Returns the finalized tuple:
+
+```typescript
+encoder.encodedSwap(): EncodedSwap;
+```
+
+#### encodeSwap (static)
+
+One-shot utility method with multiple overloads for convenience:
+
+```typescript
+static SwapEncoder.encodeSwap(swap: Swap, order: Order, signature: Signature): EncodedSwap;
+```
+
+## Examples
+
+### Single-Pool Swap
+
+```typescript
+import { SwapEncoder } from "@cowprotocol/contracts";
+
+const encoder = new SwapEncoder(domain);
+
+encoder.encodeSwapStep({
+  poolId: "0x...",
+  assetInIndex: 0,  // WETH
+  assetOutIndex: 1, // DAI
+  amount: ethers.utils.parseEther("1"),
+});
+
+await encoder.signEncodeTrade(order, wallet, SigningScheme.EIP712);
+const encoded = encoder.encodedSwap();
+```
+
+### Multi-Hop Swap
+
+```typescript
+encoder.encodeSwapStep([
+  {
+    poolId: "0xPoolA...",
+    assetInIndex: 0,  // WETH
+    assetOutIndex: 1, // USDC
+    amount: ethers.utils.parseEther("1"),
+  },
+  {
+    poolId: "0xPoolB...",
+    assetInIndex: 1,  // USDC
+    assetOutIndex: 2, // DAI
+    amount: 0, // determined by first swap output
+  },
+]);
+```
+
+### MEV Mitigation
+
+```typescript
+encoder.encodeTrade(order, signature, {
+  limitAmount: ethers.utils.parseEther("1990"), // Tighter than order's buyAmount
+});
+```
+
+<Note>
+This module specifically handles direct Balancer settlement. For complex scenarios involving multiple orders and contract interactions, use the `SettlementEncoder` class instead. Most standard Balancer pools omit the `userData` field.
+</Note>

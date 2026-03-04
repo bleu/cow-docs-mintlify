@@ -1,0 +1,130 @@
+---
+title: "Signing"
+description: "TypeScript signing module API for CoW Protocol order signatures"
+---
+
+# Signing
+
+The signing module provides utilities for various signature schemes used in CoW Protocol order signing.
+
+## Signing Schemes
+
+```typescript
+enum SigningScheme {
+  EIP712 = 0,
+  ETHSIGN = 1,
+  EIP1271 = 2,
+  PRESIGN = 3,
+}
+```
+
+| Scheme | Description |
+|--------|-------------|
+| **EIP712** | Recommended. Provides structured data to wallets about what is being signed |
+| **ETHSIGN** | Uses the `eth_sign` RPC call for legacy wallet compatibility |
+| **EIP1271** | For smart contract wallets like Gnosis Safe |
+| **PRESIGN** | On-chain pre-authorization before settlement |
+
+## Signature Types
+
+### EcdsaSignature
+
+```typescript
+interface EcdsaSignature {
+  scheme: SigningScheme.EIP712 | SigningScheme.ETHSIGN;
+  data: string; // ECDSA signature (r, s, v)
+}
+```
+
+### Eip1271Signature
+
+```typescript
+interface Eip1271Signature {
+  scheme: SigningScheme.EIP1271;
+  verifier: string; // Smart contract address
+  data: string; // Signature bytes
+}
+```
+
+### PreSignSignature
+
+```typescript
+interface PreSignSignature {
+  scheme: SigningScheme.PRESIGN;
+  signer: string; // Signer address
+}
+```
+
+## Functions
+
+### signOrder
+
+Signs orders using externally owned accounts with either EIP-712 or ETHSIGN schemes.
+
+```typescript
+async function signOrder(
+  domain: TypedDataDomain,
+  order: Order,
+  signer: Signer,
+  scheme: SigningScheme.EIP712 | SigningScheme.ETHSIGN
+): Promise<EcdsaSignature>;
+```
+
+**Parameters:**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `domain` | `TypedDataDomain` | EIP-712 domain separator |
+| `order` | `Order` | Order to sign |
+| `signer` | `Signer` | ethers.js Signer instance |
+| `scheme` | `SigningScheme` | EIP712 or ETHSIGN |
+
+### encodeEip1271SignatureData
+
+Encodes EIP-1271 signature components into hex format.
+
+```typescript
+function encodeEip1271SignatureData(signature: {
+  verifier: string;
+  data: string;
+}): string;
+```
+
+### decodeEip1271SignatureData
+
+Reverses the encoding to retrieve original signature components.
+
+```typescript
+function decodeEip1271SignatureData(encodedSignature: string): {
+  verifier: string;
+  data: string;
+};
+```
+
+## Example
+
+```typescript
+import { domain, signOrder, SigningScheme, Order, OrderKind } from "@cowprotocol/contracts";
+import { ethers } from "ethers";
+
+const settlementDomain = domain(1, "0x9008D19f58AAbD9eD0D60971565AA8510560ab41");
+const wallet = new ethers.Wallet("YOUR_PRIVATE_KEY");
+
+const order: Order = {
+  // ... order fields
+  kind: OrderKind.SELL,
+  partiallyFillable: false,
+};
+
+// EIP-712 signing (recommended)
+const signature = await signOrder(
+  settlementDomain,
+  order,
+  wallet,
+  SigningScheme.EIP712
+);
+```
+
+<Tip>
+EIP-712 is the recommended signing scheme for optimal user experience, as it shows users a structured representation of the order data in their wallet.
+</Tip>

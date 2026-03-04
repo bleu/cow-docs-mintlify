@@ -1,0 +1,157 @@
+---
+title: "ERC3156Borrower"
+description: "Universal adapter for flash loan providers implementing the ERC-3156 standard"
+---
+
+## Overview
+
+The `ERC3156Borrower` contract enables the FlashLoanRouter to request flash loans from any lender implementing the ERC-3156 standard. It provides a universal interface for flash loan providers that follow the standard, including Maker's Flash Mint Module.
+
+## Contract Details
+
+- **Source**: `src/ERC3156Borrower.sol`
+- **License**: GPL-3.0-or-later
+- **Solidity**: ^0.8.28
+- **Address**: `0x47d71b4B3336AB2729436186C216955F3C27cD04` (all networks)
+- **Inherits**: `Borrower`, `IERC3156FlashBorrower`
+
+## Compatible Lenders
+
+The ERC3156Borrower works with any lender implementing the ERC-3156 standard, including:
+
+- Maker's Flash Mint Module
+- Yield Protocol
+- Euler Finance
+- Any other ERC-3156 compliant lender
+
+## Functions
+
+### flashLoanAndCallBack
+
+```solidity
+function flashLoanAndCallBack(
+    address lender,
+    IERC20 token,
+    uint256 amount,
+    bytes calldata callBackData
+) external onlyRouter
+```
+
+Initiates a flash loan request to an ERC-3156 compliant lender. Only callable by the registered router.
+
+**Parameters:**
+- `lender`: Address of the ERC-3156 flash loan provider
+- `token`: ERC-20 token to borrow
+- `amount`: Amount of tokens to borrow
+- `callBackData`: Data to pass back to the router unchanged
+
+### onFlashLoan
+
+```solidity
+function onFlashLoan(
+    address initiator,
+    address token,
+    uint256 amount,
+    uint256 fee,
+    bytes calldata data
+) external returns (bytes32)
+```
+
+ERC-3156 callback invoked by the lender after transferring borrowed funds. Notifies the router and returns the required success constant.
+
+**Parameters:**
+- `initiator`: Address that initiated the flash loan
+- `token`: Address of the borrowed token
+- `amount`: Amount borrowed
+- `fee`: Fee charged by the lender
+- `data`: Encoded callback data (passed through unchanged)
+
+**Returns:** `keccak256("ERC3156FlashBorrower.onFlashLoan")` -- the ERC-3156 success constant
+
+### approve
+
+```solidity
+function approve(
+    IERC20 token,
+    address target,
+    uint256 amount
+) external onlySettlementContract
+```
+
+Allows the settlement contract to authorize token spending during settlement for repayment.
+
+### triggerFlashLoan (internal)
+
+```solidity
+function triggerFlashLoan(
+    address lender,
+    IERC20 token,
+    uint256 amount,
+    bytes calldata callBackData
+) internal override
+```
+
+Internal implementation that calls `IERC3156FlashLender.flashLoan()` and validates the result.
+
+```solidity
+bool success = IERC3156FlashLender(lender).flashLoan(
+    this,
+    address(token),
+    amount,
+    callBackData
+);
+require(success, "Flash loan was unsuccessful");
+```
+
+## Execution Flow
+
+1. Router calls `flashLoanAndCallBack()` on the ERC3156Borrower
+2. ERC3156Borrower calls `IERC3156FlashLender.flashLoan()` on the lender
+3. Lender transfers the requested tokens to the ERC3156Borrower
+4. Lender invokes `onFlashLoan()` on the ERC3156Borrower
+5. ERC3156Borrower calls `router.borrowerCallBack()` to continue execution
+6. ERC3156Borrower returns the success constant to the lender
+7. During settlement, the settlement contract calls `approve()` for lender repayment
+8. Lender pulls the borrowed amount plus fee via `transferFrom()`
+
+## Success Constant
+
+The ERC-3156 standard requires the borrower to return a specific constant from `onFlashLoan()`:
+
+```solidity
+bytes32 private constant ERC3156_ONFLASHLOAN_SUCCESS =
+    keccak256("ERC3156FlashBorrower.onFlashLoan");
+```
+
+Returning any other value will cause the lender to revert the transaction.
+
+## Security
+
+- `flashLoanAndCallBack()`: Only callable by the registered router
+- `approve()`: Only callable by the settlement contract
+- `onFlashLoan()`: Called by the lender within the flash loan flow
+- Validates flash loan success before proceeding
+- Immutable router and settlement contract references
+
+<Warning>
+  Always verify that the lender address is a legitimate ERC-3156 compliant contract. Query the lender's `flashFee()` and `maxFlashLoan()` functions to verify fee structure and borrowing limits before use.
+</Warning>
+
+## Integration Notes
+
+- Fees vary by lender and asset -- query `flashFee()` before constructing settlements
+- Maximum loan amounts can be checked via `maxFlashLoan()`
+- Some lenders may have specific token restrictions
+- The settlement must include an interaction to approve the lender for repayment (principal + fee)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="AaveBorrower" icon="coins" href="/flash-loan-router/contracts/aave-borrower">
+    Aave flash loan adapter
+  </Card>
+
+  <Card title="Borrower Base" icon="code" href="/flash-loan-router/contracts/base/borrower">
+    Abstract base contract
+  </Card>
+</CardGroup>

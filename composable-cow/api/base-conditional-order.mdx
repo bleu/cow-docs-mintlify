@@ -1,0 +1,47 @@
+---
+title: "BaseConditionalOrder"
+description: "API reference for the abstract contract that serves as the foundation for custom conditional order types."
+---
+
+# BaseConditionalOrder
+
+`BaseConditionalOrder` is an abstract contract serving as the foundational layer for creating custom conditional order types in CoW Protocol. It implements `IConditionalOrderGenerator` and handles verification workflows, enabling developers to focus on order generation logic.
+
+## Core Implementation Requirements
+
+Developers must implement the `getTradeableOrder` function, which generates discrete CoW Protocol orders based on conditional parameters. This function receives:
+
+| Parameter | Description |
+|-----------|-------------|
+| `owner` | The Safe address that owns the order |
+| `sender` | The address calling the function |
+| `ctx` | Context key for cabinet storage |
+| `staticInput` | ABI-encoded order configuration |
+| `offchainInput` | Dynamic parameters from watchtowers |
+
+The function must return a valid `GPv2Order.Data` struct.
+
+## Error Handling
+
+The contract specifies distinct error types for watchtower optimization:
+
+| Error | Description |
+|-------|-------------|
+| `OrderNotValid` | General condition failure (may resolve later) |
+| `PollTryNextBlock` | Check again at the next block |
+| `PollTryAtBlock` | Check at a specific block number |
+| `PollTryAtEpoch` | Check at a specific timestamp (recommended for time-based conditions) |
+| `PollNever` | Permanently stop polling (order completed or expired) |
+
+## Key Features
+
+- **Automatic hash verification** through the `verify` function, which compares generated order hashes against provided hashes
+- **ERC-165 interface detection** via `supportsInterface`
+
+## Best Practices
+
+- Validate input data early
+- Use precise timing signals rather than generic errors
+- Store dynamic state via the cabinet mechanism
+- Ensure unique order hashes (typically through distinct `validTo` values)
+- Handle all edge cases including pre-start and post-expiration states

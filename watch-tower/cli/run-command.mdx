@@ -1,0 +1,161 @@
+---
+title: "Run Command"
+description: "Start the CoW Protocol Watch Tower to monitor and execute conditional orders"
+---
+
+# Run Command
+
+Start the CoW Protocol Watch Tower to monitor and execute conditional orders across configured blockchain networks.
+
+## Usage
+
+```bash
+watch-tower run [options]
+```
+
+## Options
+
+### --config-path
+
+**Type:** string
+**Default:** `./config.json`
+
+Path to the chain configuration file defining networks to monitor and their settings.
+
+**Environment variable:** `CONFIG_PATH`
+
+### --only-owner
+
+**Type:** string[]
+
+Addresses of contracts or safes to monitor. Specify multiple times for multiple owners. Addresses must be valid hex-prefixed Ethereum addresses.
+
+**Example:** `--only-owner 0x1234... --only-owner 0x5678...`
+
+### --database-path
+
+**Type:** string
+**Default:** `./database`
+
+Path to the database directory for Watch Tower state storage.
+
+**Environment variable:** `DATABASE_PATH`
+
+### --log-level
+
+**Type:** string
+**Default:** `INFO`
+
+Log level controlling output verbosity.
+
+**Environment variable:** `LOG_LEVEL`
+
+### --dry-run
+
+**Type:** boolean
+**Default:** `false`
+
+Run without publishing orders to the OrderBook API. Ideal for testing and validation.
+
+**Environment variable:** `DRY_RUN`
+
+### --one-shot
+
+**Type:** boolean
+**Default:** `false`
+
+Execute once and exit immediately. Useful for testing or cron-based execution.
+
+**Environment variable:** `ONE_SHOT`
+
+### --disable-api
+
+**Type:** boolean
+**Default:** `false`
+
+Disable the REST API server entirely.
+
+**Environment variable:** `DISABLE_API`
+
+### --api-port
+
+**Type:** number
+**Default:** `8080`
+
+Port for the REST API server when enabled.
+
+**Environment variable:** `API_PORT`
+
+### --silent
+
+**Type:** boolean
+**Default:** `false`
+
+Disable notifications and use local logging only. Conflicts with `--slack-webhook`.
+
+**Environment variable:** `DISABLE_NOTIFICATIONS`
+
+### --slack-webhook
+
+**Type:** string
+
+Slack webhook URL for sending notifications. Incompatible with `--silent`.
+
+**Environment variable:** `SLACK_WEBHOOK`
+
+## Examples
+
+### Basic usage
+
+```bash
+watch-tower run
+```
+
+### Custom configuration
+
+```bash
+watch-tower run --config-path ./my-config.json --database-path ./my-db
+```
+
+### Monitor specific owners
+
+```bash
+watch-tower run --only-owner 0x1234567890abcdef1234567890abcdef12345678 \
+  --only-owner 0xabcdefabcdefabcdefabcdefabcdefabcdefabcd
+```
+
+### Dry run mode
+
+```bash
+watch-tower run --dry-run
+```
+
+### One-shot execution
+
+```bash
+watch-tower run --one-shot
+```
+
+### With Slack notifications
+
+```bash
+watch-tower run --slack-webhook https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+```
+
+### Custom API port
+
+```bash
+watch-tower run --api-port 3000
+```
+
+### Environment variables
+
+```bash
+export CONFIG_PATH=./my-config.json
+export DATABASE_PATH=./my-db
+export LOG_LEVEL=DEBUG
+export DRY_RUN=true
+export SLACK_WEBHOOK=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+
+watch-tower run
+```

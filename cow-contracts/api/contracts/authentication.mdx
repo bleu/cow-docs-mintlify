@@ -1,0 +1,92 @@
+---
+title: "GPv2Authentication API"
+description: "Authentication contracts API for managing solver authorization in Gnosis Protocol v2"
+---
+
+# GPv2Authentication API
+
+Authentication contracts for managing solver authorization in Gnosis Protocol v2. Only trusted solvers can execute trades.
+
+## GPv2Authentication Interface
+
+Base interface with a single function:
+
+```solidity
+interface GPv2Authentication {
+    function isSolver(address) external view returns (bool);
+}
+```
+
+## GPv2AllowListAuthentication Contract
+
+The primary implementation featuring manager-based access control.
+
+### State Variables
+
+```solidity
+address public manager;
+mapping(address => bool) private solvers;
+```
+
+### Events
+
+```solidity
+event ManagerChanged(address newManager);
+event SolverAdded(address solver);
+event SolverRemoved(address solver);
+```
+
+### Functions
+
+#### initializeManager
+
+One-time initialization compatible with proxy deployment pattern.
+
+```solidity
+function initializeManager(address manager_) external initializer;
+```
+
+#### setManager
+
+Reassigns the manager role. Callable by manager or proxy owner.
+
+```solidity
+function setManager(address manager_) external onlyManagerOrOwner;
+```
+
+#### addSolver
+
+Adds a solver to the authorized allowlist.
+
+```solidity
+function addSolver(address solver) external onlyManager;
+```
+
+#### removeSolver
+
+Removes a solver from the authorized allowlist.
+
+```solidity
+function removeSolver(address solver) external onlyManager;
+```
+
+#### isSolver
+
+Checks if an address is an authorized solver.
+
+```solidity
+function isSolver(address solver) external view returns (bool);
+```
+
+## Access Control
+
+| Modifier | Description |
+|----------|-------------|
+| `onlyManager` | Restricts to current manager address |
+| `onlyManagerOrOwner` | Allows manager or proxy admin |
+
+## Security Recommendations
+
+- Assign the manager role to a multi-sig wallet or DAO
+- Monitor for unauthorized changes via events
+- Implement time-locks for critical operations

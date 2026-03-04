@@ -1,0 +1,83 @@
+---
+title: "Solvers"
+description: "Understanding CoW Protocol solvers - off-chain agents that discover optimal batch auction solutions"
+---
+
+# Solvers
+
+Solvers are critical infrastructure in CoW Protocol -- off-chain agents that monitor the order pool for new and existing orders and compute optimal settlements by finding clearing prices and trade routes.
+
+## Key Responsibilities
+
+Solvers perform five primary functions:
+
+1. **Monitor** incoming orders from the order pool
+2. **Calculate** optimal trade settlements and clearing prices
+3. **Access liquidity** from various sources (AMMs, aggregators, private inventory)
+4. **Submit** settlement transactions on-chain
+5. **Earn fees** upon successful execution
+
+## Authorization and Security
+
+Only approved solvers can call the settlement function through the `GPv2AllowListAuthentication` contract, which maintains an allowlist managed by a designated manager role.
+
+```solidity
+modifier onlySolver {
+    require(authenticator.isSolver(msg.sender), "GPv2: not a solver");
+    _;
+}
+```
+
+<Warning>
+The manager role has significant power over the protocol. It should be assigned to a multi-sig wallet or DAO.
+</Warning>
+
+## Competition Mechanism
+
+Multiple solvers submit solutions simultaneously, and these are ranked by:
+
+- **Trader surplus generated** - How much better the execution is compared to limit prices
+- **Number of orders filled** - More filled orders is preferred
+- **Gas efficiency** - Lower gas consumption for the same outcome
+- **Execution success probability** - Likelihood of on-chain execution success
+
+## Solver Economics
+
+### Revenue Sources
+- Protocol fees
+- Surplus capture (executing at better prices than order limits)
+- CoW finding (matching orders directly without external liquidity)
+- Arbitrage opportunities
+
+### Risks
+- Transaction failures (gas costs without revenue)
+- MEV extraction by block builders
+- Price slippage between solution computation and on-chain execution
+- Competition from other solvers
+
+## Technical Details
+
+Solvers interface with external liquidity sources through standardized interaction structures supporting three execution phases:
+
+```typescript
+// Pre-settlement: Setup operations
+const preInteraction = {
+  target: "0x...", // e.g., approve token
+  value: 0,
+  callData: "0x...",
+};
+
+// Intra-settlement: Trading operations
+const intraInteraction = {
+  target: "0x...", // e.g., Uniswap swap
+  value: 0,
+  callData: "0x...",
+};
+
+// Post-settlement: Cleanup operations
+const postInteraction = {
+  target: "0x...", // e.g., unwrap WETH
+  value: 0,
+  callData: "0x...",
+};
+```

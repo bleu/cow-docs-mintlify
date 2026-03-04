@@ -1,0 +1,202 @@
+---
+title: "Supported Networks"
+description: "Deployed contract addresses across all supported blockchain networks"
+---
+
+The Flash Loan Router contracts are deployed deterministically using CREATE2, resulting in consistent addresses across all supported networks.
+
+## Contract Addresses
+
+All contracts use the same addresses on every supported network:
+
+| Contract        | Address                                      |
+| --------------- | -------------------------------------------- |
+| FlashLoanRouter | `0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69` |
+| AaveBorrower    | `0x7d9C4DeE56933151Bc5C909cfe09DEf0d315CB4A` |
+| ERC3156Borrower | `0x47d71b4B3336AB2729436186C216955F3C27cD04` |
+
+<Info>
+  These addresses are identical across all supported networks due to CREATE2 deterministic deployment. See [CIP 66](https://snapshot.box/#/s:cow.eth/proposal/0x6f3d88347bcc8de87ecded2442c090d8eb1d3ef99eca75a831ee220ff5705f00) for details.
+</Info>
+
+## Supported Networks
+
+The contracts are currently deployed on the following networks:
+
+### Ethereum
+
+<Tabs>
+  <Tab title="Mainnet (Chain ID: 1)">
+    | Contract        | Address                                      | Transaction                                                                                                     |
+    | --------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+    | FlashLoanRouter | `0x9da8b48441583a2b93e2ef8213aad0ec0b392c69` | [View on Etherscan](https://etherscan.io/tx/0x7f889b493b1e1c4b25dcc5b5022cc379a5f9dc0dd7b9e2b2d7c6f9cfc84c3d97) |
+    | AaveBorrower    | `0x7d9C4DeE56933151Bc5C909cfe09DEf0d315CB4A` | [View on Etherscan](https://etherscan.io/tx/0x92abe52bb5530c028180561f2bcbea24efd1feefdbe176eb72812034060935df) |
+    | ERC3156Borrower | `0x47d71b4b3336ab2729436186c216955f3c27cd04` | [View on Etherscan](https://etherscan.io/tx/0x92e1f09f9dde32cc2db062e8923094759fa1219101de7681723838f47fb2f3fb) |
+  </Tab>
+
+  <Tab title="Sepolia (Chain ID: 11155111)">
+    | Contract        | Address                                      | Transaction                                                                                                             |
+    | --------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+    | FlashLoanRouter | `0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69` | [View on Etherscan](https://sepolia.etherscan.io/tx/0x55bb83060fd3448e3e559425d99a435cbce335070c8892dadb35d2d662683a06) |
+    | AaveBorrower    | `0x7d9C4DeE56933151Bc5C909cfe09DEf0d315CB4A` | [View on Etherscan](https://sepolia.etherscan.io/tx/0xdb409e72729cb6de0217edb2fbce92e6e0be4afa5a52599064315edc843e279a) |
+    | ERC3156Borrower | `0x47d71b4b3336ab2729436186c216955f3c27cd04` | [View on Etherscan](https://sepolia.etherscan.io/tx/0x04512fc221383219a2be4f82e90295c3b4df253e51d1f72a3a34425668aa87c4) |
+  </Tab>
+</Tabs>
+
+### Layer 2 Networks
+
+<Tabs>
+  <Tab title="Arbitrum One (Chain ID: 42161)">
+    | Contract        | Address                                      | Transaction                                                                                                   |
+    | --------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+    | FlashLoanRouter | `0x9da8b48441583a2b93e2ef8213aad0ec0b392c69` | [View on Arbiscan](https://arbiscan.io/tx/0x53afc6022d2ef57f53497d72f07e71a55b7e50d9800742d81b1b9273a76c4c5a) |
+    | AaveBorrower    | `0x7d9C4DeE56933151Bc5C909cfe09DEf0d315CB4A` | [View on Arbiscan](https://arbiscan.io/tx/0x50df6f9885e579df8111333807171aac19bf2b0365c4fb169e82be9de005b62d) |
+    | ERC3156Borrower | `0x47d71b4b3336ab2729436186c216955f3c27cd04` | [View on Arbiscan](https://arbiscan.io/tx/0xb5a33ff4b3f20cd8ba2d40c3162956768ce6c55e6ace86a2e6b72dcd63a18289) |
+  </Tab>
+
+  <Tab title="Optimism (Chain ID: 10)">
+    | Contract        | Address                                      | Transaction                                                                                                                           |
+    | --------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+    | FlashLoanRouter | `0x9da8b48441583a2b93e2ef8213aad0ec0b392c69` | [View on Optimistic Etherscan](https://optimistic.etherscan.io/tx/0x4ebc0b0687f341a18448ab39c9d6fa3393bd12126f21eace3567dad1cf2b7ba1) |
+    | AaveBorrower    | `0x7d9c4dee56933151bc5c909cfe09def0d315cb4a` | [View on Optimistic Etherscan](https://optimistic.etherscan.io/tx/0x29dc134a2355aae63d546659f56999d50cc74fdf8cdfcd0054d0540b3b1e0eab) |
+    | ERC3156Borrower | `0x47d71b4b3336ab2729436186c216955f3c27cd04` | [View on Optimistic Etherscan](https://optimistic.etherscan.io/tx/0x2f706b469a04ea3e742d2dfdac6bcfde9f21d832fc4d8e1f3e31fcd18bf0b22d) |
+  </Tab>
+
+  <Tab title="Base (Chain ID: 8453)">
+    | Contract        | Address                                      | Transaction                                                                                                    |
+    | --------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+    | FlashLoanRouter | `0x9da8b48441583a2b93e2ef8213aad0ec0b392c69` | [View on Basescan](https://basescan.org/tx/0x73cc7cc3335a034def2ea7aa7cdc7ed74c0b66711760244765e671dbf8e0e6a3) |
+    | AaveBorrower    | `0x7d9C4DeE56933151Bc5C909cfe09DEf0d315CB4A` | [View on Basescan](https://basescan.org/tx/0x987f2a33606cf40763d3af0fa31eb230164979a353710a5ae343d0ddf74f6409) |
+    | ERC3156Borrower | `0x47d71b4b3336ab2729436186c216955f3c27cd04` | [View on Basescan](https://basescan.org/tx/0xf5d4411eb73e464e8c12c9df9c5917d8302a2ad5a4de98cea1a8cddc61be3fa6) |
+  </Tab>
+
+  <Tab title="Linea (Chain ID: 59144)">
+    | Contract        | Address                                      | Transaction                                                                                                        |
+    | --------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+    | FlashLoanRouter | `0x9da8b48441583a2b93e2ef8213aad0ec0b392c69` | [View on Lineascan](https://lineascan.build/tx/0x9493003cfb50d57dfc4df46e0973dc3695ce740875c500d8e7b9124dadedb93a) |
+    | AaveBorrower    | `0x7d9c4dee56933151bc5c909cfe09def0d315cb4a` | [View on Lineascan](https://lineascan.build/tx/0x139ba936c8f02a189d9269c8d1418a44a4c201c5c5236027a2e11c6ebbce1a7c) |
+    | ERC3156Borrower | `0x47d71b4b3336ab2729436186c216955f3c27cd04` | [View on Lineascan](https://lineascan.build/tx/0xf180a97a5225ef9d997740a4c1a0d24831f84516f307934801c4a26b55b59734) |
+  </Tab>
+</Tabs>
+
+### EVM-Compatible Chains
+
+<Tabs>
+  <Tab title="Polygon (Chain ID: 137)">
+    | Contract        | Address                                      | Transaction                                                                                                          |
+    | --------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+    | FlashLoanRouter | `0x9da8b48441583a2b93e2ef8213aad0ec0b392c69` | [View on Polygonscan](https://polygonscan.com/tx/0x7b4e90d41ab58aac8edb19e45ffb1d89701c7b26616218bf62152d5c897dab32) |
+    | AaveBorrower    | `0x7d9c4dee56933151bc5c909cfe09def0d315cb4a` | [View on Polygonscan](https://polygonscan.com/tx/0x216794a85012bcc4460788646460458ea0777e05d459d6ee17fccf4be33858d0) |
+    | ERC3156Borrower | `0x47d71b4b3336ab2729436186c216955f3c27cd04` | [View on Polygonscan](https://polygonscan.com/tx/0x563cf9260dacdcdd6eab2751630034ad4a071ce2f095509f5d37e0346123943c) |
+  </Tab>
+
+  <Tab title="Gnosis Chain (Chain ID: 100)">
+    | Contract        | Address                                      | Transaction                                                                                                       |
+    | --------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+    | FlashLoanRouter | `0x9da8b48441583a2b93e2ef8213aad0ec0b392c69` | [View on Gnosisscan](https://gnosisscan.io/tx/0x9b4615b4b84394aab4159b412ab8ea8e7a111a701008317f86fa1abe8857d6a0) |
+    | AaveBorrower    | `0x7d9C4DeE56933151Bc5C909cfe09DEf0d315CB4A` | [View on Gnosisscan](https://gnosisscan.io/tx/0x7a4183584616c8cfb7578c5a49993c950fdc3765eab365c46d001a8cbcefe33a) |
+    | ERC3156Borrower | `0x47d71b4b3336ab2729436186c216955f3c27cd04` | [View on Gnosisscan](https://gnosisscan.io/tx/0x0d572851062938db82901809d9d86a0fd1c2d0d341a822588c09e56e4e84d3a9) |
+  </Tab>
+
+  <Tab title="BNB Smart Chain (Chain ID: 56)">
+    | Contract        | Address                                      | Transaction                                                                                                  |
+    | --------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+    | FlashLoanRouter | `0x9da8b48441583a2b93e2ef8213aad0ec0b392c69` | [View on BscScan](https://bscscan.com/tx/0x154dc75d07f933b7f7a486bb8b87f93484d8f926bc874602915ff3a00eca82ed) |
+    | AaveBorrower    | `0x7d9c4dee56933151bc5c909cfe09def0d315cb4a` | [View on BscScan](https://bscscan.com/tx/0x9eabc29bf174869af986067f0734d3a43c3fa52efa23137557cde10ff3ab26cb) |
+    | ERC3156Borrower | `0x47d71b4b3336ab2729436186c216955f3c27cd04` | [View on BscScan](https://bscscan.com/tx/0xe46adc4b1ecdace98c3dc42ac492aaa9a7dd2f0ad5723b5ae58175bf99e46df0) |
+  </Tab>
+
+  <Tab title="Avalanche C-Chain (Chain ID: 43114)">
+    | Contract        | Address                                      | Transaction                                                                                                     |
+    | --------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+    | FlashLoanRouter | `0x9da8b48441583a2b93e2ef8213aad0ec0b392c69` | [View on Snowtrace](https://snowtrace.io/tx/0x60716483a3905e906305d1aa9de9e4e07085ada871d2adc055f4050686d295e9) |
+    | AaveBorrower    | `0x7d9c4dee56933151bc5c909cfe09def0d315cb4a` | [View on Snowtrace](https://snowtrace.io/tx/0xa377b7d137b006fa50f95c4899a73d3012992a4e0d5ee93837fb76314efa4a45) |
+    | ERC3156Borrower | `0x47d71b4b3336ab2729436186c216955f3c27cd04` | [View on Snowtrace](https://snowtrace.io/tx/0x0177acdca733c8bc7f94f44c4a1bfad9846124c2581e05a34a8f2e62a7a879dc) |
+  </Tab>
+
+  <Tab title="MODE (Chain ID: 232)">
+    | Contract        | Address                                      | Transaction                                                                                                             |
+    | --------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+    | FlashLoanRouter | `0x9da8b48441583a2b93e2ef8213aad0ec0b392c69` | [View Transaction](https://explorer.mode.network/tx/0xe162007fa0e73c290e08b811f5b9144634a72551973ff299bd7b1c3e7d09d63b) |
+    | AaveBorrower    | `0x7d9c4dee56933151bc5c909cfe09def0d315cb4a` | [View Transaction](https://explorer.mode.network/tx/0xc848728231cbdb4ec3357b15f72110fe917b0df13757ae9159bfd36c5a13b355) |
+    | ERC3156Borrower | `0x47d71b4b3336ab2729436186c216955f3c27cd04` | [View Transaction](https://explorer.mode.network/tx/0xfb19da501e4a3c874d1cf1458a277cf56846347181a7e25974260f21015ff497) |
+  </Tab>
+
+  <Tab title="RSK Mainnet (Chain ID: 9745)">
+    | Contract        | Address                                      | Transaction                                                                                                               |
+    | --------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+    | FlashLoanRouter | `0x9da8b48441583a2b93e2ef8213aad0ec0b392c69` | [View Transaction](https://explorer.mainnet.rsk.co/tx/0xfa5a037b80ce9c1a437ce236e48063b16f4ab9524c18847ae9d6d74767ff2e46) |
+    | AaveBorrower    | `0x7d9c4dee56933151bc5c909cfe09def0d315cb4a` | [View Transaction](https://explorer.mainnet.rsk.co/tx/0x6f5605c9bc7d3dfaa14f68700ceb1675303d79a3bafe55fc5ea2747a64655faf) |
+    | ERC3156Borrower | `0x47d71b4b3336ab2729436186c216955f3c27cd04` | [View Transaction](https://explorer.mainnet.rsk.co/tx/0x2f943ec5f9c79c32610c882faa231037606d6376610e8816ec8c97bf218088af) |
+  </Tab>
+</Tabs>
+
+## Network Summary
+
+The Flash Loan Router is deployed on **12 networks**:
+
+- **Mainnet**: Ethereum, Gnosis Chain
+- **Testnet**: Sepolia
+- **Layer 2**: Arbitrum One, Optimism, Base, Linea
+- **Sidechains**: Polygon, BNB Smart Chain, Avalanche C-Chain, MODE, RSK Mainnet
+
+## Adding New Networks
+
+To deploy contracts on a new network, follow the [Deployment Guide](/flash-loan-router/operations/deployment-guide). The CREATE2 deployment ensures contracts will have the same addresses as existing networks.
+
+### Requirements for New Networks
+
+<Steps>
+  <Step title="Network compatibility">
+    The network must be EVM-compatible and support:
+
+    - Solidity 0.8.28
+    - Cancun EVM version
+    - CREATE2 opcode
+  </Step>
+
+  <Step title="CoW Protocol deployment">
+    CoW Protocol Settlement contract must be deployed at:
+    `0x9008D19f58AAbD9eD0D60971565AA8510560ab41`
+  </Step>
+
+  <Step title="Flash loan providers">
+    At least one supported flash loan provider should be available:
+
+    - Aave (for AaveBorrower)
+    - ERC-3156 compliant lenders like Maker (for ERC3156Borrower)
+  </Step>
+</Steps>
+
+## Verifying Deployments
+
+To verify a contract deployment on any network:
+
+1. Check the contract address matches the expected deterministic address
+2. View the deployment transaction on the network's block explorer
+3. Verify the contract source code (see [Contract Verification](/flash-loan-router/operations/verification))
+4. Confirm the constructor arguments match expected values
+
+<Tip>
+  All deployment information is tracked in the `networks.json` file in the repository root.
+</Tip>
+
+## Network Resources
+
+<CardGroup cols={2}>
+  <Card title="Deployment Guide" icon="rocket" href="/flash-loan-router/operations/deployment-guide">
+    Deploy contracts to new networks
+  </Card>
+
+  <Card title="Contract Verification" icon="shield-check" href="/flash-loan-router/operations/verification">
+    Verify contracts on block explorers
+  </Card>
+
+  <Card title="Router Design" icon="code" href="/flash-loan-router/concepts/router-design">
+    Understand how to integrate Flash Loan Router
+  </Card>
+
+  <Card title="CIP 66 Proposal" icon="file-lines" href="https://snapshot.box/#/s:cow.eth/proposal/0x6f3d88347bcc8de87ecded2442c090d8eb1d3ef99eca75a831ee220ff5705f00" target="_blank">
+    Read the governance proposal
+  </Card>
+</CardGroup>

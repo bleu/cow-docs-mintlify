@@ -1,0 +1,357 @@
+---
+title: "Order Polling"
+description: "Learn how the Watch Tower polls conditional orders and submits them to the CoW Protocol OrderBook"
+---
+
+# Order Polling
+
+Order polling serves as the fundamental mechanism enabling the Watch Tower to assess conditional orders and determine their readiness for CoW Protocol OrderBook submission. This continuous process evaluates every active conditional order with each new blockchain block.
+
+## Polling overview
+
+The Watch Tower evaluates conditional orders by invoking their handler contracts to verify whether order conditions have been satisfied. Upon successful condition validation, the handler delivers a discrete order suitable for OrderBook posting.
+
+<Info>
+Polling executes on every block for active orders, unless prior poll results indicate the order should be evaluated at a designated future timestamp or block.
+</Info>
+
+## How polling works
+
+The polling mechanism consists of four primary steps:
+
+### 1. Order iteration
+
+For each block, the Watch Tower processes all registered owners and their associated conditional orders:
+
+```typescript
+for (const [owner, conditionalOrders] of ownerOrders.entries()) {
+  for (const conditionalOrder of conditionalOrders) {
+    // Poll each conditional order
+  }
+}
+```
+
+### 2. Poll scheduling
+
+Before polling, the Watch Tower verifies whether the order qualifies for evaluation based on previous poll outcomes:
+
+**Skip until epoch:**
+
+```typescript
+if (
+  lastHint?.result === PollResultCode.TRY_AT_EPOCH &&
+  blockTimestamp < lastHint.epoch
+) {
+  // Skip this order until the specified timestamp
+  continue;
+}
+```
+
+**Skip until block:**
+
+```typescript
+if (
+  lastHint?.result === PollResultCode.TRY_ON_BLOCK &&
+  blockNumber < lastHint.blockNumber
+) {
+  // Skip this order until the specified block
+  continue;
+}
+```
+
+### 3. Handler invocation
+
+The Watch Tower engages the conditional order handler to assess condition satisfaction:
+
+```typescript
+export async function pollConditionalOrder(
+  conditionalOrderId: string,
+  pollParams: PollParams,
+  conditionalOrderParams: ConditionalOrderParams,
+  chainId: SupportedChainId,
+  blockNumber: number,
+  ownerNumber: number,
+  orderNumber: number
+): Promise<PollResult | undefined> {
+  const order = ordersFactory.fromParams(conditionalOrderParams);
+
+  if (!order) {
+    return undefined;
+  }
+
+  return order.poll(actualPollParams);
+}
+```
+
+### 4. Result handling
+
+The poll result communicates the appropriate action to perform:
+
+```typescript
+enum PollResultCode {
+  SUCCESS,              // Order is ready to be posted
+  TRY_AT_EPOCH,        // Check again at specific timestamp
+  TRY_ON_BLOCK,        // Check again at specific block
+  TRY_NEXT_BLOCK,      // Check again on next block
+  DONT_TRY_AGAIN,      // Stop watching this order
+  UNEXPECTED_ERROR     // An error occurred
+}
+```
+
+## Poll parameters
+
+During order polling, the Watch Tower furnishes comprehensive operational context:
+
+```typescript
+interface PollParams {
+  owner: string;           // Order owner address
+  chainId: SupportedChainId;
+  proof: string[];         // Merkle proof if applicable
+  offchainInput: string;   // Additional off-chain data
+  blockInfo: {
+    blockTimestamp: number;
+    blockNumber: number;
+  };
+  provider: Provider;      // Ethereum provider
+  orderBookApi: OrderBookApi;
+}
+```
+
+<Note>
+The Watch Tower utilizes the processing block's timestamp and number, not the latest block, to guarantee consistent indexing.
+</Note>
+
+## Poll results and discrete orders
+
+Successful polling yields a discrete order prepared for submission:
+
+```typescript
+interface PollResultSuccess {
+  result: PollResultCode.SUCCESS;
+  order: GPv2Order.DataStruct;  // The actual order to submit
+  signature: string;             // EIP-1271 signature
+}
+```
+
+### Order validation
+
+Prior to submission, the Watch Tower authenticates the order:
+
+```typescript
+try {
+  badOrder.check(orderToSubmit);
+} catch (e: any) {
+  return {
+    result: PollResultCode.DONT_TRY_AGAIN,
+    reason: `Invalid order: ${e.message}`,
+  };
+}
+```
+
+Validation procedures encompass:
+
+* Valid token addresses
+* Non-zero amounts
+* Reasonable expiration times
+* Supported order types
+
+### Order UID calculation
+
+Each discrete order receives a distinctive identifier:
+
+```typescript
+const orderUid = computeOrderUid(
+  {
+    name: "Gnosis Protocol",
+    version: "v2",
+    chainId: chainId,
+    verifyingContract: GPV2SETTLEMENT,
+  },
+  orderToSubmit,
+  owner
+);
+```
+
+## Submitting to the OrderBook
+
+Upon readiness, the order undergoes posting to the CoW Protocol OrderBook API:
+
+```typescript
+if (!conditionalOrder.orders.has(orderUid)) {
+  const orderUid = await orderBookApi.sendOrder(postOrder);
+  conditionalOrder.orders.set(orderUid, OrderStatus.SUBMITTED);
+}
+```
+
+### Duplicate detection
+
+The Watch Tower maintains records of submitted orders to circumvent redundant submissions:
+
+```typescript
+if (conditionalOrder.orders.has(orderUid)) {
+  const orderStatus = conditionalOrder.orders.get(orderUid);
+  log.info(`OrderUid ${orderUid} status: ${formatStatus(orderStatus)}`);
+  // Skip resubmission
+}
+```
+
+## Integration with the SDK
+
+The Watch Tower leverages the CoW Protocol SDK for polling functionality:
+
+```typescript
+import {
+  ConditionalOrderFactory,
+  ConditionalOrderParams,
+  DEFAULT_CONDITIONAL_ORDER_REGISTRY,
+  PollParams,
+  PollResult,
+} from "@cowprotocol/sdk-composable";
+
+const ordersFactory = new ConditionalOrderFactory(
+  DEFAULT_CONDITIONAL_ORDER_REGISTRY
+);
+```
+
+### Handler registry
+
+The SDK sustains a registry of recognized order handlers:
+
+* **TWAP**: Time-weighted average price orders
+* **Limit orders**: Orders at specific price points
+* **Stop-loss**: Orders that trigger at price thresholds
+* **Custom handlers**: User-defined order logic
+
+<Info>
+If a handler remains unrecognized by the SDK, the Watch Tower defaults to legacy polling using direct contract calls.
+</Info>
+
+## Legacy polling
+
+For unsupported order types, the Watch Tower engages direct contract calls:
+
+```typescript
+const callData = contract.interface.encodeFunctionData(
+  "getTradeableOrderWithSignature",
+  [owner, conditionalOrder.params, offchainInput, proof]
+);
+
+const lowLevelCall = await multicall.callStatic.aggregate3Value([{
+  target: conditionalOrder.composableCow,
+  allowFailure: true,
+  value: 0,
+  callData,
+}]);
+```
+
+This methodology:
+
+* Implements multicall for gas efficiency
+* Gracefully manages contract reverts
+* Retrieves custom error hints from the handler
+
+## Error handling
+
+The Watch Tower addresses multiple error scenarios throughout polling:
+
+### API errors
+
+When OrderBook submission encounters difficulties:
+
+**Temporary errors (retry next block):**
+
+* Quote not found
+* Invalid quote
+* Invalid EIP-1271 signature
+
+**Backoff errors (retry after delay):**
+
+* Insufficient allowance (retry in 10 minutes)
+* Insufficient balance (retry in 10 minutes)
+* Too many limit orders (retry in 1 hour)
+
+**Permanent errors (don't try again):**
+
+* Zero amount
+* Unsupported tokens
+* Invalid order parameters
+
+### On-chain errors
+
+Contract reverts may communicate hints:
+
+```typescript
+return handleOnChainCustomError({
+  owner,
+  chainId,
+  target,
+  callData,
+  revertData: returnData,
+  metricLabels,
+  blockNumber,
+  ownerNumber,
+  orderNumber,
+});
+```
+
+Prevalent hints encompass:
+
+* `PollTryAtEpoch(uint256 epoch)`: Try again at specific time
+* `PollTryAtBlock(uint256 blockNumber)`: Try again at specific block
+* `PollNever(string reason)`: Stop trying
+
+## Performance optimization
+
+### Batched persistence
+
+The Watch Tower persists the registry at intervals during polling:
+
+```typescript
+const CHUNK_SIZE = 50;
+
+if (updatedCount % CHUNK_SIZE === 1 && updatedCount > 1) {
+  await registry.write();
+}
+```
+
+This strategy diminishes disk I/O overhead while safeguarding data integrity.
+
+### Filter policies
+
+Orders may undergo filtering prior to polling to diminish computational load:
+
+```typescript
+if (filterPolicy) {
+  const filterResult = filterPolicy.preFilter({
+    conditionalOrderId,
+    transaction: conditionalOrder.tx,
+    owner,
+    conditionalOrderParams: conditionalOrder.params,
+  });
+
+  switch (filterResult) {
+    case policy.FilterAction.DROP:
+      // Permanently remove
+      ordersPendingDelete.push(conditionalOrder);
+      continue;
+    case policy.FilterAction.SKIP:
+      // Skip this block only
+      continue;
+  }
+}
+```
+
+<Note>
+Filter policies enable operators to specify which orders receive monitoring, supporting RPC cost management and concentration on particular order categories.
+</Note>
+
+## Metrics and monitoring
+
+The Watch Tower compiles comprehensive polling metrics:
+
+* `pollingRunsTotal`: Total number of poll attempts
+* `pollingOnChainDurationSeconds`: Time spent in on-chain calls
+* `pollingOnChainChecksTotal`: Count of on-chain checks
+* `pollingUnexpectedErrorsTotal`: Count of unexpected errors
+* `orderBookDiscreteOrdersTotal`: Orders successfully posted
+* `orderBookErrorsTotal`: API submission errors by type

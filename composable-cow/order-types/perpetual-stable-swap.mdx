@@ -1,0 +1,76 @@
+---
+title: "Perpetual Stable Swap"
+description: "Automatic rebalancing between two stablecoins by continuously trading whichever token has higher balance."
+---
+
+# Perpetual Stable Swap
+
+This conditional order type enables automatic rebalancing between two stablecoins by continuously trading whichever token you hold more of. The mechanism adds a configurable spread to generate profit from rebalancing activities.
+
+## Core Mechanism
+
+The contract examines your holdings of both tokens and creates sell orders for whichever asset represents the larger balance. The trade targets balance equilibrium while applying a half-spread markup to the exchange rate.
+
+## Configuration Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `tokenA` / `tokenB` | The two assets for swapping, typically stablecoins like USDC and DAI |
+| `validityBucketSeconds` | Controls order validity duration by bucketing time into fixed windows. Recommended: 604800 (one week) or 1209600 (two weeks) |
+| `halfSpreadBps` | Basis point markup above 1:1 parity. 10 = 0.1% markup, 100 = 1% markup |
+| `appData` | IPFS hash associated with the order |
+
+### Validity Bucket Calculation
+
+```
+validTo = ((currentTime / validityBucketSeconds) * validityBucketSeconds) + validityBucketSeconds
+```
+
+### Buy Amount Formula
+
+```
+buyAmount = convertAmount(sellAmount) * (10000 + halfSpreadBps) / 10000
+```
+
+## Operational Logic
+
+### Balance Assessment and Token Selection
+
+The contract retrieves both token balances, normalizes them to a common decimal standard, then determines which token exceeds the other. The excess token becomes the sell asset.
+
+### Decimal Handling
+
+Different token decimals receive automatic conversion. For example, converting 1000 USDC (6 decimals) to DAI (18 decimals):
+
+```
+1000 * 10^6 * 10^(18-6) = 1000 * 10^18
+```
+
+### Key Order Characteristics
+
+- Orders are always sell-type (`KIND_SELL`)
+- Partial fills are disabled
+- No protocol fees apply
+- Receiver defaults to `address(0)`, which routes tokens back to the owner
+
+## Validation
+
+The system rejects orders where `NOT_FUNDED` occurs -- meaning zero sell amount due to missing balance of the required token.
+
+## Practical Applications
+
+### Liquidity Provision
+
+Maintain equal stablecoin amounts while automatically rebalancing as supplies deplete, earning spread on each trade.
+
+### Yield Capture
+
+Exploit minor stablecoin peg deviations with modest spreads (0.1-0.5%) while maintaining original position exposure.
+
+### Portfolio Diversification
+
+Distribute holdings across multiple stablecoins with automatic equilibration to mitigate single-asset depeg risk.
+
+## Implementation Note
+
+The validity bucket system ensures identical `orderUid` values when queried within the same time window, preventing orderbook spam on CoW Protocol.

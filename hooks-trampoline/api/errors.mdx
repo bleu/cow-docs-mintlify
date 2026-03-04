@@ -1,0 +1,228 @@
+---
+title: "Errors"
+description: "Error types in the HooksTrampoline contract"
+---
+
+The HooksTrampoline contract defines custom errors for access control and execution failures.
+
+## NotASettlement
+
+### Definition
+
+```solidity
+error NotASettlement()
+```
+
+### Description
+
+This error is thrown when a caller attempts to execute hooks through the trampoline without being the authorized settlement contract. The mechanism enforces that exclusively the CoW Protocol settlement contract can execute hooks, functioning as a critical security control.
+
+### When It's Thrown
+
+The error activates through the `onlySettlement` modifier when:
+
+- `msg.sender` does not match the `settlement` address stored in the contract
+- Any external caller (other than the settlement contract) attempts to call `execute()`
+
+### Code Location
+
+```solidity
+modifier onlySettlement() {
+    if (msg.sender != settlement) {
+        revert NotASettlement();
+    }
+    _;
+}
+
+function execute(Hook[] calldata hooks) external onlySettlement {
+    // Hook execution logic
+}
+```
+
+### Example Scenarios
+
+**Successful Call (No Error)**
+
+```solidity
+// Settlement contract calls trampoline
+address trampoline = 0x1234...;
+address settlement = 0x9008D19f58AAbD9eD0D60971565AA8510560ab41;
+
+// From settlement contract context:
+HooksTrampoline(trampoline).execute(hooks); // Success
+```
+
+**Failed Call (Error Thrown)**
+
+```solidity
+// User or other contract tries to call trampoline directly
+address trampoline = 0x1234...;
+address user = 0x5678...;
+
+// From user context:
+HooksTrampoline(trampoline).execute(hooks); // Reverts with NotASettlement()
+```
+
+### Catching the Error
+
+```solidity
+try HooksTrampoline(trampoline).execute(hooks) {
+    // Hooks executed successfully
+} catch (bytes memory reason) {
+    // Check if error is NotASettlement
+    if (reason.length == 4) {
+        bytes4 errorSelector = bytes4(reason);
+        bytes4 notSettlementSelector = HooksTrampoline.NotASettlement.selector;
+
+        if (errorSelector == notSettlementSelector) {
+            // Handle NotASettlement error
+            revert("Unauthorized: Only settlement can execute hooks");
+        }
+    }
+}
+```
+
+### Error Selector
+
+```solidity
+// Get the error selector for NotASettlement
+bytes4 selector = HooksTrampoline.NotASettlement.selector;
+// selector: 0x... (4-byte selector)
+```
+
+## How to Handle
+
+### Prevention
+
+<Warning>
+Never call `HooksTrampoline.execute()` directly from your contracts or EOAs. The trampoline is designed to be called exclusively by the CoW Protocol settlement contract.
+</Warning>
+
+### Design Pattern
+
+```solidity
+// WRONG: Don't do this
+function myFunction() external {
+    HooksTrampoline(trampoline).execute(hooks); // Will revert!
+}
+
+// RIGHT: Let settlement contract call trampoline
+// Instead, create an order with hooks, and implement a hook target:
+contract MyHookTarget {
+    function onTrade(address token, uint256 amount) external {
+        // This will be called BY the trampoline
+        // DURING settlement execution
+        // Your logic here
+    }
+}
+```
+
+### Debugging
+
+<Steps>
+
+<Step title="Verify caller">
+
+Check that the caller is the settlement contract address using events or debuggers to inspect `msg.sender`.
+
+```solidity
+// In your test or development environment
+console.log("Caller:", msg.sender);
+console.log("Expected settlement:", trampoline.settlement());
+```
+
+</Step>
+
+<Step title="Check trampoline configuration">
+
+Verify the trampoline was deployed with the correct settlement address.
+
+```solidity
+address configuredSettlement = trampoline.settlement();
+require(configuredSettlement == expectedSettlement, "Wrong settlement");
+```
+
+</Step>
+
+<Step title="Review integration flow">
+
+Ensure your integration follows the correct pattern: order -> settlement -> trampoline -> hook target.
+
+</Step>
+
+</Steps>
+
+### Testing
+
+```solidity
+// In your test file
+function testHookExecution() public {
+    address settlement = 0x9008D19f58AAbD9eD0D60971565AA8510560ab41;
+    HooksTrampoline trampoline = new HooksTrampoline(settlement);
+
+    Hook[] memory hooks = new Hook[](1);
+    hooks[0] = Hook({
+        target: address(hookTarget),
+        callData: abi.encodeWithSignature("onTrade()"),
+        gasLimit: 50000
+    });
+
+    // Simulate call from settlement contract
+    vm.prank(settlement);
+    trampoline.execute(hooks); // Success
+
+    // Call from other address should fail
+    vm.prank(address(this));
+    vm.expectRevert(HooksTrampoline.NotASettlement.selector);
+    trampoline.execute(hooks); // Reverts
+}
+```
+
+## Related Errors
+
+### Out of Gas
+
+While not a custom error, hooks may fail due to insufficient gas:
+
+```solidity
+// If hook.gasLimit exceeds available gas
+// The trampoline will revert by wasting all remaining gas
+function execute(Hook[] calldata hooks) external onlySettlement {
+    // ...
+    uint256 forwardedGas = gasleft() * 63 / 64;
+    if (forwardedGas < hook.gasLimit) {
+        revertByWastingGas(); // Consumes all gas
+    }
+    // ...
+}
+```
+
+<Note>
+Unlike `NotASettlement`, out-of-gas errors are not caught. The entire transaction will revert if any hook's gas limit cannot be satisfied.
+</Note>
+
+### Hook Target Reverts
+
+```solidity
+// Hook target reverts
+contract MyHookTarget {
+    function onTrade() external {
+        revert("Something went wrong");
+    }
+}
+
+// In trampoline: revert is caught
+(bool success,) = hook.target.call{gas: hook.gasLimit}(hook.callData);
+// success will be false, but execution continues
+success; // Explicitly ignoring the result
+```
+
+<Info>
+Hook target reverts do not cause `NotASettlement` or block the settlement. They simply result in the hook not executing its logic.
+</Info>
+
+## Related
+
+- [HooksTrampoline Contract](/hooks-trampoline/api/hooks-trampoline) — Contract API reference
+- [Hook Struct](/hooks-trampoline/api/hook-struct) — Hook structure specification
+- [Usage Guide](/hooks-trampoline/usage) — Implementation guide

@@ -1,0 +1,140 @@
+---
+title: "Interactions"
+description: "Creating and managing settlement interactions with the CoW Protocol SDK"
+---
+
+# Interactions
+
+Settlement interactions enable CoW Protocol settlements to execute arbitrary smart contract calls at specific execution stages.
+
+## Interaction Interface
+
+```typescript
+interface Interaction {
+  target: string;       // Smart contract address
+  value: BigNumberish;  // ETH value to send
+  callData: string;     // Encoded function call data
+}
+```
+
+## InteractionLike
+
+A flexible partial type with optional fields:
+
+```typescript
+interface InteractionLike {
+  target: string;
+  value?: BigNumberish;  // Defaults to 0
+  callData?: string;     // Defaults to "0x"
+}
+```
+
+## Execution Stages
+
+```typescript
+enum InteractionStage {
+  PRE = 0,   // Before token transfers
+  INTRA = 1, // During trading (after sells, before buys)
+  POST = 2,  // After all trading
+}
+```
+
+### PRE Stage
+
+Executes before token transfers. Useful for:
+- EIP-2612 permit calls
+- Token wrapping (e.g., ETH to WETH)
+- Setting up approvals
+
+```typescript
+encoder.encodeInteraction({
+  target: tokenAddress,
+  callData: token.interface.encodeFunctionData("permit", [
+    owner, spender, value, deadline, v, r, s
+  ]),
+}, InteractionStage.PRE);
+```
+
+### INTRA Stage
+
+Executes during trading, after sell tokens arrive but before buy tokens are distributed. Default stage if none specified.
+
+```typescript
+// Uniswap swap for liquidity sourcing
+encoder.encodeInteraction({
+  target: uniswapRouter,
+  callData: router.interface.encodeFunctionData("exactInputSingle", [params]),
+}, InteractionStage.INTRA);
+```
+
+### POST Stage
+
+Executes after all trading concludes. Used for cleanup:
+
+```typescript
+// WETH unwrapping
+encoder.encodeInteraction({
+  target: wethAddress,
+  callData: weth.interface.encodeFunctionData("withdraw", [amount]),
+}, InteractionStage.POST);
+```
+
+## Helper Functions
+
+### normalizeInteraction
+
+Converts an `InteractionLike` into a complete `Interaction` with default values:
+
+```typescript
+import { normalizeInteraction } from "@cowprotocol/contracts";
+
+const interaction = normalizeInteraction({
+  target: contractAddress,
+  // value defaults to 0
+  // callData defaults to "0x"
+});
+```
+
+### normalizeInteractions
+
+Handles arrays of interactions:
+
+```typescript
+import { normalizeInteractions } from "@cowprotocol/contracts";
+
+const interactions = normalizeInteractions([
+  { target: addr1, callData: data1 },
+  { target: addr2, callData: data2 },
+]);
+```
+
+## Integration with SettlementEncoder
+
+The `encodeInteraction()` method adds interactions to settlements. If no stage is specified, `InteractionStage.INTRA` is the default.
+
+```typescript
+const encoder = new SettlementEncoder(domain);
+
+// Pre-settlement permit
+encoder.encodeInteraction(permitInteraction, InteractionStage.PRE);
+
+// Intra-settlement swap (default stage)
+encoder.encodeInteraction(swapInteraction);
+
+// Post-settlement cleanup
+encoder.encodeInteraction(unwrapInteraction, InteractionStage.POST);
+```
+
+## Common Use Cases
+
+- **EIP-2612 permit calls** for gasless approvals
+- **Uniswap/Curve swaps** for liquidity sourcing
+- **WETH wrapping/unwrapping**
+- **Post-settlement fee distributions**
+
+## Best Practices
+
+- Select appropriate stages based on token balance availability
+- Minimize interactions for gas efficiency
+- Ensure all calls will succeed (failures cause the entire settlement to revert)
+- Be cautious with reentrancy risks

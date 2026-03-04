@@ -1,0 +1,127 @@
+---
+title: "Dump Database Command"
+description: "Export the Watch Tower database as JSON for analysis and debugging"
+---
+
+# Dump Database Command
+
+Export the Watch Tower database as JSON for analysis and debugging.
+
+The `dump-db` command exports the Watch Tower's internal database state as JSON to standard output. This is useful for debugging, analysis, and data migration.
+
+## Usage
+
+```bash
+watch-tower dump-db --chain-id <chainId> [options]
+```
+
+## Options
+
+<ParamField path="--chain-id" type="number" required>
+  Chain ID to dump from the database. This is a required parameter.
+
+  **Example:** `--chain-id 1` (for Ethereum mainnet) or `--chain-id 100` (for Gnosis Chain)
+</ParamField>
+
+<ParamField path="--database-path" type="string" default="./database">
+  Path to the database directory to read from.
+
+  **Environment variable:** `DATABASE_PATH`
+</ParamField>
+
+<ParamField path="--log-level" type="string" default="INFO">
+  Log level for the dump operation. Controls the verbosity of logging output.
+
+  **Environment variable:** `LOG_LEVEL`
+</ParamField>
+
+## Output format
+
+The command outputs JSON to standard output (STDOUT), containing the complete registry state for the specified chain ID. The output includes:
+
+* Registered conditional orders
+* Order owners and their associated contracts
+* Order execution state and history
+* Chain-specific registry data
+
+The exact structure depends on the internal registry format used by the Watch Tower.
+
+## Examples
+
+### Basic usage
+
+Dump the database for Ethereum mainnet (chain ID 1):
+
+```bash
+watch-tower dump-db --chain-id 1
+```
+
+### Save to file
+
+Redirect the output to a JSON file:
+
+```bash
+watch-tower dump-db --chain-id 1 > dump.json
+```
+
+### Custom database path
+
+Dump from a database in a custom location:
+
+```bash
+watch-tower dump-db --chain-id 100 --database-path ./my-database
+```
+
+### With debug logging
+
+Enable verbose logging during the dump:
+
+```bash
+watch-tower dump-db --chain-id 1 --log-level DEBUG
+```
+
+### Pretty-print output
+
+Use `jq` to format the JSON output:
+
+```bash
+watch-tower dump-db --chain-id 1 | jq .
+```
+
+### Environment variables
+
+You can configure the dump using environment variables:
+
+```bash
+export DATABASE_PATH=./my-database
+export LOG_LEVEL=DEBUG
+
+watch-tower dump-db --chain-id 1
+```
+
+## Use cases
+
+### Debugging
+
+Examine the current state of the Watch Tower's database to debug issues:
+
+```bash
+watch-tower dump-db --chain-id 1 | jq '.orders[] | select(.status == "failed")'
+```
+
+### Backup
+
+Create a backup of the database state:
+
+```bash
+watch-tower dump-db --chain-id 1 > backup-$(date +%Y%m%d).json
+```
+
+### Analysis
+
+Analyze order execution patterns across different chains:
+
+```bash
+watch-tower dump-db --chain-id 1 > mainnet.json
+watch-tower dump-db --chain-id 100 > gnosis.json
+```

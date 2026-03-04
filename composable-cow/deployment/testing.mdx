@@ -1,0 +1,73 @@
+---
+title: "Testing"
+description: "Comprehensive testing guide for ComposableCoW using Foundry, including unit, fuzz, and fork tests."
+---
+
+# Testing
+
+## Key Testing Types
+
+The framework supports three test categories:
+
+1. **Unit tests** - Isolated contract logic verification
+2. **Fuzz tests** - Randomized input testing
+3. **Fork tests** - Mainnet state integration tests
+
+## Essential Setup
+
+You'll need Foundry installed plus environment configuration. The setup requires an Ethereum RPC endpoint, with archive node access recommended for fork testing scenarios.
+
+## Running Tests
+
+### Unit tests only
+
+```bash
+forge test -vvv --no-match-test "fork|[fF]uzz"
+```
+
+### With fuzz tests
+
+```bash
+forge test -vvv --no-match-test "fork"
+```
+
+### Complete suite
+
+```bash
+forge test -vvv
+```
+
+## Test Organization
+
+Tests are structured across multiple files covering different components:
+
+- TWAP orders
+- StopLoss functionality
+- Guards
+- Order forwarding
+
+Helper contracts and libraries support the test infrastructure.
+
+## Coverage Reporting
+
+Generate reports excluding fork tests:
+
+```bash
+forge coverage -vvv --no-match-test "fork" --report summary
+```
+
+For detailed HTML output, use the `lcov` report format with `genhtml`:
+
+```bash
+forge coverage -vvv --no-match-test "fork" --report lcov
+genhtml lcov.info -o report --branch-coverage
+```
+
+## Common Patterns
+
+Tests inherit from `BaseComposableCoWTest` for access to pre-configured accounts and infrastructure. The documentation includes examples for testing:
+
+- Reverts and error conditions
+- Events
+- Time-based conditions
+- Gas snapshots

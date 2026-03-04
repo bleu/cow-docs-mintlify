@@ -1,0 +1,81 @@
+---
+title: "GPv2VaultRelayer"
+description: "The intermediary contract between CoW Protocol settlement and Balancer Vault"
+---
+
+# GPv2VaultRelayer Contract
+
+The `GPv2VaultRelayer` contract serves as an intermediary between the settlement contract and Balancer Vault, enabling secure token transfers and batch swaps while maintaining strict access controls.
+
+## Overview
+
+The relayer acts as an intermediary between the settlement contract and Balancer Vault with specialized functions for handling user fund interactions safely. Only the settlement contract can initiate transfers.
+
+## State Variables
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `creator` | `address` (immutable) | The settlement contract address with exclusive privileges |
+| `vault` | `IVault` (immutable) | The Balancer Vault instance |
+
+## Access Control
+
+All external functions use the `onlyCreator` modifier, restricting operations to the settlement contract that deployed the relayer:
+
+```solidity
+modifier onlyCreator {
+    require(msg.sender == creator, "GPv2: not creator");
+    _;
+}
+```
+
+## Main Functions
+
+### transferFromAccounts()
+
+Moves sell token amounts from user accounts to the settlement contract, supporting three balance types:
+
+```solidity
+function transferFromAccounts(
+    GPv2Transfer.Data[] calldata transfers
+) external onlyCreator;
+```
+
+**Supported balance types:**
+- **ERC20** - Standard ERC20 token transfers
+- **External** - Balancer Vault external balances
+- **Internal** - Balancer Vault internal balances
+
+### batchSwapWithFee()
+
+Executes Balancer batch swaps on behalf of users while simultaneously collecting protocol fees:
+
+```solidity
+function batchSwapWithFee(
+    IVault.BatchSwapStep[] calldata swaps,
+    IERC20[] calldata tokens,
+    IVault.FundManagement calldata funds,
+    int256[] calldata limits,
+    uint256 deadline,
+    GPv2Transfer.Data calldata feeTransfer
+) external onlyCreator returns (int256[] memory tokenDeltas);
+```
+
+The function returns token deltas indicating amounts sent and received.
+
+## Security Architecture
+
+The contract implements layered protection:
+
+- **Creator-only access** prevents unauthorized vault interactions
+- **Immutable references** prevent state tampering post-deployment
+- **User approvals remain isolated** since only the settlement contract can trigger transfers
+- **No direct user interaction pathway** exists -- users never call this contract directly
+
+## Integration Point
+
+The vault relayer operates within the settlement workflow, handling token transfers before and after batch swaps. It is automatically instantiated by the settlement contract during deployment.
+
+<Note>
+Users approve the Balancer Vault, not the VaultRelayer directly. The relayer leverages existing vault approvals to move tokens.
+</Note>

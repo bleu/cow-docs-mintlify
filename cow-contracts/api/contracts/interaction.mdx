@@ -1,0 +1,88 @@
+---
+title: "GPv2Interaction API"
+description: "Interaction library API for executing arbitrary contract calls during settlements"
+---
+
+# GPv2Interaction API
+
+The `GPv2Interaction` library enables settlement contracts to execute arbitrary external contract calls during trading settlements, supporting complex strategies like liquidity sourcing and protocol integrations.
+
+## Data Structure
+
+```solidity
+struct Data {
+    address target;
+    uint256 value;
+    bytes callData;
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `target` | `address` | Contract address to call |
+| `value` | `uint256` | ETH value to send with the call |
+| `callData` | `bytes` | Encoded function call data |
+
+## Functions
+
+### execute
+
+Performs the actual contract interaction using inline assembly for gas optimization. Propagates revert reasons if calls fail.
+
+```solidity
+function execute(Data calldata interaction) internal {
+    address target = interaction.target;
+    uint256 value = interaction.value;
+    bytes calldata callData = interaction.callData;
+
+    // solhint-disable-next-line no-inline-assembly
+    assembly {
+        let freeMemoryPointer := mload(0x40)
+        calldatacopy(freeMemoryPointer, callData.offset, callData.length)
+        if iszero(
+            call(gas(), target, value, freeMemoryPointer, callData.length, 0, 0)
+        ) {
+            returndatacopy(0, 0, returndatasize())
+            revert(0, returndatasize())
+        }
+    }
+}
+```
+
+### selector
+
+Extracts the 4-byte function selector from calldata for event logging.
+
+```solidity
+function selector(Data calldata interaction) internal pure returns (bytes4);
+```
+
+## Settlement Integration
+
+Interactions run at three distinct phases:
+
+| Phase | Stage | Common Use Cases |
+|-------|-------|-----------------|
+| Pre-settlement | `interactions[0]` | Approvals, permits, token wrapping |
+| Intra-settlement | `interactions[1]` | DEX swaps, liquidity sourcing |
+| Post-settlement | `interactions[2]` | Token unwrapping, fee distribution |
+
+## Common Use Cases
+
+- **DEX swaps** for liquidity sourcing (Uniswap, Balancer, Curve)
+- **Token wrapping/unwrapping** (WETH)
+- **Approval grants** to external protocols
+- **Trade routing** through aggregators like 1inch
+- **EIP-2612 permit calls** for gasless approvals
+
+## Security
+
+<Warning>
+Interactions cannot target the `vaultRelayer` contract. Only authorized solvers may submit settlements with interactions. Reentrancy guards prevent attack vectors. Misbehaving solvers face financial penalties.
+</Warning>
+
+## Best Practices
+
+- Order interactions by settlement phase carefully
+- Ensure all calls succeed (failures cause the entire settlement to revert)
+- Use type-safe encoding methods (e.g., `abi.encodeWithSelector`) rather than manual byte manipulation

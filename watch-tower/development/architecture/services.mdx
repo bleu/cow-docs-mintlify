@@ -1,0 +1,278 @@
+---
+title: "Services Layer"
+description: "Overview of the services layer providing integrations with external systems including blockchain RPC nodes, OrderBook API, and database"
+---
+
+# Services Layer
+
+The services layer offers integrations with external systems: blockchain RPC nodes, the OrderBook API, and the database.
+
+## API Service
+
+**Location**: `src/services/api.ts`
+
+The API service manages a REST API and Prometheus metrics endpoint.
+
+### Class: ApiService
+
+Singleton service managing an Express server.
+
+```typescript
+class ApiService {
+  protected port: number;
+  protected app: Express;
+  protected server: Server | null;
+  protected chainContexts: ChainContext[];
+
+  static getInstance(port?: number): ApiService
+  async start(): Promise<Server>
+  async stop(): Promise<void>
+  setChainContexts(chainContexts: ChainContext[]): void
+  getChainContexts(): ChainContext[]
+}
+```
+
+### Endpoints
+
+#### Root endpoint
+- **GET** `/` - Returns "Moooo!"
+
+#### Metrics
+- **GET** `/metrics` - Prometheus metrics
+
+#### Health check
+- **GET** `/health` - Returns health status of all chains
+- Response includes overall health and per-chain status
+
+#### Configuration
+- **GET** `/config` - Returns current watch-tower configuration
+- Shows chain IDs, contracts, deployment blocks, and filter policies
+
+#### API endpoints
+- **GET** `/api/version` - Version information
+- **GET** `/api/dump/:chainId` - Dumps registry for specified chain ID
+
+### Usage
+
+```typescript
+const api = ApiService.getInstance(8080);
+await api.start();
+
+// Set chain contexts after initialization
+api.setChainContexts(chainContexts);
+
+// Later, stop the server
+await api.stop();
+```
+
+### Configuration
+
+Disable the API server using the `--disable-api` flag:
+
+```bash
+yarn cli run --disable-api
+```
+
+Configure the port:
+
+```bash
+yarn cli run --api-port 3000
+```
+
+## Chain Service
+
+**Location**: `src/services/chain.ts`
+
+The chain service manages blockchain interactions and order monitoring for each network.
+
+### Class: ChainContext
+
+Represents a single blockchain network being monitored.
+
+```typescript
+class ChainContext {
+  readonly deploymentBlock: number;
+  readonly pageSize: number;
+  readonly dryRun: boolean;
+  readonly watchdogTimeout: number;
+  readonly addresses?: string[];
+  readonly processEveryNumBlocks: number;
+
+  provider: providers.Provider;
+  chainId: SupportedChainId;
+  registry: Registry;
+  orderBookApi: OrderBookApi;
+  filterPolicy: FilterPolicy | undefined;
+  contract: ComposableCoW;
+  multicall: Multicall3;
+
+  static async init(options: ContextOptions, storage: DBService): Promise<ChainContext>
+  async warmUp(oneShot?: boolean): Promise<void>
+  get health(): ChainHealth
+  static get health(): ChainWatcherHealth
+}
+```
+
+### Initialization
+
+```typescript
+const context = await ChainContext.init({
+  rpc: 'https://eth-mainnet.g.alchemy.com/v2/...',
+  deploymentBlock: 16842080,
+  pageSize: 5000,
+  dryRun: false,
+  // ... other options
+}, storage);
+```
+
+### Warm-up Phase
+
+The warm-up phase synchronizes historical blocks:
+
+1. Loads last processed block from database
+2. Fetches events from `deploymentBlock` to current block
+3. Processes events in pages (configurable size)
+4. Updates registry with new conditional orders
+5. Transitions to `IN_SYNC` state
+
+### Block Watching
+
+After warm-up, subscribes to new blocks:
+
+```typescript
+await context.warmUp();
+// Now watching for new blocks
+```
+
+For each new block:
+
+1. Fetches `ConditionalOrderCreated` events
+2. Processes new conditional orders
+3. Polls existing orders for discrete order creation
+4. Updates database atomically
+
+### Health Monitoring
+
+```typescript
+// Single chain health
+const chainHealth = context.health;
+// { sync: 'IN_SYNC', chainId: 1, lastProcessedBlock: {...}, isHealthy: true }
+
+// All chains health
+const overallHealth = ChainContext.health;
+// { overallHealth: true, chains: { 1: {...}, 5: {...} } }
+```
+
+### Sync States
+
+- **SYNCING**: Catching up with historical blocks
+- **IN_SYNC**: Caught up, watching new blocks
+- **UNKNOWN**: Watchdog timeout exceeded (may indicate RPC issues)
+
+### Provider Support
+
+Supports both HTTP and WebSocket providers:
+
+```typescript
+// WebSocket
+rpc: 'wss://eth-mainnet.ws.alchemy.com/v2/...'
+
+// HTTP
+rpc: 'https://eth-mainnet.g.alchemy.com/v2/...'
+```
+
+## Storage Service
+
+**Location**: `src/services/storage.ts`
+
+The storage service provides database operations using LevelDB.
+
+### Class: DBService
+
+Singleton service for database operations.
+
+```typescript
+class DBService {
+  protected db: Level<string, string>;
+
+  static getInstance(path?: string): DBService
+  async open(): Promise<void>
+  async close(): Promise<void>
+  getDB(): Level<string, string>
+}
+```
+
+### Configuration
+
+Database options:
+
+```typescript
+const options: DatabaseOptions<string, string> = {
+  valueEncoding: 'json',      // Store as JSON
+  createIfMissing: true,      // Create if doesn't exist
+  errorIfExists: false,       // Allow opening existing DB
+};
+```
+
+### Usage
+
+```typescript
+// Get singleton instance
+const storage = DBService.getInstance('./database');
+
+// Open connection
+await storage.open();
+
+// Access underlying LevelDB
+const db = storage.getDB();
+await db.get('key');
+await db.put('key', 'value');
+
+// Batch operations
+await db.batch()
+  .put('key1', 'value1')
+  .put('key2', 'value2')
+  .write();
+
+// Close connection
+await storage.close();
+```
+
+### Default Location
+
+Default database path: `./database`
+
+Configure the path:
+
+```bash
+yarn cli run --database-path /path/to/db
+```
+
+### ACID Guarantees
+
+LevelDB provides:
+
+- **Atomicity**: Batch operations are atomic
+- **Consistency**: Schema validation on read/write
+- **Isolation**: Single-threaded Node.js
+- **Durability**: Writes are persisted to disk
+
+## Service Initialization Order
+
+1. **DBService**: Initialize database connection
+2. **ApiService**: Start REST API server (if enabled)
+3. **ChainContext**: Initialize per network
+   - Create provider
+   - Load registry from database
+   - Start chain monitoring
+
+## Service Shutdown
+
+Graceful shutdown process:
+
+```typescript
+await Promise.allSettled([
+  ApiService.getInstance().stop(),
+  DBService.getInstance().close(),
+]);
+```

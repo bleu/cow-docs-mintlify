@@ -1,0 +1,303 @@
+---
+title: "Domain Model"
+description: "Core data structures and business logic for managing conditional orders in CoW Protocol Watch Tower"
+---
+
+# Domain Model
+
+The domain model establishes fundamental data structures and business logic for overseeing conditional orders.
+
+**Location**: `src/types/model.ts`
+
+## ConditionalOrder Type
+
+This type represents a conditional order that has been registered within the system.
+
+```typescript
+type ConditionalOrder = {
+  id: string;
+  tx: string;
+  params: ConditionalOrderParams;
+  proof: Proof | null;
+  orders: Map<OrderUid, OrderStatus>;
+  composableCow: string;
+  pollResult?: {
+    lastExecutionTimestamp: number;
+    blockNumber: number;
+    result: PollResult;
+  };
+};
+```
+
+### Field Descriptions
+
+**id**
+
+A unique identifier derived from `keccak256(serialized_order)`. Used as the context key in the ComposableCoW contract.
+
+**tx**
+
+Hash of the transaction creating this conditional order, helpful for tracking and debugging purposes.
+
+**params**
+
+Conditional order parameters from the CoW Protocol SDK, including handler contract address, salt, and static input data.
+
+**proof**
+
+Contains merkle root and path array for orders created via merkle root; `null` for single orders.
+
+**orders**
+
+Tracks discrete orders posted for this conditional order, mapping Order UID to status (SUBMITTED or FILLED).
+
+**composableCow**
+
+Contract address for polling to create discrete orders, typically ComposableCoW but may be a custom handler.
+
+**pollResult**
+
+Cached last poll result containing execution timestamp, block number, and poll outcome.
+
+### Related Types
+
+```typescript
+type Proof = {
+  merkleRoot: BytesLike;
+  path: BytesLike[];
+};
+
+type OrderUid = BytesLike;
+type Owner = string;
+
+enum OrderStatus {
+  SUBMITTED = 1,
+  FILLED = 2,
+}
+```
+
+## Registry Class
+
+This class manages state across all conditional orders for every owner.
+
+```typescript
+class Registry {
+  version: number;
+  ownerOrders: Map<Owner, Set<ConditionalOrder>>;
+  storage: DBService;
+  network: string;
+  lastNotifiedError: Date | null;
+  lastProcessedBlock: RegistryBlock | null;
+
+  constructor(
+    ownerOrders: Map<Owner, Set<ConditionalOrder>>,
+    storage: DBService,
+    network: string,
+    lastNotifiedError: Date | null,
+    lastProcessedBlock: RegistryBlock | null
+  )
+
+  static async load(
+    storage: DBService,
+    network: string,
+    genesisBlockNumber: number
+  ): Promise<Registry>
+
+  static async dump(
+    storage: DBService,
+    network: string
+  ): Promise<string>
+
+  async write(): Promise<void>
+  stringifyOrders(): string
+
+  get numOrders(): number
+  get numOwners(): number
+}
+```
+
+### Field Details
+
+**version**
+
+Schema version used for migrations during structural changes. Currently at version `2`.
+
+**ownerOrders**
+
+Primary data structure mapping owner addresses to their conditional orders.
+
+```typescript
+Map<Owner, Set<ConditionalOrder>>
+```
+
+**storage**
+
+Reference to the database service for data persistence.
+
+**network**
+
+Chain identifier as a string (e.g., "1" for mainnet, "5" for Goerli).
+
+**lastNotifiedError**
+
+Timestamp of the last error notification, preventing excessive Slack alerts.
+
+**lastProcessedBlock**
+
+The most recently processed block, enabling resumption from the correct position.
+
+### Methods
+
+**Registry.load()**
+
+Retrieves the registry from the database.
+
+```typescript
+const registry = await Registry.load(
+  storage,
+  '1',
+  16842080
+);
+```
+
+Creates a new empty registry starting from `genesisBlockNumber - 1` if none exists. Schema migrations occur automatically based on persisted version.
+
+**Registry.dump()**
+
+Exports the registry as JSON.
+
+```typescript
+const json = await Registry.dump(storage, '1');
+```
+
+Useful for debugging and `/api/dump/:chainId` endpoints.
+
+**write()**
+
+Persists the registry to the database atomically.
+
+```typescript
+await registry.write();
+```
+
+**stringifyOrders()**
+
+Serializes owner orders map to JSON, handling Map and Set objects.
+
+```typescript
+const json = registry.stringifyOrders();
+```
+
+**Computed Properties**
+
+```typescript
+const count = registry.numOrders;
+const owners = registry.numOwners;
+```
+
+## ExecutionContext
+
+Supplies dependencies to domain logic functions.
+
+```typescript
+interface ExecutionContext {
+  registry: Registry;
+  notificationsEnabled: boolean;
+  slack?: Slack;
+  storage: DBService;
+}
+```
+
+### Usage Example
+
+```typescript
+import { processNewOrderEvent } from './domain/events';
+import { checkForAndPlaceOrder } from './domain/polling';
+
+const context: ExecutionContext = {
+  registry,
+  notificationsEnabled: !silent,
+  slack: slackWebhook ? new Slack(slackWebhook) : undefined,
+  storage,
+};
+
+await processNewOrderEvent(context, event);
+await checkForAndPlaceOrder(context, block);
+```
+
+## RegistryBlock
+
+Represents a processed block.
+
+```typescript
+interface RegistryBlock {
+  number: number;
+  timestamp: number;
+  hash: string;
+}
+```
+
+Tracks the last processed block, detects chain reorganizations, and enables restart recovery.
+
+## Storage Keys
+
+The registry utilizes these database keys:
+
+```typescript
+const LAST_PROCESSED_BLOCK = 'LAST_PROCESSED_BLOCK_{network}';
+const CONDITIONAL_ORDER_REGISTRY = 'CONDITIONAL_ORDER_REGISTRY_{network}';
+const CONDITIONAL_ORDER_REGISTRY_VERSION = 'CONDITIONAL_ORDER_REGISTRY_VERSION_{network}';
+const LAST_NOTIFIED_ERROR = 'LAST_NOTIFIED_ERROR_{network}';
+```
+
+Each key is network-scoped for multi-chain support.
+
+## Data Serialization
+
+The registry handles non-native JSON data structures through custom serialization.
+
+### Map Serialization
+
+```json
+{
+  "dataType": "Map",
+  "value": [["key1", "value1"], ["key2", "value2"]]
+}
+```
+
+### Set Serialization
+
+```json
+{
+  "dataType": "Set",
+  "value": ["item1", "item2", "item3"]
+}
+```
+
+Custom reviver functions restore these structures when loading.
+
+## Schema Migrations
+
+When the registry schema evolves:
+
+1. Increment `CONDITIONAL_ORDER_REGISTRY_VERSION`
+2. Add migration logic in `parseConditionalOrders()`
+3. Migrations run automatically upon load
+
+### Example: Version 1 to 2
+
+Version 2 introduced the `id` field:
+
+```typescript
+if (version < 2) {
+  for (const orders of ownerOrders.values()) {
+    for (const order of orders.values()) {
+      if (!order.id) {
+        order.id = ConditionalOrderSdk.leafToId(order.params);
+      }
+    }
+  }
+}
+```
+
+This maintains backward compatibility during upgrades.

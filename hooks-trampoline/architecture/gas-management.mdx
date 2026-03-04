@@ -1,0 +1,407 @@
+---
+title: "Gas Management"
+description: "Understanding gas limit enforcement and the 63/64 rule in Hooks Trampoline"
+---
+
+The Hooks Trampoline implements sophisticated gas management to prevent malicious or misconfigured hooks from consuming excessive gas and disrupting settlements.
+
+## The 63/64 Gas Forwarding Rule
+
+The EVM has a fundamental principle: when a contract executes an external call, it forwards a maximum of **63/64** of available gas to the called contract, retaining 1/64 for post-call operations.
+
+### Why This Rule Exists
+
+The EVM reserves 1/64 of gas to:
+
+- Handle the return from the external call
+- Execute cleanup operations
+- Prevent complete gas exhaustion that would brick the calling contract
+
+### Impact on Hook Execution
+
+When the trampoline calls a hook with a specified gas limit:
+
+```solidity
+hook.target.call{gas: hook.gasLimit}(hook.callData);
+```
+
+The call doesn't receive exactly `hook.gasLimit` gas due to:
+
+1. The 63/64 forwarding rule
+2. Operations executed before the call
+
+From `HooksTrampoline.sol:63-65`:
+
+```solidity
+// A call forwards all but 1/64th of the available gas. The
+// math is used as a heuristic to account for this.
+uint256 forwardedGas = gasleft() * 63 / 64;
+```
+
+The trampoline calculates that approximately `gasleft() * 63 / 64` gas will be forwarded to the hook.
+
+## Gas Limit Enforcement Algorithm
+
+### Step 1: Pre-Call Gas Check
+
+```solidity
+uint256 forwardedGas = gasleft() * 63 / 64;
+if (forwardedGas < hook.gasLimit) {
+    revertByWastingGas();
+}
+```
+
+Before executing each hook:
+
+1. Calculates how much gas would be forwarded using the 63/64 rule
+2. Checks if this is less than the requested gas limit
+3. Reverts if insufficient gas is available
+
+### Step 2: Capped Hook Execution
+
+```solidity
+(bool success,) = hook.target.call{gas: hook.gasLimit}(hook.callData);
+```
+
+The hook is called with exactly the specified gas limit, ensuring:
+
+- The hook cannot consume more than its allocated gas
+- Remaining gas is preserved for subsequent hooks and settlement logic
+
+<Warning>
+The trampoline may provide slightly less gas than specified due to overhead between gas reading and call execution. From `HooksTrampoline.sol:48-52`: "The trampoline tries to ensure that the hook is called with exactly the gas limit specified in the hook, however in some circumstances it may be a bit smaller than that."
+</Warning>
+
+## Why Gas Wasting is Needed: `revertByWastingGas()`
+
+The `revertByWastingGas()` function is critical for proper gas estimation on certain Ethereum node implementations.
+
+### Implementation
+
+From `HooksTrampoline.sol:88-90`:
+
+```solidity
+function revertByWastingGas() private pure {
+    while (true) {}
+}
+```
+
+This infinite loop consumes all available gas, triggering an out-of-gas revert.
+
+### The Nethermind Estimation Issue
+
+Some node implementations (notably Nethermind) have a problem with `eth_estimateGas`:
+
+- **Normal behavior**: `eth_estimateGas` should return the gas limit needed for a transaction to succeed
+- **Nethermind issue**: When a transaction uses less gas on revert than on success, Nethermind returns the gas used in a successful transaction instead of the gas limit
+
+From `HooksTrampoline.sol:79-87`:
+
+> "If gas isn't wasted or wasted through other means (for example, using `assembly { invalid() }`) then an affected node will incorrectly estimate (through `eth_estimateGas`) the gas needed by the transaction: it will return gas used in a successful transaction instead of the gas limit used in the successful transaction."
+
+### Why Other Approaches Don't Work
+
+Alternative gas wasting methods fail for estimation:
+
+- `assembly { invalid() }` — Consumed gas is not properly tracked
+- `revert()` — Uses minimal gas, doesn't trigger the correct estimation behavior
+- Early return — Doesn't consume enough gas
+
+Only burning all gas through an infinite loop provides reliable estimation behavior across all node implementations.
+
+<Note>
+The gas wasting mechanism is specifically designed for gas estimation. During actual transaction execution, the pre-call check prevents this code path from being reached when there's sufficient gas.
+</Note>
+
+## Real Examples from Tests
+
+### Example 1: Gas Limit Enforcement
+
+From `HooksTrampoline.t.sol:116-135`:
+
+```solidity
+function test_RevertsWhenNotEnoughGas() public {
+    uint256 requiredGas = 100_000;
+    Hummer hummer = new Hummer();
+
+    HooksTrampoline.Hook[] memory hooks = new HooksTrampoline.Hook[](1);
+    hooks[0] = HooksTrampoline.Hook({
+        target: address(hummer),
+        callData: abi.encodeCall(Hummer.drive, ()),
+        gasLimit: requiredGas
+    });
+
+    // Limit the available gas to be less than what the hook requires
+    uint256 limitedGas = requiredGas - 1;
+
+    vm.prank(settlement);
+    vm.expectRevert(bytes(""));
+    trampoline.execute{gas: limitedGas}(hooks);
+}
+```
+
+This test demonstrates:
+
+- A hook requests 100,000 gas
+- The trampoline is called with only 99,999 gas
+- The pre-call check detects insufficient gas and reverts
+
+### Example 2: Precise Gas Forwarding
+
+From `HooksTrampoline.t.sol:31-50`:
+
+```solidity
+function test_SpecifiesGasLimit() public {
+    GasRecorder gas = new GasRecorder();
+    uint256 gasLimit = 133700;
+
+    HooksTrampoline.Hook[] memory hooks = new HooksTrampoline.Hook[](1);
+    hooks[0] = HooksTrampoline.Hook({
+        target: address(gas),
+        callData: abi.encodeCall(GasRecorder.record, ()),
+        gasLimit: gasLimit
+    });
+
+    vm.prank(settlement);
+    trampoline.execute(hooks);
+
+    // NOTE: we use a range here, the exact moment we call `gasleft()` is
+    // after Solidity runtime setup, so we cannot, in a well-defined way,
+    // know the exact amount of gas at this point
+    assertApproxEqAbs(gas.value(), gasLimit, 200);
+}
+```
+
+This test shows:
+
+- Hook receives approximately the specified gas limit (within 200 gas)
+- Small variance due to Solidity runtime overhead
+- Gas forwarding is precise enough for practical use
+
+### Example 3: Multiple Hook Gas Management
+
+From `HooksTrampoline.t.sol:137-156`:
+
+```solidity
+function test_RevertsWhenNotEnoughGasForMultipleHooks() public {
+    uint256 requiredGas = 100_000;
+    Hummer hummer1 = new Hummer();
+    Hummer hummer2 = new Hummer();
+
+    HooksTrampoline.Hook[] memory hooks = new HooksTrampoline.Hook[](2);
+    bytes memory callData = abi.encodeCall(Hummer.drive, ());
+    hooks[0] = HooksTrampoline.Hook({target: address(hummer1), callData: callData, gasLimit: requiredGas});
+    hooks[1] = HooksTrampoline.Hook({target: address(hummer2), callData: callData, gasLimit: requiredGas});
+
+    // Limit the available gas to be less than what both hooks require
+    uint256 totalRequiredGas = requiredGas * hooks.length;
+    uint256 limitedGas = totalRequiredGas - 1;
+
+    vm.prank(settlement);
+    vm.expectRevert(bytes(""));
+    trampoline.execute{gas: limitedGas}(hooks);
+}
+```
+
+This demonstrates:
+
+- Each hook in the array has its gas limit enforced independently
+- Total gas must be sufficient for all hooks combined
+- The trampoline reverts if any hook would receive insufficient gas
+
+## Gas Overhead Components
+
+From `GasLimitEnforcement.t.sol:14-27`, the test suite identifies several overhead components:
+
+```solidity
+/// @dev This constant captures the fact that the trampoline executes a few
+/// operations before calling the desired contract.
+uint256 constant TRAMPOLINE_OVERHEAD = 4_000;
+
+/// @dev The gas craver contract has some minimal overhead before checking
+/// the gas used in the call. The amount is exact and derived from the
+/// debugger.
+uint256 constant GAS_CRAVER_OVERHEAD = 117;
+
+/// @dev A bound on how much actual gas is spent when executing the function
+/// in the gas craver contract.
+uint256 constant BOUND_ON_GAS_COST = 60_000;
+```
+
+### Trampoline Overhead (~4,000 gas)
+
+Includes:
+
+- Function call setup
+- Access control check (`onlySettlement` modifier)
+- Loop iteration for hook array
+- Gas calculation (`gasleft() * 63 / 64`)
+- Comparison and conditional logic
+
+### Call Overhead
+
+From `HooksTrampoline.t.sol:111`:
+
+```solidity
+uint256 callOverhead = (2600 + 700) * 2; // cold storage access + call cost
+```
+
+- **Cold storage access**: 2,600 gas
+- **Call cost**: 700 gas
+- **Factor of 2**: Accounts for both the call and potential storage operations
+
+## Calculating Required Gas
+
+To properly call the trampoline with a desired hook gas limit, account for all overheads:
+
+```solidity
+function limitForForwarding(uint256 gas) private pure returns (uint256) {
+    return (gas + TRAMPOLINE_OVERHEAD) * 64 / 63;
+}
+```
+
+From `GasLimitEnforcement.t.sol:154-160`, this calculation:
+
+1. Adds the trampoline overhead to the desired gas
+2. Multiplies by 64/63 to account for the EVM's gas forwarding rule
+3. Returns the total gas limit needed for the trampoline call
+
+### Example Calculation
+
+For a hook needing 100,000 gas:
+
+```
+Required gas = (100,000 + 4,000) * 64/63
+             = 104,000 * 64/63
+             = 105,650 gas (approximately)
+```
+
+<Info>
+When calling the trampoline, always provide `(desiredHookGas + overhead) * 64/63` to ensure the hook receives its full gas allocation.
+</Info>
+
+## Edge Cases and Limitations
+
+### Known Imprecision
+
+From `GasLimitEnforcement.t.sol:103-124`, there's a known edge case where the trampoline's gas check is imprecise:
+
+```solidity
+/// @dev This test shows an undesired behavior of the trampoline contract.
+/// It comes from the fact that we can't exactly say in the trampoline how
+/// much gas is forwarded in the call exactly and so it can't enforce that
+/// the amount in the call is exactly the desired amount.
+function test_undesiredBehavior_TrampolineWithInsufficientAvailableGas() public gasPadded {
+    uint256 criticalAmount = 3000;
+    // ... test shows hook doesn't execute but trampoline doesn't revert
+}
+```
+
+In a narrow range (~500-3,000 gas deficit), the trampoline may:
+
+- Not revert despite insufficient gas
+- But the hook still fails to execute properly
+
+This is acceptable because:
+
+- The hook safely fails (doesn't cause issues)
+- The gas deficit is small and predictable
+- It doesn't affect settlement integrity
+
+### Gas Efficiency
+
+From `GasLimitEnforcement.t.sol:126-141`, the trampoline overhead is bounded:
+
+```solidity
+function test_TrampolineGasEfficiency() public gasPadded {
+    // ... execute trampoline
+
+    // THEN: the gas consumed should be reasonable
+    assertLt(gasMetering, BOUND_ON_GAS_COST, "Trampoline should be gas efficient");
+}
+```
+
+The trampoline's overhead is consistently under 60,000 gas, making it efficient for production use.
+
+## Protection Against Gas Attacks
+
+### The "Hummer" Attack
+
+From `HooksTrampoline.t.sol:189-204`, the test suite includes a contract designed to consume massive amounts of gas:
+
+```solidity
+contract Hummer {
+    function drive() external {
+        // Hummers are cars that use way too much gas... Accessing the `n`th
+        // memory address past `msize()` requires paying to 0-out the memory
+        // from `msize()` to `n`. This costs 3-gas per 32-bytes at first and
+        // grows as `msize()` gets bigger.
+        uint256 n = type(uint256).max;
+        assembly {
+            sstore(0, mload(n))
+        }
+    }
+}
+```
+
+This attack:
+
+- Attempts to allocate memory up to `type(uint256).max`
+- Would consume enormous amounts of gas if uncapped
+- Is safely contained by the gas limit enforcement
+
+From `HooksTrampoline.t.sol:97-114`, even with this attack:
+
+```solidity
+function test_HandlesOutOfGas() public {
+    Hummer hummer = new Hummer();
+    HooksTrampoline.Hook[] memory hooks = new HooksTrampoline.Hook[](1);
+    hooks[0] = HooksTrampoline.Hook({
+        target: address(hummer),
+        callData: abi.encodeCall(Hummer.drive, ()),
+        gasLimit: 133700
+    });
+
+    vm.prank(settlement);
+    uint256 gas = gasleft();
+    trampoline.execute(hooks);
+    uint256 gasUsed = gas - gasleft();
+    uint256 callOverhead = (2600 + 700) * 2;
+
+    assertApproxEqAbs(gasUsed, hooks[0].gasLimit + callOverhead, 500);
+}
+```
+
+The test confirms:
+
+- The malicious hook consumes only its allocated gas limit
+- Total gas used is `gasLimit + overhead` (predictable and bounded)
+- The attack is completely neutralized
+
+## Best Practices
+
+1. **Set Conservative Gas Limits**: Account for worst-case execution in your hooks
+2. **Include Overhead**: When calling the trampoline, use `(hookGas + overhead) * 64/63`
+3. **Test Gas Usage**: Use tests like `test_SpecifiesGasLimit` to verify your hooks receive adequate gas
+4. **Handle Reverts**: Design hooks to fail gracefully if gas is insufficient
+5. **Monitor Estimations**: Be aware of potential Nethermind estimation issues in your tooling
+
+## Summary
+
+| Concept | Key Takeaway |
+|---------|--------------|
+| **63/64 Rule** | EVM forwards at most 63/64 of available gas to external calls |
+| **Gas Enforcement** | Pre-call check + capped execution prevents gas attacks |
+| **Gas Wasting** | Infinite loop needed for proper gas estimation on Nethermind |
+| **Overhead** | Account for ~4,000 gas trampoline overhead + call costs |
+| **Attack Protection** | Gas limits safely contain malicious hooks attempting to drain gas |
+| **Imprecision** | Small gas deficit (~500-3,000) may not trigger revert but hook still fails safely |
+
+<Note>
+The trampoline's gas management is designed to be conservative: it may slightly under-allocate gas to hooks, but this ensures settlement safety and prevents gas-based attacks.
+</Note>
+
+## Additional Reading
+
+- [Security Model](/hooks-trampoline/architecture/security) — Understanding access control and privilege isolation
+- [Settlement Flow](/hooks-trampoline/architecture/settlement-flow) — How hooks integrate into the complete settlement lifecycle

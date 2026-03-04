@@ -1,0 +1,48 @@
+---
+title: "Introduction"
+description: "Learn about CoW Protocol and its smart contract architecture for gasless, MEV-protected trading"
+---
+
+# Introduction
+
+CoW Protocol is a permissionless trading protocol that provides three main advantages:
+
+- **MEV Protection** - Protection against MEV attacks through batch auction settlement
+- **Gasless Trading** - Elimination of gas fees via off-chain order signing
+- **Coincidence of Wants** - Direct matching of compatible orders when possible
+
+## How It Works
+
+Users sign orders off-chain using EIP-712, eliminating the need to pay gas fees. Solvers then compete in batch auctions to discover optimal settlement routes, matching direct trades or routing through available liquidity sources (Uniswap, Balancer, Curve, etc.).
+
+## Core Smart Contracts
+
+The system includes three core smart contracts:
+
+- **GPv2Settlement** - Executes trades and validates signatures
+- **GPv2VaultRelayer** - Handles token transfers and Balancer Vault integration
+- **GPv2AllowListAuthentication** - Manages solver access control
+
+## How Users Participate
+
+1. Traders submit off-chain signed orders specifying token pairs, amounts, and price limits
+2. Solvers compete to discover optimal settlement routes
+3. Trades are settled in batch auctions at uniform clearing prices
+4. Users receive their tokens without paying gas
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" href="/cow-contracts/installation">
+    Set up the CoW Protocol contracts package
+  </Card>
+  <Card title="Quickstart" href="/cow-contracts/quickstart">
+    Create and sign your first order
+  </Card>
+  <Card title="Architecture" href="/cow-contracts/concepts/architecture">
+    Understand the smart contract architecture
+  </Card>
+  <Card title="Contracts Overview" href="/cow-contracts/contracts/overview">
+    Explore the core contracts
+  </Card>
+</CardGroup>

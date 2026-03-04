@@ -1,0 +1,137 @@
+---
+title: "Slack Notifications"
+description: "Configure error notifications and alerts for the Watch Tower"
+---
+
+# Slack Notifications
+
+Configure error notifications and alerts for the Watch Tower.
+
+The Watch Tower can send notifications to Slack when errors occur during operation.
+
+## Setting up Slack webhook
+
+To enable Slack notifications, you need to provide a Slack webhook URL.
+
+### Creating a webhook
+
+1. Go to your Slack workspace settings
+2. Create an Incoming Webhook integration
+3. Copy the webhook URL (starts with `https://hooks.slack.com/services/...`)
+
+### Configuring the watch-tower
+
+Provide the webhook URL using the `--slack-webhook` option:
+
+```bash
+yarn cli run --slack-webhook https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+```
+
+Or via environment variable:
+
+```bash
+export SLACK_WEBHOOK=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+yarn cli run
+```
+
+## What gets notified
+
+The watch-tower sends Slack notifications for:
+
+### Execution errors
+
+When the watch-tower encounters an error during execution:
+
+* Exception messages
+* Critical failures that prevent processing
+* Link to Tenderly dashboard for debugging
+
+Example notification:
+
+```
+Error: Failed to process block 12345678. More info https://dashboard.tenderly.co/devcow/project/actions
+```
+
+### Silent mode
+
+You can disable all notifications using the `--silent` flag:
+
+```bash
+yarn cli run --silent
+```
+
+This is useful for:
+
+* Local development and testing
+* CI/CD environments
+* When using alternative monitoring solutions
+
+<Warning>
+The `--silent` and `--slack-webhook` options are mutually exclusive. You cannot use both at the same time.
+</Warning>
+
+## Error rate limiting
+
+To prevent notification spam, the watch-tower implements automatic rate limiting:
+
+### Rate limit period
+
+**2 hours** - Only one error notification is sent every 2 hours.
+
+### How it works
+
+1. When an error occurs, the watch-tower checks `LAST_NOTIFIED_ERROR` in the database
+2. If less than 2 hours have passed since the last notification, the new error is logged but not sent to Slack
+3. If 2 hours or more have passed, the notification is sent and `LAST_NOTIFIED_ERROR` is updated
+
+This prevents flooding your Slack channel during incidents while still ensuring you're alerted to ongoing issues.
+
+### Rate limit behavior
+
+When a notification is rate limited, you'll see a log message:
+
+```
+Last error notification happened earlier than 120 minutes ago.
+Next notification will happen after 2024-03-04T14:34:56.789Z
+```
+
+All errors are still logged locally at the configured log level, so you can review them even if not sent to Slack.
+
+## Notification format
+
+Slack notifications are sent as simple text messages using the webhook's `text` field:
+
+```json
+{
+  "text": "Error message with details"
+}
+```
+
+You can customize the webhook integration in Slack to:
+
+* Set a custom bot name
+* Add an icon
+* Configure which channel receives notifications
+
+## Database persistence
+
+The `LAST_NOTIFIED_ERROR` timestamp is persisted to the database atomically with other state updates. This ensures:
+
+* Rate limiting survives watch-tower restarts
+* No duplicate notifications after crashes
+* Consistent behavior across deployments
+
+## Requirements
+
+Slack notifications require one of:
+
+1. A valid `--slack-webhook` URL is provided, OR
+2. The `--silent` flag is enabled
+
+If neither condition is met, the watch-tower will throw an error:
+
+```
+SLACK_WEBHOOK_URL must be set if not running in silent mode
+```
+
+This prevents accidentally running the watch-tower without any error notification mechanism.

@@ -1,0 +1,144 @@
+---
+title: "Installation"
+description: "Set up your development environment for the Flash-Loan Router"
+---
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+### Foundry
+
+The Flash-Loan Router is built with Foundry, a blazing fast Ethereum development toolkit. Install Foundry using:
+
+```bash
+curl -L https://foundry.paradigm.xyz | bash
+foundryup
+```
+
+Verify your installation:
+
+```bash
+forge --version
+```
+
+<Note>
+  Foundry requires a working Rust installation. If you encounter issues, visit [Foundry's installation guide](https://book.getfoundry.sh/getting-started/installation).
+</Note>
+
+### Git
+
+Ensure Git is installed for cloning the repository:
+
+```bash
+git --version
+```
+
+## Installation Steps
+
+<Steps>
+  <Step title="Clone the repository">
+    Clone the Flash-Loan Router repository from GitHub:
+
+    ```bash
+    git clone https://github.com/cowprotocol/flash-loan-router.git
+    cd flash-loan-router
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    Install Foundry dependencies (Forge automatically manages Solidity dependencies):
+
+    ```bash
+    forge install
+    ```
+
+    This will install all required libraries specified in the project configuration.
+  </Step>
+
+  <Step title="Set up environment variables">
+    Copy the example environment file and configure it:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    Edit the `.env` file with your configuration:
+
+    ```bash
+    # CLI
+    CHAIN_ID=1
+    ETH_RPC_URL=https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY
+    PRIVATE_KEY=your_private_key_here
+
+    # Forge deployment scripts:
+    # For smart contract verification
+    ETHERSCAN_API_KEY=your_etherscan_api_key
+    # FlashLoanRouter contract address used in a single deployment of AAVE Borrower.
+    # FLASHLOAN_ROUTER_ADDRESS=
+    ```
+
+    <Warning>
+      Never commit your `.env` file to version control. It contains sensitive information like private keys.
+    </Warning>
+  </Step>
+
+  <Step title="Build the project">
+    Compile all smart contracts:
+
+    ```bash
+    forge build
+    ```
+
+    This compiles all Solidity contracts using the settings defined in `foundry.toml`:
+
+    - Solidity version: 0.8.28
+    - EVM version: Cancun
+    - Optimizer runs: 1,000,000
+  </Step>
+
+  <Step title="Verify installation">
+    Run the test suite to ensure everything is set up correctly:
+
+    ```bash
+    forge test
+    ```
+
+    To exclude tests requiring an internet connection:
+
+    ```bash
+    forge test --no-match-path 'test/e2e/**/*'
+    ```
+
+    If all tests pass, your installation is complete!
+  </Step>
+</Steps>
+
+## Compiler Configuration
+
+The project uses the following Foundry configuration (`foundry.toml`):
+
+```toml
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+
+# Compiler settings
+solc = "0.8.28"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 1000000
+```
+
+<Note>
+  The high optimizer run count (1,000,000) is configured for gas-efficient production deployment, prioritizing execution cost over deployment cost.
+</Note>
+
+## Next Steps
+
+Now that you have the Flash-Loan Router installed, you can:
+
+- Follow the [Quickstart Guide](/flash-loan-router/getting-started/quickstart) to build and test the contracts
+- Learn about [deployment](/flash-loan-router/getting-started/deployment) to deploy contracts to a network
+- Explore the [Architecture](/flash-loan-router/architecture) to understand the design

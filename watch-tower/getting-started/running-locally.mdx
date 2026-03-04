@@ -1,0 +1,356 @@
+---
+title: "Running locally"
+description: "Run the Watch Tower locally for development and testing"
+---
+
+# Running locally
+
+Run the Watch Tower locally for development and testing.
+
+## Basic usage
+
+Run the Watch Tower with the default configuration:
+
+```bash
+yarn cli run --config-path ./config.json
+```
+
+## CLI commands
+
+The Watch Tower CLI provides two main commands:
+
+### run
+
+Start the Watch Tower in monitoring mode:
+
+```bash
+yarn cli run [options]
+```
+
+**Available options:**
+
+- **--config-path** (string, default: `./config.json`)
+  Path to the chain configuration file.
+  ```bash
+  yarn cli run --config-path /path/to/config.json
+  ```
+  Environment variable: `CONFIG_PATH`
+
+- **--database-path** (string, default: `./database`)
+  Path to the LevelDB database directory.
+  ```bash
+  yarn cli run --database-path /var/lib/watch-tower/db
+  ```
+  Environment variable: `DATABASE_PATH`
+
+- **--log-level** (string, default: `INFO`)
+  Set the logging level. Options: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`.
+  ```bash
+  yarn cli run --log-level DEBUG
+  ```
+  Environment variable: `LOG_LEVEL`
+
+- **--dry-run** (boolean, default: `false`)
+  Run without publishing orders to the OrderBook API. Useful for testing.
+  ```bash
+  yarn cli run --dry-run
+  ```
+  Environment variable: `DRY_RUN`
+
+- **--one-shot** (boolean, default: `false`)
+  Run the Watch Tower once and exit instead of continuous monitoring.
+  ```bash
+  yarn cli run --one-shot
+  ```
+  Environment variable: `ONE_SHOT`
+
+- **--api-port** (number, default: `8080`)
+  Port for the REST API server.
+  ```bash
+  yarn cli run --api-port 3000
+  ```
+  Environment variable: `API_PORT`
+
+- **--disable-api** (boolean, default: `false`)
+  Disable the REST API server.
+  ```bash
+  yarn cli run --disable-api
+  ```
+  Environment variable: `DISABLE_API`
+
+- **--silent** (boolean, default: `false`)
+  Disable notifications (local logging only, no Slack alerts).
+  ```bash
+  yarn cli run --silent
+  ```
+  Environment variable: `DISABLE_NOTIFICATIONS`
+
+- **--slack-webhook** (string)
+  Slack webhook URL for error notifications.
+  ```bash
+  yarn cli run --slack-webhook https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+  ```
+  Environment variable: `SLACK_WEBHOOK`
+
+- **--only-owner** (string[])
+  Monitor conditional orders only from specific owner addresses (safes). Can be specified multiple times.
+  ```bash
+  yarn cli run --only-owner 0x1234... --only-owner 0x5678...
+  ```
+
+### dump-db
+
+Dump the database contents as JSON:
+
+```bash
+yarn cli dump-db --chain-id <chainId> [options]
+```
+
+**Example:**
+
+```bash
+yarn cli dump-db --chain-id 1 --database-path ./database
+```
+
+## Expected output
+
+When you start the Watch Tower, you should see output similar to:
+
+```
+[INFO] commands:run - Starting Rest API server...
+[INFO] ApiService - REST API server started on port 8080
+[INFO] commands:run - Starting chain mainnet...
+[INFO] commands:run - Starting chain sepolia...
+[INFO] chainContext - Warming up chain mainnet from block 17883049
+[INFO] chainContext - Processing block 18234567 on mainnet
+[INFO] chainContext - Found 2 ConditionalOrderCreated events
+[INFO] chainContext - Found 1 MerkleRootSet event
+[INFO] checkForAndPlaceOrder - Placed order 0xabc123... for owner 0xdef456...
+```
+
+### What the Watch Tower does
+
+When running, the Watch Tower continuously:
+
+1. **Monitors blockchain events** - Listens for `ConditionalOrderCreated` and `MerkleRootSet` events
+2. **Fetches conditional orders** - Retrieves order details from the blockchain
+3. **Posts discrete orders** - Submits orders to the CoW Protocol OrderBook API
+4. **Updates registry** - Maintains a local database of active conditional orders
+5. **Removes expired orders** - Cleans up orders that have expired or been cancelled
+
+## Accessing the API server
+
+By default, the Watch Tower starts a REST API server on port 8080 with the following endpoints:
+
+### Version information
+
+```bash
+curl http://localhost:8080/api/version
+```
+
+**Response:**
+
+```json
+{
+  "name": "@cowprotocol/watch-tower",
+  "version": "2.14.0",
+  "description": "A standalone watch tower, keeping an eye on Composable Cows"
+}
+```
+
+### Configuration
+
+```bash
+curl http://localhost:8080/config
+```
+
+**Response:** Returns the current Watch Tower configuration (excluding sensitive data).
+
+### Database dump
+
+```bash
+curl http://localhost:8080/api/dump/1
+```
+
+**Response:** Returns the complete database state for chain ID 1 (mainnet) in JSON format.
+
+### Prometheus metrics
+
+```bash
+curl http://localhost:8080/metrics
+```
+
+**Response:** Returns Prometheus-formatted metrics for monitoring.
+
+## Viewing logs
+
+The Watch Tower uses a flexible logging system that can be controlled via the `LOG_LEVEL` environment variable.
+
+### Basic log levels
+
+Set the global log level:
+
+```bash
+LOG_LEVEL=DEBUG yarn cli run --config-path ./config.json
+```
+
+Available levels: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`
+
+### Module-specific logging
+
+Enable detailed logging for specific modules:
+
+```bash
+# Enable INFO level for chainContext module
+LOG_LEVEL=WARN,chainContext=INFO yarn cli run --config-path ./config.json
+```
+
+```bash
+# Enable TRACE level for order placement
+LOG_LEVEL=INFO,_placeOrder=TRACE yarn cli run --config-path ./config.json
+```
+
+### Advanced logging patterns
+
+Use regex patterns to match specific logger names:
+
+```bash
+# Match chainContext:processBlock with any chain ID and block number
+LOG_LEVEL="chainContext:processBlock:(\d{1,3}):(\d*)$=DEBUG" yarn cli run
+```
+
+```bash
+# Complex example with multiple overrides
+LOG_LEVEL="WARN,commands=DEBUG,^checkForAndPlaceOrder=WARN,^chainContext=INFO" yarn cli run
+```
+
+## Running in development mode
+
+1. **Set up test configuration**
+
+   Create a development configuration file for Sepolia testnet:
+
+   ```bash
+   cp config.json.example config.sepolia.json
+   ```
+
+   Edit to include only the Sepolia network with your test RPC endpoint.
+
+2. **Enable debug logging**
+
+   Run with detailed logging to see all operations:
+
+   ```bash
+   LOG_LEVEL=DEBUG yarn cli run --config-path ./config.sepolia.json
+   ```
+
+3. **Use dry-run mode**
+
+   Test without actually posting orders to the OrderBook API:
+
+   ```bash
+   yarn cli run --config-path ./config.sepolia.json --dry-run
+   ```
+
+4. **Test one-shot mode**
+
+   Process current state once and exit:
+
+   ```bash
+   yarn cli run --config-path ./config.sepolia.json --one-shot
+   ```
+
+## Using environment variables
+
+You can configure the Watch Tower entirely through environment variables:
+
+```bash
+export CONFIG_PATH=./config.json
+export DATABASE_PATH=./database
+export LOG_LEVEL=INFO
+export API_PORT=8080
+export DRY_RUN=false
+
+yarn cli run
+```
+
+Or use a `.env` file:
+
+```bash
+CONFIG_PATH=./config.json
+DATABASE_PATH=./database
+LOG_LEVEL=INFO
+API_PORT=8080
+SLACK_WEBHOOK=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+```
+
+Then run:
+
+```bash
+yarn cli run
+```
+
+## Monitoring specific safes
+
+To monitor conditional orders from specific Safe addresses only:
+
+```bash
+yarn cli run \
+  --config-path ./config.json \
+  --only-owner 0x9008D19f58AAbD9eD0D60971565AA8510560ab41 \
+  --only-owner 0x7f92a8b8b4d8d0e1c8d8e8f8a8b8c8d8e8f8a8b8
+```
+
+## Stopping the Watch Tower
+
+To gracefully stop the Watch Tower, press `Ctrl+C`. The Watch Tower will:
+
+1. Stop processing new blocks
+2. Complete any in-progress operations
+3. Close the API server
+4. Close the database connection
+5. Exit cleanly
+
+```
+[INFO] commands:stop - Caught interrupt signal.
+[INFO] ApiService - Stopping REST API server...
+[INFO] DBService - Closing database...
+[INFO] commands:stop - Exiting watchtower...
+```
+
+## Troubleshooting
+
+### Database issues
+
+If you encounter database errors, try removing the database and resyncing:
+
+```bash
+rm -rf ./database
+yarn cli run --config-path ./config.json
+```
+
+### RPC connection issues
+
+Enable debug logging to see RPC connection details:
+
+```bash
+LOG_LEVEL=DEBUG yarn cli run --config-path ./config.json
+```
+
+Check that your RPC endpoint is accessible and has sufficient rate limits.
+
+### High RPC usage
+
+Reduce RPC calls by:
+
+- Increasing `processEveryNumBlocks` to skip blocks
+- Setting `pageSize` appropriately for your RPC provider
+- Using a dedicated RPC endpoint with higher rate limits
+
+## Next steps
+
+After running locally:
+
+- [Deploy with Docker](/deployment/docker)
+- [Deploy to DAppNode](/deployment/dappnode)
+- [Monitor with Prometheus](/advanced/metrics)

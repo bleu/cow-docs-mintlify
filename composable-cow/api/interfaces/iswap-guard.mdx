@@ -1,0 +1,44 @@
+---
+title: "ISwapGuard"
+description: "API reference for the ISwapGuard interface that enables order settlement restrictions in ComposableCoW."
+---
+
+# ISwapGuard
+
+The `ISwapGuard` interface enables CoW Protocol to restrict order settlements through ComposableCoW by implementing a verification mechanism.
+
+## Core Function
+
+The interface requires a single `verify()` function that evaluates whether an order meets security criteria before settlement. This function receives:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `order` | `GPv2Order.Data` | The CoW Protocol order data |
+| `ctx` | `bytes32` | Context identifier (either `bytes32(0)` for merkle trees or a hash for cabinet lookups) |
+| `params` | `ConditionalOrderParams` | Conditional order parameters |
+| `offchainInput` | `bytes` | Optional off-chain verification input |
+
+The function returns a boolean indicating approval.
+
+## Implementation Examples
+
+### ReceiverLock
+
+Restricts orders to self-transfers only, preventing fund redirection by ensuring the receiver is set to `address(0)`.
+
+### TokenWhitelistGuard
+
+Maintains an approved token list, validating both the sell and buy tokens against this whitelist.
+
+### AmountLimitGuard
+
+Enforces maximum trade sizes by checking the sell amount against a configured limit.
+
+## Key Requirements
+
+- Implementations should inherit from `BaseSwapGuard` for proper ERC-165 interface support
+- Verification logic must remain stateless, deterministic, and gas-efficient since it executes during order validation
+
+<Warning>
+Guards represent security-critical components requiring thorough testing before production deployment. Guards cannot prevent malicious order handlers from being used.
+</Warning>

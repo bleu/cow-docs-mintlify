@@ -1,0 +1,123 @@
+---
+title: "Building"
+description: "Instructions for building the project, including build commands, process steps, and configuration details"
+---
+
+# Building
+
+## Build command
+
+To construct the project, execute:
+
+```bash
+yarn build
+```
+
+## Build process
+
+The build sequence performs these actions:
+
+1. **Clean previous builds**
+   ```bash
+   rm -rf dist && rm -rf src/types/generated
+   ```
+   Eliminates the output directory and generated types for a fresh build.
+
+2. **Generate TypeScript types from ABIs**
+   ```bash
+   yarn typechain
+   ```
+   Leverages TypeChain to produce TypeScript types from contract ABIs located in the `abi/` directory.
+
+3. **Compile TypeScript**
+   ```bash
+   tsc
+   ```
+   Transforms all TypeScript source files into JavaScript within the `dist/` directory.
+
+4. **Copy schema files**
+   ```bash
+   cp ./src/types/config.schema.json dist/src/types/config.schema.json
+   ```
+   Transfers the JSON schema file necessary for runtime configuration validation.
+
+## TypeChain configuration
+
+TypeChain produces type-safe contract interfaces using this command:
+
+```bash
+typechain --target ethers-v5 --out-dir src/types/generated/ "abi/*.json"
+```
+
+* **Target**: ethers-v5 (generates types compatible with ethers.js v5)
+* **Output**: `src/types/generated/`
+* **Input**: All JSON files in the `abi/` directory
+
+## Output directory
+
+Build output is organized in the `dist/` directory:
+
+```
+dist/
+├── src/
+│   ├── commands/
+│   ├── domain/
+│   ├── services/
+│   ├── types/
+│   │   ├── generated/      # TypeChain generated types
+│   │   └── config.schema.json
+│   ├── utils/
+│   └── index.js
+└── ...
+```
+
+## Build artifacts
+
+The build process generates these outputs:
+
+* **Compiled JavaScript**: All `.ts` files transformed to `.js` in `dist/`
+* **Type declarations**: `.d.ts` files for TypeScript consumers
+* **Contract types**: Generated TypeScript interfaces for smart contracts
+* **JSON schemas**: Configuration validation schemas
+
+## Entry point
+
+The primary entry point is configured in `package.json`:
+
+```json
+{
+  "main": "dist/src/index.js"
+}
+```
+
+## Prepare hook
+
+A prepare hook executes post-installation:
+
+```bash
+yarn prepare
+```
+
+This runs:
+
+* `husky install` - Configures git hooks
+* `yarn typechain` - Produces contract types
+* `yarn configschema` - Generates configuration schema
+
+## Building for production
+
+For production environments:
+
+1. Execute the complete build: `yarn build`
+2. The `dist/` directory contains the deployable application
+3. Verify all dependencies in `package.json` are installed in production
+
+## Docker builds
+
+To construct the Docker image:
+
+```bash
+docker build -t watch-tower .
+```
+
+The Dockerfile manages the build workflow internally.

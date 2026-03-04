@@ -1,0 +1,45 @@
+---
+title: "Managing Orders"
+description: "Query, monitor, and remove conditional orders through the ComposableCoW protocol."
+---
+
+# Managing Orders
+
+## Key Management Functions
+
+### Status Checking
+
+You can verify order existence by examining the `singleOrders` mapping for authorization status or checking if a merkle root is set via the `roots` mapping.
+
+### Retrieving Orders
+
+The `getTradeableOrderWithSignature()` function converts conditional orders into discrete GPv2 orders ready for submission to CoW Protocol API. Single orders use empty proofs, while merkle-based orders require proof arrays.
+
+### Order Removal
+
+Individual orders are deleted by calculating their hash and calling `remove()`, which clears both the authorization flag and cabinet storage. Multiple removals can be batched using MultiSend for efficiency.
+
+## Error Handling
+
+ComposableCoW uses custom errors to signal order status:
+
+| Error | Description |
+|-------|-------------|
+| `PollTryNextBlock` | Condition not met yet; retry next block |
+| `PollTryAtBlock` / `PollTryAtEpoch` | Retry at specified block number or timestamp |
+| `PollNever` | Permanent failure; stop monitoring |
+| `OrderNotValid` | Condition check failed (e.g., insufficient balance) |
+
+## Event Monitoring
+
+Watchtowers track three primary events:
+
+- `ConditionalOrderCreated` - New order registered
+- `MerkleRootSet` - Merkle tree authorization updated
+- `SwapGuardSet` - Guard configuration changed
+
+These events enable real-time order management and validation updates.
+
+<Tip>
+Best practices include monitoring events, verifying authorization before retrieval, implementing proper error handling, and using batch operations for efficiency.
+</Tip>

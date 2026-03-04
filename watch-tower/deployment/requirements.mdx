@@ -1,0 +1,94 @@
+---
+title: "Deployment Requirements"
+description: "Requirements and configuration for deploying the CoW Protocol Watch Tower"
+---
+
+# Deployment Requirements
+
+Requirements and configuration for deploying the CoW Protocol Watch Tower.
+
+## Prerequisites
+
+To run your own watch-tower instance, you'll need:
+
+* An RPC node connected to one or more supported networks:
+  * Ethereum mainnet
+  * Arbitrum One
+  * Gnosis Chain
+  * Base
+  * Sepolia (testnet)
+  * Avalanche
+  * Polygon
+  * Linea
+  * Plasma
+  * Ink
+* Internet access to the CoW Protocol OrderBook API
+
+<Warning>
+Conditional order types may consume considerable RPC calls. Ensure your RPC provider can handle the load, or consider running your own node.
+</Warning>
+
+## Deployment block numbers
+
+The `deployment-block` parameter references the block number where the ComposableCoW contract deployed to each chain. Watch-tower optimization relies on this to fetch events only after deployment.
+
+Refer to [Deployed Contracts](https://github.com/cowprotocol/composable-cow#deployed-contracts) for deployment blocks on each chain.
+
+### Example deployment blocks
+
+| Network      | Deployment Block |
+| ------------ | ---------------- |
+| Mainnet      | 17883049         |
+| Sepolia      | 8468184          |
+| Arbitrum One | 343493668        |
+| Base         | 31084679         |
+| Gnosis Chain | 40394915         |
+| Avalanche    | 63235114         |
+| Polygon      | 72315184         |
+| Linea        | 25028604         |
+| Plasma       | 4810535          |
+| Ink          | 37142449         |
+
+<Note>
+These block numbers are examples from the config file. Always verify the latest deployment blocks in the Composable CoW repository.
+</Note>
+
+## Page size configuration
+
+The `pageSize` option specifies how many blocks to fetch when querying historical events via `eth_getLogs`.
+
+### Default setting
+
+The default is `5000`, which represents the maximum blocks fetchable in a single Infura request.
+
+### Custom RPC nodes
+
+When running against your own RPC node, set `pageSize` to `0` to retrieve all blocks in one request instead of multiple paginated requests.
+
+```json
+{
+  "networks": [
+    {
+      "name": "mainnet",
+      "rpc": "https://your-rpc-endpoint.com",
+      "deploymentBlock": 17883049,
+      "pageSize": 0
+    }
+  ]
+}
+```
+
+<Note>
+Adjust `pageSize` based on your provider's limits. Some providers enforce stricter limits than Infura's 5000-block threshold.
+</Note>
+
+## Configuration file
+
+The watch-tower requires a JSON configuration file specifying:
+
+* Network configurations
+* RPC endpoints
+* Deployment blocks
+* Filter policies (optional)
+
+See the `config.json.example` file in the repository for a complete configuration template with all supported networks.

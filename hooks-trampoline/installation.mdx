@@ -1,0 +1,94 @@
+---
+title: "Installation"
+description: "A smart contract that enables safe execution of user-specified hooks in CoW Protocol settlements"
+---
+
+## Prerequisites
+
+- [Foundry](https://book.getfoundry.sh/) installed
+- A CoW Protocol settlement contract address for deployment
+
+## Installation
+
+<Steps>
+
+<Step title="Clone the repository">
+
+```bash
+git clone https://github.com/cowprotocol/hooks-trampoline.git
+cd hooks-trampoline
+```
+
+</Step>
+
+<Step title="Install dependencies">
+
+```bash
+forge install
+```
+
+</Step>
+
+<Step title="Compile contracts">
+
+```bash
+forge build
+```
+
+Compilation uses Solidity 0.8.20, EVM Shanghai, with optimizer enabled at 1,000,000 runs.
+
+</Step>
+
+<Step title="Run tests">
+
+```bash
+forge test
+```
+
+</Step>
+
+</Steps>
+
+## Deployment
+
+### Forge Script
+
+The constructor accepts one parameter: the settlement contract address.
+
+```bash
+forge create src/HooksTrampoline.sol:HooksTrampoline \
+  --constructor-args <SETTLEMENT_ADDRESS> \
+  --rpc-url <YOUR_RPC_URL> \
+  --private-key <YOUR_PRIVATE_KEY>
+```
+
+To verify on Etherscan, add `--etherscan-api-key` and `--verify` flags.
+
+### Cannon
+
+Cannon provides predictable addresses and multi-chain support through configuration files. The system automatically retrieves settlement addresses from the `cow-settlement` package, reducing manual configuration.
+
+```bash
+yarn install
+yarn build:cannon
+yarn cannon:publish
+```
+
+<Note>
+Publishing requires 0.0025 ETH + gas fees on Optimism Mainnet.
+</Note>
+
+## Verification
+
+After deployment, verify the contract using `cast` to check the settlement address:
+
+```bash
+cast call <TRAMPOLINE_ADDRESS> "settlement()" --rpc-url <YOUR_RPC_URL>
+```
+
+Or verify on Etherscan with constructor argument encoding.
+
+## Resources
+
+- Production addresses are available at the [cowprotocol/deployments](https://github.com/cowprotocol/deployments) repository
+- Next step: Review the [Usage Guide](/hooks-trampoline/usage) for integration details

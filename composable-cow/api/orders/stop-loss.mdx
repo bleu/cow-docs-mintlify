@@ -1,0 +1,40 @@
+---
+title: "Stop Loss API"
+description: "API reference for Stop Loss conditional orders using Chainlink-compatible price oracles."
+---
+
+# Stop Loss API
+
+The Stop Loss feature enables automated trading when token prices fall below specified thresholds. It relies on Chainlink-compatible price oracles to monitor token prices and trigger the order when conditions are satisfied.
+
+## Key Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `sellToken` / `buyToken` | Token pair addresses |
+| `sellAmount` / `buyAmount` | Trade amounts |
+| `sellTokenPriceOracle` | Chainlink-compatible oracle for sell token |
+| `buyTokenPriceOracle` | Chainlink-compatible oracle for buy token |
+| `strike` | Exchange rate threshold (18 decimals) |
+| `validTo` | Order expiration timestamp |
+| `maxTimeSinceLastOracleUpdate` | Oracle staleness limit |
+
+## Execution Logic
+
+The `getTradeableOrder` function validates conditions in sequence:
+
+1. Confirms the order hasn't expired
+2. Retrieves current prices from both oracles
+3. Verifies prices are positive and recently updated
+4. Normalizes both to 18 decimals
+5. Calculates the exchange rate and compares against strike
+6. Returns the executable order if conditions are met
+
+## Failure Scenarios
+
+- Orders fail permanently with `OrderNotValid` if expired or oracle prices are invalid
+- They revert with `PollTryNextBlock` (signaling retry on next block) when prices are stale or the strike hasn't been reached yet
+
+## Design Notes
+
+The contract automatically scales oracle prices to 18 decimals for comparison. Both oracles must quote in the same currency for accurate rate calculations.

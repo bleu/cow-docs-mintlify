@@ -1,0 +1,271 @@
+---
+title: "Deployment"
+description: "Deploy Flash-Loan Router contracts to Ethereum networks"
+---
+
+## Overview
+
+This guide covers the basic deployment process for the Flash-Loan Router contracts. The contracts are deployed using Foundry's scripting system and support deterministic deployment via CREATE2, ensuring the same addresses across all networks.
+
+<Note>
+  For detailed deployment operations, monitoring, and advanced configuration, see the [Operations](/flash-loan-router/operations/deployment-guide) section.
+</Note>
+
+## Deployed Addresses
+
+The Flash-Loan Router contracts are deployed deterministically with CREATE2 and have the same address on all supported networks:
+
+- **FlashLoanRouter**: `0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69`
+- **AaveBorrower**: `0x7d9C4DeE56933151Bc5C909cfe09DEf0d315CB4A`
+- **ERC3156Borrower**: `0x47d71b4B3336AB2729436186C216955F3C27cD04`
+
+See [`networks.json`](https://github.com/cowprotocol/flash-loan-router/blob/main/networks.json) for complete deployment details by chain ID.
+
+## Prerequisites
+
+Before deploying, ensure you have:
+
+<Steps>
+  <Step title="Environment setup">
+    Configure your `.env` file with the required variables:
+
+    ```bash
+    # Required for deployment
+    CHAIN_ID=1
+    ETH_RPC_URL=https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY
+    PRIVATE_KEY=your_private_key_here
+
+    # Optional: for contract verification
+    ETHERSCAN_API_KEY=your_etherscan_api_key
+    ```
+
+    Load the environment variables:
+
+    ```bash
+    source .env
+    ```
+
+    <Warning>
+      Ensure your deployer account has sufficient ETH for gas fees on the target network.
+    </Warning>
+  </Step>
+
+  <Step title="Verify compilation">
+    Build the contracts to ensure they compile successfully:
+
+    ```bash
+    forge build
+    ```
+  </Step>
+</Steps>
+
+## Deployment Options
+
+### Deploy All Contracts
+
+To deploy all contracts (FlashLoanRouter, AaveBorrower, and ERC3156Borrower) in a single transaction:
+
+<Steps>
+  <Step title="Dry-run the deployment">
+    Simulate the deployment without broadcasting:
+
+    ```bash
+    forge script script/DeployAllContracts.s.sol:DeployAllContracts \
+      --rpc-url $ETH_RPC_URL \
+      --private-key $PRIVATE_KEY
+    ```
+
+    Review the output to verify:
+
+    - Gas estimates
+    - Contract addresses
+    - Constructor arguments
+  </Step>
+
+  <Step title="Broadcast the deployment">
+    Execute the deployment on the network:
+
+    ```bash
+    forge script script/DeployAllContracts.s.sol:DeployAllContracts \
+      --rpc-url $ETH_RPC_URL \
+      --private-key $PRIVATE_KEY \
+      --broadcast
+    ```
+  </Step>
+
+  <Step title="Verify contracts (optional)">
+    Add the `--verify` flag to automatically verify contracts on Etherscan:
+
+    ```bash
+    forge script script/DeployAllContracts.s.sol:DeployAllContracts \
+      --rpc-url $ETH_RPC_URL \
+      --private-key $PRIVATE_KEY \
+      --broadcast \
+      --verify
+    ```
+
+    <Note>
+      Ensure `ETHERSCAN_API_KEY` is set in your `.env` file for verification to work.
+    </Note>
+  </Step>
+</Steps>
+
+### Deploy a Single Contract
+
+For deploying individual contracts, use the scripts in `script/single-deployment/`:
+
+<Tabs>
+  <Tab title="FlashLoanRouter">
+    ```bash
+    forge script script/single-deployment/DeployFlashLoanRouter.s.sol:DeployFlashLoanRouter \
+      --rpc-url $ETH_RPC_URL \
+      --private-key $PRIVATE_KEY \
+      --broadcast
+    ```
+  </Tab>
+
+  <Tab title="AaveBorrower">
+    ```bash
+    # Set the FlashLoanRouter address first
+    export FLASHLOAN_ROUTER_ADDRESS=0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69
+
+    forge script script/single-deployment/DeployAAVEBorrower.s.sol:DeployAAVEBorrower \
+      --rpc-url $ETH_RPC_URL \
+      --private-key $PRIVATE_KEY \
+      --broadcast
+    ```
+  </Tab>
+
+  <Tab title="ERC3156Borrower">
+    ```bash
+    # Set the FlashLoanRouter address first
+    export FLASHLOAN_ROUTER_ADDRESS=0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69
+
+    forge script script/single-deployment/DeployERC3156Borrower.s.sol:DeployERC3156Borrower \
+      --rpc-url $ETH_RPC_URL \
+      --private-key $PRIVATE_KEY \
+      --broadcast
+    ```
+  </Tab>
+</Tabs>
+
+## Contract Verification
+
+If you need to verify already deployed contracts manually:
+
+<CodeGroup>
+  ```bash FlashLoanRouter
+  forge verify-contract \
+    0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69 \
+    src/FlashLoanRouter.sol:FlashLoanRouter \
+    --chain-id $CHAIN_ID \
+    --etherscan-api-key $ETHERSCAN_API_KEY \
+    --constructor-args $(cast abi-encode "constructor(address)" 0x9008D19f58AAbD9eD0D60971565AA8510560ab41)
+  ```
+
+  ```bash AaveBorrower
+  forge verify-contract \
+    0x7d9C4DeE56933151Bc5C909cfe09DEf0d315CB4A \
+    src/AaveBorrower.sol:AaveBorrower \
+    --chain-id $CHAIN_ID \
+    --etherscan-api-key $ETHERSCAN_API_KEY \
+    --constructor-args $(cast abi-encode "constructor(address)" 0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69)
+  ```
+
+  ```bash ERC3156Borrower
+  forge verify-contract \
+    0x47d71b4B3336AB2729436186C216955F3C27cD04 \
+    src/ERC3156Borrower.sol:ERC3156Borrower \
+    --chain-id $CHAIN_ID \
+    --etherscan-api-key $ETHERSCAN_API_KEY \
+    --constructor-args $(cast abi-encode "constructor(address)" 0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69)
+  ```
+</CodeGroup>
+
+## Deployment Flow
+
+The `DeployAllContracts` script follows this sequence:
+
+1. **Deploy FlashLoanRouter** - The main router contract that coordinates flash loans and settlements
+2. **Deploy AaveBorrower** - Adapter for Aave flash-loan protocol (requires FlashLoanRouter address)
+3. **Deploy ERC3156Borrower** - Adapter for ERC-3156 compatible lenders (requires FlashLoanRouter address)
+
+Each borrower contract needs the FlashLoanRouter address as a constructor argument.
+
+## Updating Deployment Records
+
+After deployment, update the `networks.json` file to track your deployment:
+
+<Steps>
+  <Step title="Generate networks file">
+    The `networks.json` file is generated automatically from broadcast files:
+
+    ```bash
+    bash script/generate-networks-file.sh > networks.json
+    ```
+  </Step>
+
+  <Step title="Manual deployments">
+    For deployments done outside of Forge scripts, manually update:
+
+    ```bash
+    # Edit the manual networks file
+    vim broadcast/networks-manual.json
+    ```
+
+    Then regenerate:
+
+    ```bash
+    bash script/generate-networks-file.sh > networks.json
+    ```
+  </Step>
+</Steps>
+
+## Network Support
+
+The Flash-Loan Router supports deployment to all networks where:
+
+- CoW Protocol is deployed
+- Flash-loan lenders (Aave, Maker, etc.) are available
+
+Common networks include:
+
+- Ethereum Mainnet
+- Gnosis Chain
+- Arbitrum
+- Base
+
+For the complete list of supported networks and deployment addresses, see the [networks.json](https://github.com/cowprotocol/flash-loan-router/blob/main/networks.json) file.
+
+## Deployment Checklist
+
+Before deploying to production:
+
+- [ ] Verify all environment variables are set correctly
+- [ ] Run a dry-run deployment on the target network
+- [ ] Ensure deployer account has sufficient ETH for gas
+- [ ] Review gas estimates and contract addresses
+- [ ] Test deployment on a testnet first
+- [ ] Verify contracts on block explorer
+- [ ] Update `networks.json` with new deployment addresses
+- [ ] Document any network-specific configuration
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Operations Guide" icon="gears" href="/flash-loan-router/operations/deployment-guide">
+    Learn advanced deployment operations and monitoring
+  </Card>
+
+  <Card title="Router Design" icon="plug" href="/flash-loan-router/concepts/router-design">
+    Integrate flash loans into your CoW Protocol settlements
+  </Card>
+
+  <Card title="Security" icon="shield" href="/flash-loan-router/concepts/security-model">
+    Understand the security model and best practices
+  </Card>
+
+  <Card title="Networks" icon="globe" href="/flash-loan-router/operations/networks">
+    View all deployment addresses by network
+  </Card>
+</CardGroup>

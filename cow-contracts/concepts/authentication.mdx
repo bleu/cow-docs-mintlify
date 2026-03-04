@@ -1,0 +1,76 @@
+---
+title: "Authentication"
+description: "Understanding CoW Protocol's access control, solver authorization, and manager permissions"
+---
+
+# Authentication
+
+CoW Protocol implements a permission-based system restricting settlement execution to authorized solvers. The architecture supports progressive decentralization, moving from centralized allowlists toward potential permissionless participation.
+
+## Core Components
+
+### Authentication Interface
+
+A minimal design with a single method -- `isSolver(address)` -- allowing flexible implementations without modifying the settlement contract.
+
+### Default Implementation
+
+`GPv2AllowListAuthentication` uses an allowlist mapping to track authorized solvers, managed by a designated manager address.
+
+## Role Structure
+
+Three distinct roles govern the system:
+
+| Role | Responsibilities |
+|------|-----------------|
+| **Proxy Admin** | Highest authority controlling upgrades and manager changes; typically a multisig or DAO |
+| **Manager** | Operational role adding/removing solvers via `addSolver()` and `removeSolver()` |
+| **Solver** | Execution role calling `settle()` and `swap()` functions |
+
+## Key Mechanisms
+
+### Manager Assignment
+
+Both current managers and proxy admins can change the manager address, enabling emergency intervention. The `initializeManager()` function uses the initializer pattern for proxy deployment.
+
+```solidity
+function initializeManager(address manager_) external initializer {
+    manager = manager_;
+    emit ManagerChanged(manager_);
+}
+```
+
+### Solver Authorization
+
+The settlement contract enforces authorization through an `onlySolver` modifier checking the immutable authenticator before execution:
+
+```solidity
+modifier onlySolver {
+    require(authenticator.isSolver(msg.sender), "GPv2: not a solver");
+    _;
+}
+```
+
+### Immutable Security
+
+The authenticator reference is immutable, preventing post-deployment authentication changes. Contract upgrades require new deployments.
+
+## Events and Monitoring
+
+Operations emit tracking events:
+
+- `ManagerChanged(address newManager)` - Emitted when the manager role is transferred
+- `SolverAdded(address solver)` - Emitted when a solver is authorized
+- `SolverRemoved(address solver)` - Emitted when a solver is deauthorized
+
+## Decentralization Roadmap
+
+The system supports three phases:
+
+1. **Centralized** - Allowlist management by a designated manager
+2. **DAO Governance** - Manager role transferred to a DAO or multisig
+3. **Permissionless** - Potential bonded/permissionless models
+
+<Note>
+Moving beyond the current allowlist model requires redeploying the settlement contract due to the immutable authenticator design.
+</Note>

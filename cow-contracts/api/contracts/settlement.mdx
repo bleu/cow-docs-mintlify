@@ -1,0 +1,108 @@
+---
+title: "GPv2Settlement API"
+description: "Core settlement contract API for executing batch trades in Gnosis Protocol v2"
+---
+
+# GPv2Settlement API
+
+The core settlement contract for executing batch trades in Gnosis Protocol v2.
+
+**Inherits:** `GPv2Signing`, `ReentrancyGuard`, `StorageAccessible`
+
+## State Variables
+
+```solidity
+GPv2Authentication public immutable authenticator;
+IVault public immutable vault;
+GPv2VaultRelayer public immutable vaultRelayer;
+mapping(bytes => uint256) public filledAmount;
+```
+
+## Events
+
+```solidity
+event Trade(
+    address indexed owner,
+    IERC20 sellToken,
+    IERC20 buyToken,
+    uint256 sellAmount,
+    uint256 buyAmount,
+    uint256 feeAmount,
+    bytes orderUid
+);
+
+event Interaction(address indexed target, uint256 value, bytes4 selector);
+
+event Settlement(address indexed solver);
+
+event OrderInvalidated(address indexed owner, bytes orderUid);
+```
+
+## Functions
+
+### settle
+
+Executes a batch settlement with uniform clearing prices.
+
+```solidity
+function settle(
+    IERC20[] calldata tokens,
+    uint256[] calldata clearingPrices,
+    GPv2Trade.Data[] calldata trades,
+    GPv2Interaction.Data[][3] calldata interactions
+) external nonReentrant onlySolver;
+```
+
+**Parameters:**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `tokens` | `IERC20[]` | Array of tokens involved in the settlement |
+| `clearingPrices` | `uint256[]` | Clearing prices for each token (aligned with tokens array) |
+| `trades` | `GPv2Trade.Data[]` | Encoded trade data |
+| `interactions` | `GPv2Interaction.Data[][3]` | Pre, intra, and post-settlement interactions |
+
+### swap
+
+Matches an order directly against a Balancer V2 pool.
+
+```solidity
+function swap(
+    IVault.SingleSwap calldata singleSwap,
+    GPv2Trade.Data calldata trade
+) external nonReentrant onlySolver returns (int256);
+```
+
+### invalidateOrder
+
+Allows order owners to cancel orders on-chain.
+
+```solidity
+function invalidateOrder(bytes calldata orderUid) external;
+```
+
+### freeFilledAmountStorage
+
+Frees storage for filled orders to claim gas refunds.
+
+```solidity
+function freeFilledAmountStorage(bytes[] calldata orderUids) external;
+```
+
+### freePreSignatureStorage
+
+Frees storage for pre-signed orders to claim gas refunds.
+
+```solidity
+function freePreSignatureStorage(bytes[] calldata orderUids) external;
+```
+
+## Price Validation
+
+The contract enforces that clearing prices respect order limits:
+
+```
+order.sellAmount * sellPrice >= order.buyAmount * buyPrice
+```
+
+This ensures all trades execute at or better than the user's specified limit prices.

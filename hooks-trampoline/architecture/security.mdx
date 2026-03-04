@@ -1,0 +1,186 @@
+---
+title: "Security Model"
+description: "Understanding the security guarantees and access control in Hooks Trampoline"
+---
+
+The Hooks Trampoline implements protections that safeguard the CoW Protocol settlement contract from malicious or misconfigured hooks while permitting safe execution of user-defined code during settlements.
+
+## Why Hooks Need Isolation
+
+The settlement contract operates as a privileged context that:
+
+- Holds accrued protocol fees in various ERC20 tokens
+- Possesses approval to spend user tokens for executing trades
+- Controls critical settlement logic affecting multiple orders
+
+Without isolation, a malicious hook could:
+
+- Steal fees by calling `ERC20.transfer(attacker, amount)` from the settlement contract context
+- Drain user-approved tokens
+- Manipulate settlement state
+
+<Warning>
+If hooks executed directly from the settlement contract, users could specify hooks that transfer accumulated fees to their own addresses using simple ERC20 transfer calls.
+</Warning>
+
+The trampoline solves this by executing hooks from its own unprivileged contract context, ensuring:
+
+- Hooks cannot access settlement contract balances
+- Hooks have no special approvals or permissions
+- Settlement logic remains isolated and protected
+
+## Access Control: The `onlySettlement` Modifier
+
+### Implementation
+
+```solidity
+address public immutable settlement;
+
+modifier onlySettlement() {
+    if (msg.sender != settlement) {
+        revert NotASettlement();
+    }
+    _;
+}
+```
+
+The `onlySettlement` modifier is applied to the `execute()` function:
+
+```solidity
+function execute(Hook[] calldata hooks) external onlySettlement {
+    // Hook execution logic
+}
+```
+
+### Security Benefits
+
+1. **Settlement-Only Execution**: Only the authorized settlement contract can trigger hook execution
+2. **No Direct Calls**: Users or attackers cannot directly call the trampoline to execute arbitrary hooks
+3. **Atomic Settlement Context**: Hooks are guaranteed to execute as part of a settlement transaction
+
+### Testing Access Control
+
+From `HooksTrampoline.t.sol:17-22`:
+
+```solidity
+function test_RevertsWhenNotCalledFromSettlement() public {
+    HooksTrampoline.Hook[] memory hooks;
+
+    vm.expectRevert(HooksTrampoline.NotASettlement.selector);
+    trampoline.execute(hooks);
+}
+```
+
+This test verifies that any caller other than the settlement contract receives a `NotASettlement` error.
+
+## Protection Against Fee Theft
+
+The trampoline architecture provides multiple layers of protection against fee theft:
+
+### 1. Unprivileged Execution Context
+
+Hooks execute from the trampoline contract's address, not the settlement contract:
+
+- The trampoline has no token balances or approvals
+- Even if a hook calls `ERC20.transfer()`, there are no funds to steal
+- The settlement contract's state remains completely isolated
+
+### 2. No Token Access
+
+The trampoline contract:
+
+- Does not hold protocol fees
+- Does not have approval to spend user tokens
+- Cannot interact with the settlement contract's balances
+
+### 3. Call Isolation
+
+The hook execution uses standard Solidity external calls:
+
+```solidity
+(bool success,) = hook.target.call{gas: hook.gasLimit}(hook.callData);
+```
+
+These calls:
+
+- Execute in the target contract's context
+- Have no special privileges
+- Cannot escalate to settlement contract permissions
+
+<Info>
+The trampoline effectively creates a security boundary between user-defined hooks and the privileged settlement contract, ensuring that hooks can only interact with contracts they explicitly target.
+</Info>
+
+## Verifying Settlement Context
+
+Hook contracts can verify they're being called within a legitimate settlement by checking the caller:
+
+```solidity
+contract MyHook {
+    address constant HOOKS_TRAMPOLINE = 0x...; // Deployed trampoline address
+
+    function myHookFunction() external {
+        require(
+            msg.sender == HOOKS_TRAMPOLINE,
+            "not a settlement"
+        );
+
+        // Hook logic that should only execute during settlements
+    }
+}
+```
+
+### Why This Matters
+
+This pattern enables hooks to:
+
+- **Enforce Settlement-Only Logic**: Prevent direct calls outside of settlements
+- **Trust the Context**: Know that execution is part of a CoW Protocol trade
+- **Implement Semi-Permissioned Behavior**: Allow certain actions only during settlements
+
+From `README.md:29-35`:
+
+> In addition, the `HooksTrampoline` also only allows calls from the settlement contract. This means that hook implementations can add checks that ensure that they are only called from within a settlement.
+
+### Example: Settlement-Gated Hook
+
+```solidity
+contract SettlementGatedAction {
+    address public immutable trampoline;
+
+    constructor(address _trampoline) {
+        trampoline = _trampoline;
+    }
+
+    function executeAction() external {
+        require(msg.sender == trampoline, "only during settlements");
+
+        // Perform sensitive action that should only happen
+        // as part of a CoW Protocol settlement
+        _performSensitiveAction();
+    }
+
+    function _performSensitiveAction() internal {
+        // Implementation
+    }
+}
+```
+
+## Security Guarantees Summary
+
+| Security Property | How It's Enforced |
+|---|---|
+| **No Fee Theft** | Hooks execute from unprivileged trampoline context with no token access |
+| **Settlement-Only Execution** | `onlySettlement` modifier prevents unauthorized callers |
+| **Call Isolation** | Standard external calls with no privilege escalation |
+| **Hook Verification** | Hooks can check `msg.sender == trampoline` to verify settlement context |
+| **State Protection** | Settlement contract state is completely isolated from hooks |
+
+<Note>
+The trampoline's security model is designed on the principle of least privilege: hooks receive only the minimum access necessary to execute their intended functionality, with no path to escalate to settlement contract privileges.
+</Note>
+
+## Additional Reading
+
+- [Gas Management](/hooks-trampoline/architecture/gas-management) — How gas limits protect against resource exhaustion
+- [Settlement Flow](/hooks-trampoline/architecture/settlement-flow) — Understanding the complete settlement lifecycle

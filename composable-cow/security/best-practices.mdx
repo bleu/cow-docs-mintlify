@@ -1,0 +1,50 @@
+---
+title: "Best Practices"
+description: "Security best practices for using ComposableCoW including token approvals, Safe configuration, and monitoring."
+---
+
+# Security Best Practices
+
+## Token Approval Safety
+
+Approve only the exact amount needed for your orders rather than unlimited amounts. For TWAP orders specifically, approve precisely `n * partSellAmount`.
+
+## Safe Configuration Requirements
+
+Proper setup demands three critical steps:
+
+1. Configure the fallback handler to the `ExtensibleFallbackHandler` address
+2. Set the domain verifier for GPv2Settlement
+3. Test with a small order before full deployment
+
+<Warning>
+Incorrect fallback handler configuration will cause all orders to fail signature verification.
+</Warning>
+
+## Order Parameter Validation
+
+Ensure:
+
+- **Official handler addresses** are used (not custom or unverified ones)
+- Each order has a **unique salt value** to prevent hash collisions
+- TWAP parameters meet specific constraints (e.g., `n > 1`, span must not exceed `t`)
+
+## Merkle Tree and Proof Management
+
+Secure storage of merkle proofs is essential.
+
+<Warning>
+Loss of proofs means you cannot execute orders, even though they're valid on-chain.
+</Warning>
+
+Redundant backup systems are recommended for proof storage.
+
+## Monitoring and Emergency Response
+
+Post-creation oversight involves:
+
+1. **Track execution** on CoW Explorer
+2. **Verify watchtower pickup** of your orders
+3. If issues arise:
+   - Cancel problematic orders immediately
+   - Revoke token approvals if security concerns exist

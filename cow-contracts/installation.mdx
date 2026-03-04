@@ -1,0 +1,70 @@
+---
+title: "Installation"
+description: "Install and configure the CoW Protocol contracts package for your project"
+---
+
+# Installation
+
+The CoW Protocol contracts package enables developers to integrate CoW Protocol functionality into their projects.
+
+## Package Installation
+
+<CodeGroup>
+```bash npm
+npm install @cowprotocol/contracts
+```
+
+```bash yarn
+yarn add @cowprotocol/contracts
+```
+
+```bash pnpm
+pnpm add @cowprotocol/contracts
+```
+</CodeGroup>
+
+## Peer Dependencies
+
+The package requires ethers version 5.4.0 or higher as a peer dependency:
+
+```bash
+npm install ethers@^5.4.0
+```
+
+<Warning>
+The package targets ethers v5. Compatibility with ethers v6 is not assured.
+</Warning>
+
+## Basic Setup
+
+```typescript
+import {
+  Order,
+  OrderKind,
+  signOrder,
+  SigningScheme,
+} from "@cowprotocol/contracts";
+```
+
+## TypeScript Support
+
+The package provides comprehensive TypeScript type definitions for all interfaces, enums, and functions. Contract artifacts with deployment information are accessible via a `networks.json` file.
+
+## Building from Source
+
+For developers preferring to build from source:
+
+```bash
+git clone https://github.com/cowprotocol/contracts.git
+cd contracts
+yarn install
+yarn build
+```
+
+The build generates both CommonJS and ESM modules.
+
+## Next Steps
+
+<Card title="Quickstart" href="/cow-contracts/quickstart">
+  Learn how to create and sign orders
+</Card>

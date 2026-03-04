@@ -1,0 +1,113 @@
+---
+title: "Core Libraries"
+description: "Specialized Solidity libraries for order handling, trade execution, and signature verification"
+---
+
+# Core Libraries
+
+CoW Protocol employs specialized libraries designed for gas efficiency and security, using low-level optimizations where appropriate.
+
+## GPv2Order
+
+Defines the complete order structure and provides utilities for order management.
+
+### Data Structure
+
+```solidity
+struct Data {
+    IERC20 sellToken;
+    IERC20 buyToken;
+    address receiver;
+    uint256 sellAmount;
+    uint256 buyAmount;
+    uint32 validTo;
+    bytes32 appData;
+    uint256 feeAmount;
+    bytes32 kind;
+    bool partiallyFillable;
+    bytes32 sellTokenBalance;
+    bytes32 buyTokenBalance;
+}
+```
+
+### Key Functions
+
+- `hash(Data memory order)` - Computes EIP-712 digest for signing
+- `actualReceiver(Data memory order)` - Resolves recipient address (handles zero-address as owner)
+- `packOrderUidParams()` - Encodes 56-byte UID (32-byte digest + 20-byte owner + 4-byte timestamp)
+- `extractOrderUidParams()` - Decodes UID components
+
+### Pre-computed Constants
+
+```solidity
+bytes32 constant KIND_SELL = keccak256("sell");
+bytes32 constant KIND_BUY = keccak256("buy");
+bytes32 constant BALANCE_ERC20 = keccak256("erc20");
+bytes32 constant BALANCE_EXTERNAL = keccak256("external");
+bytes32 constant BALANCE_INTERNAL = keccak256("internal");
+```
+
+## GPv2Trade
+
+Handles compact settlement representation through a flags field that encodes order parameters into a single `uint256` value.
+
+### Flag Encoding
+
+| Bits | Field | Values |
+|------|-------|--------|
+| 0 | Order kind | 0 = sell, 1 = buy |
+| 1 | Fill type | 0 = fill-or-kill, 1 = partially fillable |
+| 2-3 | Sell token balance | 00 = ERC20, 01 = external, 10 = internal |
+| 4 | Buy token balance | 0 = ERC20, 1 = internal |
+| 5-6 | Signing scheme | 00 = EIP-712, 01 = eth_sign, 10 = EIP-1271, 11 = PreSign |
+
+The default value `0x00` represents the most common case: a fill-or-kill sell order by an externally owned account using EIP-712 signatures.
+
+### Key Functions
+
+- `extractOrder()` - Converts trade data into a full order struct
+- `extractFlags()` - Unpacks flags into separate order parameters
+
+## GPv2Interaction
+
+Enables arbitrary contract calls during settlement using inline assembly for gas optimization.
+
+### Data Structure
+
+```solidity
+struct Data {
+    address target;
+    uint256 value;
+    bytes callData;
+}
+```
+
+### Key Functions
+
+- `execute(Data calldata interaction)` - Performs the contract interaction
+- `selector(Data calldata interaction)` - Extracts 4-byte function selector
+
+### Settlement Phases
+
+Interactions run at three distinct phases:
+1. **Pre-settlement** - Setup operations like approvals
+2. **Intra-settlement** - Liquidity transformations after input transfers
+3. **Post-settlement** - Cleanup tasks like token unwrapping
+
+## GPv2Signing
+
+Supports four signature schemes:
+
+| Scheme | Description |
+|--------|-------------|
+| **EIP-712** | Standard typed data signing |
+| **eth_sign** | Legacy signing with message prefix |
+| **EIP-1271** | Smart contract signature verification |
+| **PreSign** | On-chain pre-authorization |
+
+### Key Features
+
+- Careful memory management to avoid unnecessary copies
+- Extensive use of `calldata` instead of `memory` for read-only data
+- Domain separator includes contract address for replay protection
+- Pre-computed hash constants for common types

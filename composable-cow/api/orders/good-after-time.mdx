@@ -1,0 +1,41 @@
+---
+title: "Good After Time API"
+description: "API reference for Good After Time conditional orders with time-delayed execution and optional price checking."
+---
+
+# Good After Time (GAT) API
+
+Good After Time orders are time-delayed conditional orders that execute only after a specified timestamp, featuring optional price checking and off-chain buy amount determination.
+
+## Key Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `sellToken` / `buyToken` | The token pair for the trade |
+| `receiver` | Where proceeds are sent |
+| `sellAmount` | Quantity of tokens to trade |
+| `minSellBalance` | Balance threshold preventing duplicate fills |
+| `startTime` / `endTime` | UNIX timestamps for order validity window |
+| `allowPartialFill` | Solver flexibility setting |
+| `priceCheckerPayload` | Optional price validation data |
+| `appData` | IPFS hash reference |
+
+## Price Validation
+
+When enabled, the price checker validates that:
+
+```
+buyAmount >= (expectedOut * (MAX_BPS - allowedSlippage)) / MAX_BPS
+```
+
+Where `MAX_BPS` equals 10,000 basis points.
+
+## Error Handling
+
+| Error | Condition |
+|-------|-----------|
+| `PollTryAtEpoch` | Block timestamp precedes `startTime` ("too early") |
+| `OrderNotValid` | Owner lacks required sellToken balance ("balance insufficient") |
+| `PollTryNextBlock` | Insufficient expected output given slippage tolerance ("price checker failed") |
+
+The implementation supports flexible buy amounts while maintaining replay protection through balance verification.

@@ -1,0 +1,41 @@
+---
+title: "Perpetual Stable Swap API"
+description: "API reference for the Perpetual Stable Swap conditional order type for automated stablecoin rebalancing."
+---
+
+# Perpetual Stable Swap API
+
+The Perpetual Stable Swap is a conditional order type that automatically provides liquidity for swapping between two stable tokens at a 1:1 exchange rate. It operates as an automated market maker that dynamically determines which token to sell based on the owner's current holdings.
+
+## Key Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `tokenA` / `tokenB` | The two tokens eligible for perpetual swapping |
+| `validityBucketSeconds` | Time window width (recommended 1-2 weeks) for order consistency |
+| `halfSpreadBps` | Markup percentage applied to maintain pricing parity |
+| `appData` | Custom metadata passed during settlement |
+
+## Operational Logic
+
+The `getTradeableOrder` function executes the following workflow:
+
+1. Compares owner balances of both tokens after decimal normalization
+2. Identifies which token has greater value
+3. Creates a sell order for the entire balance of the higher-value token
+4. Applies the spread formula:
+   ```
+   buyAmount = convertedAmount * (10000 + halfSpreadBps) / 10000
+   ```
+5. Returns tokens to the owner automatically (`receiver = address(0)`)
+
+## Error Handling
+
+Orders fail with "not funded" messaging when the sell amount equals zero, indicating zero balance in the designated selling token.
+
+## Design Considerations
+
+- Orders utilize time-bucketing to prevent orderbook spam
+- Remain non-partially-fillable
+- Charge zero protocol fees
+- The spread parameter prevents order collision unless intentionally set to zero

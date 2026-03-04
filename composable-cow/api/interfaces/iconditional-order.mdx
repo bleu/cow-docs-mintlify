@@ -1,0 +1,65 @@
+---
+title: "IConditionalOrder"
+description: "API reference for the IConditionalOrder interface and its IConditionalOrderGenerator extension."
+---
+
+# IConditionalOrder
+
+The `IConditionalOrder` interface establishes verification logic for conditional orders in ComposableCoW, with an extension (`IConditionalOrderGenerator`) supporting on-chain order generation.
+
+## Key Interfaces
+
+### IConditionalOrder
+
+Provides the base `verify()` function that validates whether a discrete order meets conditional criteria. The function must revert if conditions aren't satisfied.
+
+### IConditionalOrderGenerator
+
+Extends the base interface by adding:
+
+- `getTradeableOrder()` - Generates orders ready for submission to the CoW Protocol API
+- ERC-165 support
+
+## Essential Components
+
+### ConditionalOrderParams
+
+Uniquely identifies orders through three elements:
+
+| Field | Description |
+|-------|-------------|
+| `handler` | Contract implementing the conditional logic |
+| `salt` | Unique identifier value |
+| `staticInput` | ABI-encoded order parameters |
+
+The hash of these three elements **MUST** be unique per owner.
+
+### verify()
+
+Accepts:
+
+- Owner address
+- Sender address
+- Order hash
+- Domain separator
+- Context
+- Static input
+- Off-chain input
+- The order itself
+
+### getTradeableOrder()
+
+Generates tradeable orders by processing similar parameters but excluding the order data field.
+
+## Error Handling Strategy
+
+| Error | Description |
+|-------|-------------|
+| `OrderNotValid` | Standard condition failure |
+| `PollTryNextBlock` | Retry in the next block |
+| `PollTryAtBlock` / `PollTryAtEpoch` | Schedule specific retry times |
+| `PollNever` | Permanent discontinuation |
+
+## Implementation Pattern
+
+The `BaseConditionalOrder` abstract contract demonstrates standard verification by comparing generated order hashes. Concrete implementations like `StopLoss` show oracle-based price checking with timestamp validation and strike price evaluation.

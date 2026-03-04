@@ -1,0 +1,116 @@
+---
+title: "GPv2Order API"
+description: "Order library API providing core data structures and utilities for Gnosis Protocol v2"
+---
+
+# GPv2Order API
+
+The `GPv2Order` library provides core order data structures and utilities for Gnosis Protocol v2, handling order hashing, UID packing, and parameter extraction.
+
+## Data Structure
+
+```solidity
+struct Data {
+    IERC20 sellToken;
+    IERC20 buyToken;
+    address receiver;
+    uint256 sellAmount;
+    uint256 buyAmount;
+    uint32 validTo;
+    bytes32 appData;
+    uint256 feeAmount;
+    bytes32 kind;
+    bool partiallyFillable;
+    bytes32 sellTokenBalance;
+    bytes32 buyTokenBalance;
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sellToken` | `IERC20` | Token to sell |
+| `buyToken` | `IERC20` | Token to buy |
+| `receiver` | `address` | Recipient of buy tokens (`address(0)` defaults to owner) |
+| `sellAmount` | `uint256` | Amount of sell token |
+| `buyAmount` | `uint256` | Amount of buy token |
+| `validTo` | `uint32` | Order expiration as Unix timestamp |
+| `appData` | `bytes32` | Application-specific metadata |
+| `feeAmount` | `uint256` | Fee amount in sell token |
+| `kind` | `bytes32` | Order kind (`KIND_SELL` or `KIND_BUY`) |
+| `partiallyFillable` | `bool` | Whether partial fills are allowed |
+| `sellTokenBalance` | `bytes32` | Source of sell tokens |
+| `buyTokenBalance` | `bytes32` | Destination of buy tokens |
+
+## Constants
+
+```solidity
+bytes32 constant KIND_SELL = keccak256("sell");
+bytes32 constant KIND_BUY = keccak256("buy");
+bytes32 constant BALANCE_ERC20 = keccak256("erc20");
+bytes32 constant BALANCE_EXTERNAL = keccak256("external");
+bytes32 constant BALANCE_INTERNAL = keccak256("internal");
+uint256 constant UID_LENGTH = 56;
+```
+
+## Functions
+
+### hash
+
+Generates the EIP-712 signing digest for an order.
+
+```solidity
+function hash(
+    Data memory order,
+    bytes32 domainSeparator
+) internal pure returns (bytes32);
+```
+
+### actualReceiver
+
+Resolves the receiver address, returning the owner if receiver is `address(0)`.
+
+```solidity
+function actualReceiver(
+    Data memory order,
+    address owner
+) internal pure returns (address);
+```
+
+### packOrderUidParams
+
+Encodes the 56-byte order UID from its components.
+
+```solidity
+function packOrderUidParams(
+    bytes memory orderUid,
+    bytes32 orderDigest,
+    address owner,
+    uint32 validTo
+) internal pure;
+```
+
+### extractOrderUidParams
+
+Decodes UID components from a packed order UID.
+
+```solidity
+function extractOrderUidParams(
+    bytes calldata orderUid
+) internal pure returns (
+    bytes32 orderDigest,
+    address owner,
+    uint32 validTo
+);
+```
+
+## Order UID Format
+
+The 56-byte UID is packed as:
+
+| Bytes | Field |
+|-------|-------|
+| 0-31 | Order digest (EIP-712 hash) |
+| 32-51 | Owner address |
+| 52-55 | `validTo` timestamp |
+
+All functions use assembly optimization for gas efficiency.

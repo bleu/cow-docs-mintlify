@@ -1,0 +1,34 @@
+---
+title: "Quickstart"
+description: "Get started with ComposableCoW by configuring your Safe and creating your first conditional order."
+---
+
+# Quickstart
+
+## Key Setup Requirements
+
+ComposableCoW requires two critical Safe configurations:
+
+1. **Fallback Handler**: Install `ExtensibleFallbackHandler` (address: `0x2f55e8b20D0B9FEFA187AA7d00B6Cbe563605bF5`) to enable EIP-1271 signature verification.
+
+2. **Domain Verifier**: Register ComposableCoW (address: `0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74`) as the signature verifier for CoW Protocol's domain separator.
+
+## Creating a TWAP Order
+
+The following demonstrates a 30-day TWAP strategy where Alice sells 12 million DAI for WETH in equal daily installments. Key parameters include:
+
+- **partSellAmount**: Individual trade size (400,000 DAI per day)
+- **minPartLimit**: Minimum per-trade output (250 WETH)
+- **t**: Time interval between executions (86,400 seconds = 1 day)
+- **n**: Total number of parts (30)
+- **span**: Execution window flexibility within each interval
+
+## Essential Steps
+
+1. Approve token spending via `GPv2VaultRelayer`
+2. Create `ConditionalOrderParams` with unique handler/salt/staticInput combinations
+3. Dispatch orders to watchtowers monitoring for trade conditions
+
+## Advanced Features
+
+The `span` parameter restricts execution to specific time windows (e.g., business hours only), while the platform also supports Stop Loss orders triggered by price oracle thresholds.

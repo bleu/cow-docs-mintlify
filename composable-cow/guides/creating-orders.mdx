@@ -1,0 +1,54 @@
+---
+title: "Creating Orders"
+description: "Learn how to create conditional orders in ComposableCoW using the ConditionalOrderParams struct."
+---
+
+# Creating Orders
+
+## Key Concepts
+
+Conditional orders in ComposableCoW rely on the `ConditionalOrderParams` struct, which incorporates three essential components:
+
+1. A **handler** contract specifying the order type
+2. A unique **salt** identifier
+3. ABI-encoded **order parameters** (`staticInput`)
+
+<Warning>
+The combination of `handler`, `salt`, and `staticInput` must be unique for each order. This ensures each order has a distinct identifier through hashing these three elements together.
+</Warning>
+
+## Core Order Structure
+
+The framework supports multiple handler types:
+
+| Handler | Address | Description |
+|---------|---------|-------------|
+| TWAP | `0x6cF1e9cA41f7611dEf408122793c358a3d11E5a5` | Distributes trades across time intervals |
+| GoodAfterTime | - | Activates orders after specified timestamps |
+| StopLoss | - | Triggers sales when prices fall below strike levels using oracle data |
+
+## Implementation Steps
+
+The process involves four main phases:
+
+### 1. Parameter Definition
+
+Configure order-specific data based on your chosen handler type.
+
+### 2. Struct Creation
+
+Wrap parameters in `ConditionalOrderParams` with a unique salt.
+
+### 3. Token Approval
+
+Authorize the vault relayer (`0xC92E8bdf79f0507f65a392b0ab4667716BFE0110`) to access required tokens.
+
+### 4. Order Submission
+
+Execute the creation through `ComposableCoW.create()` from a Safe contract.
+
+## Advanced Features
+
+- **`createWithContext`**: Store on-chain values via value factories during order creation
+- **Batch operations**: Bundle multiple order creations together using MultiSend
+- **Verification**: Confirm successful order creation through the `singleOrders` mapping

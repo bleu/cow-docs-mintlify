@@ -1,0 +1,50 @@
+---
+title: "IValueFactory"
+description: "API reference for the IValueFactory interface that provides standardized on-chain value retrieval."
+---
+
+# IValueFactory
+
+The `IValueFactory` interface provides a standardized way to retrieve dynamic on-chain values at runtime within ComposableCoW's conditional order system.
+
+## Key Function
+
+```solidity
+function getValue(bytes calldata data) external view returns (bytes32 value);
+```
+
+This accepts implementation-specific configuration and returns a computed `bytes32` value.
+
+## Primary Use Cases
+
+- **Temporal data**: Block timestamps and epoch calculations
+- **Price information**: Oracle prices and exchange rates
+- **Dynamic parameters**: Portfolio balances and collateralization ratios
+
+## Implementation Examples
+
+### CurrentBlockTimestampFactory
+
+Returns `block.timestamp` as a `bytes32` value.
+
+### BlockNumberFactory
+
+Returns `block.number` as a `bytes32` value.
+
+### ChainlinkPriceFactory
+
+Fetches the latest oracle price from a Chainlink price feed.
+
+### BalanceFactory
+
+Queries token balances for specific addresses.
+
+### DynamicStrikeFactory
+
+Calculates market-adjusted strike prices based on current oracle data.
+
+## Critical Requirements
+
+- Factories should maintain **view functions only** and avoid state modifications
+- Validate external oracle data
+- Optimize for gas efficiency

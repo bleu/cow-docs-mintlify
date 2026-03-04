@@ -1,0 +1,140 @@
+---
+title: "Architecture Overview"
+description: "Watch-tower codebase structure, execution flow, and key modules"
+---
+
+# Architecture Overview
+
+## Code Structure
+
+The watch-tower project is organized as follows:
+
+```
+src/
+├── commands/          # CLI command implementations
+├── domain/            # Business logic and domain models
+│   ├── events/        # Event processing
+│   └── polling/       # Order polling and filtering
+├── services/          # External service integrations
+├── types/             # TypeScript type definitions
+│   └── generated/     # Auto-generated contract types
+└── utils/             # Utility functions and helpers
+```
+
+## Main Execution Flow
+
+### 1. Initialization
+
+- **Entry point**: `src/index.ts`
+- Parses CLI arguments using Commander.js
+- Validates configuration against JSON schema
+- Initializes logging system
+
+### 2. Command Execution
+
+- **Run command**: `src/commands/run.ts`
+  - Opens database connection
+  - Starts REST API server (unless disabled)
+  - Initializes chain contexts for each configured network
+  - Sets up signal handlers for graceful shutdown
+
+### 3. Chain Monitoring
+
+- **Chain context**: `src/services/chain.ts`
+  - Creates provider connection (WebSocket or HTTP)
+  - Loads registry from database
+  - Warms up by syncing historical blocks
+  - Subscribes to new blocks
+
+### 4. Event Processing
+
+- **Event handling**: `src/domain/events/`
+  - Monitors for `ConditionalOrderCreated` events
+  - Indexes new conditional orders in registry
+  - Processes events atomically per block
+
+### 5. Order Polling
+
+- **Polling logic**: `src/domain/polling/`
+  - Checks each registered conditional order
+  - Determines if discrete orders should be created
+  - Filters orders based on configured policies
+  - Posts valid orders to OrderBook API
+
+### 6. Persistence
+
+- **Storage**: `src/services/storage.ts`
+  - Writes registry state to LevelDB
+  - Tracks last processed block
+  - Maintains ACID guarantees via atomic batching
+
+## Key Modules
+
+### Commands (`src/commands/`)
+
+Implements CLI commands:
+
+- **`run.ts`**: Main watch-tower operation
+- **`dumpDb.ts`**: Database inspection utility
+
+### Domain (`src/domain/`)
+
+Contains core business logic:
+
+- **`events/`**: Event processing logic
+- **`polling/`**: Order polling and placement
+  - **`poll.ts`**: Main polling loop
+  - **`filtering/`**: Order filtering policies
+
+### Services (`src/services/`)
+
+External service integrations:
+
+- **`api.ts`**: REST API server (Express)
+- **`chain.ts`**: Blockchain interaction (ethers.js)
+- **`storage.ts`**: Database operations (LevelDB)
+
+### Types (`src/types/`)
+
+Type definitions:
+
+- **`model.ts`**: Domain models (Registry, ConditionalOrder)
+- **`generated/`**: TypeChain-generated contract types
+- **`types.d.ts`**: Global type declarations
+
+### Utils (`src/utils/`)
+
+Shared utilities:
+
+- **`logging.ts`**: Logging configuration
+- **`metrics.ts`**: Prometheus metrics
+- **`contracts.ts`**: Contract helper functions
+- **`context.ts`**: Execution context utilities
+
+## Execution Context
+
+The watch-tower uses a context pattern for dependency management:
+
+```typescript
+interface ExecutionContext {
+  registry: Registry;          // State management
+  notificationsEnabled: boolean;
+  slack?: Slack;               // Optional notifications
+  storage: DBService;          // Database access
+}
+```
+
+## Concurrency Model
+
+- **Single-threaded**: Node.js event loop
+- **Async/await**: For I/O operations
+- **Block-level sequencing**: Processes blocks in order
+- **Event batching**: Groups events within blocks
+- **Atomic writes**: Database operations batched per block
+
+## Error Handling
+
+- **Graceful degradation**: Continues on non-critical errors
+- **Block retry**: Re-processes blocks on error
+- **Exit on critical failure**: Database write failures
+- **Watchdog timer**: Monitors block processing health

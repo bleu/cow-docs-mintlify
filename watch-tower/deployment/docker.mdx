@@ -1,0 +1,79 @@
+---
+title: "Docker Deployment"
+description: "Deploy the CoW Protocol Watch Tower using Docker"
+---
+
+# Docker Deployment
+
+Deploy the CoW Protocol Watch Tower using Docker.
+
+## Overview
+
+The preferred method of deployment is using Docker. The watch-tower is available as a Docker image on [GitHub Container Registry](https://github.com/cowprotocol/watch-tower/pkgs/container/watch-tower).
+
+## Available tags
+
+The following Docker image tags are available:
+
+* `latest` - the latest stable version of the watch-tower
+* `vX.Y.Z` - specific version releases (e.g., `v1.0.0`)
+* `main` - the latest version from the `main` branch
+* `pr-<PR_NUMBER>` - the latest version from a specific pull request
+
+## Running with Docker
+
+To run the latest version of the watch-tower using Docker:
+
+```bash
+docker run --rm -it \
+  -v "$(pwd)/config.json.example:/config.json" \
+  ghcr.io/cowprotocol/watch-tower:latest \
+  run \
+  --config-path /config.json
+```
+
+### Command breakdown
+
+* `--rm` - automatically remove the container when it exits
+* `-it` - run in interactive mode with TTY
+* `-v` - mount your local config file into the container
+* `run --config-path /config.json` - command arguments passed to the watch-tower
+
+## Volume mounting
+
+The watch-tower requires a configuration file to be mounted into the container. The Dockerfile defines a volume at `/usr/src/app/database` for persistent database storage.
+
+To mount both config and database:
+
+```bash
+docker run --rm -it \
+  -v "$(pwd)/config.json:/config.json" \
+  -v "$(pwd)/database:/usr/src/app/database" \
+  ghcr.io/cowprotocol/watch-tower:latest \
+  run \
+  --config-path /config.json
+```
+
+<Note>
+See the example `config.json.example` in the repository for a sample configuration file with network settings.
+</Note>
+
+## Building from source
+
+To build the Docker image from source:
+
+```bash
+docker build -t watch-tower .
+```
+
+The build process will:
+
+1. Use Node.js 22.2 Alpine as the base image
+2. Install dependencies with `yarn`
+3. Run linting and tests
+4. Build the application
+5. Set up the entrypoint at `dist/src/index.js`
+
+<Warning>
+The Docker build process includes running tests and linting. Ensure your code passes these checks before building.
+</Warning>

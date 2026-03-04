@@ -1,0 +1,104 @@
+---
+title: "Development Setup"
+description: "Instructions for setting up the CoW Protocol Watch Tower development environment"
+---
+
+# Development Setup
+
+Instructions for setting up the CoW Protocol Watch Tower development environment with Node.js, Yarn, and configuration guidelines.
+
+## Requirements
+
+To develop the CoW Protocol Watch Tower, you'll need:
+
+* `node` (`>= v16.18.0`)
+* `yarn`
+* `npm`
+
+## Installation
+
+Install project dependencies:
+
+```bash
+yarn
+```
+
+## Local Development Workflow
+
+Testing against the Goerli or Sepolia testnet is recommended during development.
+
+To run the watch-tower locally:
+
+```bash
+# Install dependencies
+yarn
+
+# Run watch-tower
+yarn cli run --config-path ./config.json
+```
+
+### Using the CLI
+
+The watch-tower provides a CLI interface with multiple commands:
+
+```bash
+# Run the watch-tower
+yarn cli run --config-path ./config.json
+
+# Dump database contents
+yarn cli dump-db --chain-id 1
+```
+
+### Available CLI Options
+
+* `--config-path <path>` - Path to chain configuration file (default: `./config.json`)
+* `--database-path <path>` - Path to the database (default: `./database`)
+* `--log-level <level>` - Log level (default: `INFO`)
+* `--dry-run` - Do not publish orders to the OrderBook API
+* `--one-shot` - Run the watch-tower once and exit
+* `--disable-api` - Disable the REST API
+* `--api-port <port>` - Port for the REST API (default: `8080`)
+* `--silent` - Disable notifications (local logging only)
+* `--slack-webhook <url>` - Slack webhook URL
+* `--only-owner <address...>` - Monitor specific contract/safe addresses only
+
+## Testing Against Testnets
+
+When developing, test against Goerli or Sepolia testnet by following these steps:
+
+1. Configure your RPC endpoint in the config file
+2. Set the appropriate deployment block for the testnet
+3. Run the watch-tower with your test configuration
+
+```bash
+yarn cli run --config-path ./config.testnet.json
+```
+
+## Environment Variables
+
+All CLI options can be configured via environment variables:
+
+* `LOG_LEVEL` - Log level
+* `CONFIG_PATH` - Path to configuration file
+* `DATABASE_PATH` - Path to database
+* `DRY_RUN` - Dry run mode
+* `ONE_SHOT` - One-shot mode
+* `DISABLE_API` - Disable API server
+* `API_PORT` - API server port
+* `DISABLE_NOTIFICATIONS` - Disable notifications
+* `SLACK_WEBHOOK` - Slack webhook URL
+
+## Linting and Formatting
+
+The project uses ESLint and Prettier for code quality:
+
+```bash
+# Lint the code
+yarn lint
+
+# Fix linting errors
+yarn lint:fix
+
+# Format the code
+yarn fmt
+```

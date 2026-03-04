@@ -1,0 +1,209 @@
+---
+title: "Quickstart"
+description: "Get up and running with the Flash-Loan Router in minutes"
+---
+
+## Overview
+
+This guide will help you quickly build, test, and understand the Flash-Loan Router. You'll compile the contracts, run the test suite, and learn the basic commands you'll use during development.
+
+<Note>
+  Make sure you've completed the [installation](/flash-loan-router/getting-started/installation) steps before proceeding.
+</Note>
+
+## Building the Project
+
+<Steps>
+  <Step title="Navigate to the project directory">
+    ```bash
+    cd flash-loan-router
+    ```
+  </Step>
+
+  <Step title="Compile the contracts">
+    Build all smart contracts using Forge:
+
+    ```bash
+    forge build
+    ```
+
+    This command:
+
+    - Compiles all Solidity files in the `src/` directory
+    - Generates artifacts in the `out/` directory
+    - Uses the configuration from `foundry.toml`
+
+    Expected output:
+
+    ```
+    [⠊] Compiling...
+    [⠒] Compiling 25 files with 0.8.28
+    [⠒] Solc 0.8.28 finished in 3.45s
+    Compiler run successful!
+    ```
+  </Step>
+</Steps>
+
+## Running Tests
+
+<Steps>
+  <Step title="Run the full test suite">
+    Execute all tests with Forge:
+
+    ```bash
+    forge test
+    ```
+
+    This runs all tests in the `test/` directory and generates gas snapshots.
+  </Step>
+
+  <Step title="Run tests without internet connection">
+    If you want to skip end-to-end tests that require RPC access:
+
+    ```bash
+    forge test --no-match-path 'test/e2e/**/*'
+    ```
+
+    <Note>
+      E2E tests interact with live networks to test flash-loan integrations with Aave and ERC-3156 compatible lenders.
+    </Note>
+  </Step>
+
+  <Step title="Run tests with verbosity">
+    For detailed output including console logs:
+
+    ```bash
+    forge test -vvv
+    ```
+
+    Verbosity levels:
+
+    - `-v`: Show test results
+    - `-vv`: Show console logs
+    - `-vvv`: Show execution traces
+    - `-vvvv`: Show execution traces with stack
+  </Step>
+
+  <Step title="Run specific tests">
+    Test a specific contract or function:
+
+    ```bash
+    # Test a specific contract
+    forge test --match-contract FlashLoanRouterTest
+
+    # Test a specific function
+    forge test --match-test test_flashLoanAndSettle
+    ```
+  </Step>
+</Steps>
+
+## Understanding Test Isolation
+
+The project uses Foundry's `isolate` feature:
+
+```toml
+# In foundry.toml
+isolate = true
+```
+
+This ensures transient storage is cleared between each call in a test function, providing better control over state management.
+
+## Gas Benchmarking
+
+The repository includes gas benchmarking for different flash-loan providers:
+
+```bash
+forge test
+```
+
+Gas snapshots are automatically generated in the `snapshots/` directory, allowing you to:
+
+- Compare gas costs between different flash-loan providers
+- Track gas changes between code modifications
+- Optimize contract performance
+
+## Code Formatting
+
+<Steps>
+  <Step title="Check code formatting">
+    Verify that your code follows the project's style:
+
+    ```bash
+    forge fmt --check
+    ```
+  </Step>
+
+  <Step title="Format code automatically">
+    Auto-format all Solidity files:
+
+    ```bash
+    forge fmt
+    ```
+
+    <Note>
+      Some files (like `FlashLoanRouter.sol`) are excluded from formatting due to Foundry's lack of support for the `transient` keyword.
+    </Note>
+  </Step>
+</Steps>
+
+## Key Contracts
+
+Now that you can build and test, here are the main contracts you'll work with:
+
+| Contract          | Location                  | Purpose                                                     |
+| ----------------- | ------------------------- | ----------------------------------------------------------- |
+| `FlashLoanRouter` | `src/FlashLoanRouter.sol` | Main entry point for executing settlements with flash loans |
+| `AaveBorrower`    | `src/AaveBorrower.sol`    | Adapter for Aave flash-loan protocol                        |
+| `ERC3156Borrower` | `src/ERC3156Borrower.sol` | Adapter for ERC-3156 compatible lenders (e.g., Maker)       |
+
+## Common Development Commands
+
+```bash
+# Build contracts
+forge build
+
+# Run all tests
+forge test
+
+# Run tests without E2E
+forge test --no-match-path 'test/e2e/**/*'
+
+# Watch mode (re-run tests on file changes)
+forge test --watch
+
+# Format code
+forge fmt
+
+# Clean build artifacts
+forge clean
+```
+
+## Quick Verification
+
+Run this command to verify your setup is working correctly:
+
+```bash
+forge build && forge test --no-match-path 'test/e2e/**/*'
+```
+
+If both commands succeed, you're ready to start developing!
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Deploy Contracts" icon="rocket" href="/flash-loan-router/getting-started/deployment">
+    Learn how to deploy the Flash-Loan Router to a network
+  </Card>
+
+  <Card title="Architecture" icon="sitemap" href="/flash-loan-router/architecture">
+    Understand the design and security model
+  </Card>
+
+  <Card title="Router Design" icon="plug" href="/flash-loan-router/concepts/router-design">
+    Learn how to integrate flash loans into settlements
+  </Card>
+
+  <Card title="Contract Reference" icon="code" href="/flash-loan-router/contracts/flash-loan-router">
+    Explore the contract API documentation
+  </Card>
+</CardGroup>

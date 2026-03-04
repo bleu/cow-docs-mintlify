@@ -1,0 +1,57 @@
+---
+title: "ComposableCoW"
+description: "API reference for the ComposableCoW contract - the central coordinator for conditional orders on CoW Protocol."
+---
+
+# ComposableCoW Contract
+
+The `ComposableCoW` contract enables creation and management of conditional orders on CoW Protocol, supporting both single orders and merkle tree-based authorization for automated trading strategies.
+
+## Deployment
+
+Deployed identically across six networks (Ethereum Mainnet, Gnosis Chain, Arbitrum One, Base, Optimism, and Polygon) at address:
+
+```
+0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74
+```
+
+## State Variables
+
+| Variable | Description |
+|----------|-------------|
+| `domainSeparator` | EIP-712 signature domain from GPv2Settlement |
+| `roots` | Mapping storing merkle roots for conditional orders |
+| `singleOrders` | Tracking individual authorized orders |
+| `swapGuards` | Additional order restriction mechanisms |
+| `cabinet` | On-chain storage for context-specific data |
+
+## Primary Functions
+
+### Order Creation
+
+- `create()` - Authorize a single conditional order
+- `createWithContext()` - Authorize with value factory context storage
+
+### Merkle Tree Management
+
+- `setRoot()` - Set merkle root for batch authorization
+- `setRootWithContext()` - Set root with value factory context
+
+### Order Retrieval
+
+- `getTradeableOrderWithSignature()` - Generate discrete orders for CoW Protocol submission
+
+### Order Management
+
+- `remove()` - Revoke order authorization
+- `setSwapGuard()` - Apply additional order restrictions
+
+## Critical Requirements
+
+- Safe multisig wallets must use `ExtensibleFallbackHandler`
+- Handler contracts must implement `IConditionalOrderGenerator`
+- Token approvals required for the GPv2 Vault Relayer
+
+## Authorization Models
+
+Orders may be authorized individually via `create()` or in batches using merkle proofs, enabling efficient management of multiple conditional orders.

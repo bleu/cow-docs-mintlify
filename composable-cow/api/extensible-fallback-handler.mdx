@@ -1,0 +1,44 @@
+---
+title: "ExtensibleFallbackHandler"
+description: "API reference for the Safe fallback handler that enables signature verification multiplexing through domain-specific verifiers."
+---
+
+# ExtensibleFallbackHandler
+
+The `ExtensibleFallbackHandler` is a Safe fallback handler enabling signature verification multiplexing through domain-specific verifiers. It works with ComposableCoW to validate conditional orders via EIP-1271.
+
+## Deployment
+
+Deployed at the same address across multiple networks (Ethereum Mainnet, Gnosis Chain, Arbitrum One, Base, Optimism, and Polygon):
+
+```
+0x2f55e8b20D0B9FEFA187AA7d00B6Cbe563605bF5
+```
+
+## How It Functions
+
+When CoW Protocol initiates settlement:
+
+1. It calls `isValidSignature()` on the Safe
+2. The Safe delegates to `ExtensibleFallbackHandler`
+3. The handler extracts the domain separator from the signature
+4. It routes to the appropriate domain verifier (typically ComposableCoW)
+5. The verifier validates the conditional order and returns the EIP-1271 magic value if valid
+
+## Essential Setup Steps
+
+Two configuration tasks are required:
+
+1. **Set the Safe's fallback handler** to the `ExtensibleFallbackHandler` address
+2. **Configure ComposableCoW as the domain verifier** for CoW Protocol's domain separator using `setDomainVerifier()`
+
+Both operations must execute through Safe transactions, not direct calls.
+
+## Security Notes
+
+<Warning>
+- Only the Safe itself can execute `setDomainVerifier` calls
+- The configured verifier holds substantial authority to approve orders
+- Setting a malicious verifier could enable unauthorized order execution
+- Domain verifiers require careful auditing before deployment
+</Warning>

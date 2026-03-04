@@ -1,0 +1,119 @@
+---
+title: "Settlement"
+description: "Encoding trades, interactions, and prices for CoW Protocol settlement execution"
+---
+
+# Settlement
+
+The Settlement module provides tools for encoding trades, interactions, and prices into the format required by the settlement contract.
+
+## SettlementEncoder
+
+The `SettlementEncoder` class serves as the primary interface for building settlement transactions.
+
+### Creating an Encoder
+
+```typescript
+import { SettlementEncoder, domain } from "@cowprotocol/contracts";
+
+const settlementDomain = domain(1, "0x9008D19f58AAbD9eD0D60971565AA8510560ab41");
+const encoder = new SettlementEncoder(settlementDomain);
+```
+
+### Trade Encoding
+
+Two methods handle trade encoding:
+
+```typescript
+// Add a pre-signed order
+encoder.encodeTrade(order, signature, { executedAmount });
+
+// Sign and encode in one step
+await encoder.signEncodeTrade(order, signer, SigningScheme.EIP712, { executedAmount });
+```
+
+The `TradeExecution` interface supports partial fills by specifying executed amounts:
+
+```typescript
+interface TradeExecution {
+  executedAmount: BigNumberish;
+}
+```
+
+### Interaction Encoding
+
+```typescript
+encoder.encodeInteraction(
+  {
+    target: contractAddress,
+    value: 0,
+    callData: encodedCallData,
+  },
+  InteractionStage.INTRA // default if omitted
+);
+```
+
+### Generating Settlement Data
+
+```typescript
+const settlement = encoder.encodedSettlement({
+  [WETH]: ethers.utils.parseEther("2000"), // price of WETH in terms of DAI
+  [DAI]: ethers.utils.parseEther("1"),     // price of DAI
+});
+```
+
+## Trade Flags
+
+Trade flags encode order characteristics into a single bitfield:
+
+```typescript
+const flags = encodeTradeFlags({
+  kind: OrderKind.SELL,
+  partiallyFillable: false,
+  sellTokenBalance: OrderBalance.ERC20,
+  buyTokenBalance: OrderBalance.ERC20,
+  signingScheme: SigningScheme.EIP712,
+});
+
+const decoded = decodeTradeFlags(flags);
+```
+
+## TokenRegistry
+
+The `TokenRegistry` class manages token-to-index mapping, reducing gas costs by referencing tokens by index rather than address:
+
+```typescript
+const registry = new TokenRegistry();
+const wethIndex = registry.index(WETH);
+const daiIndex = registry.index(DAI);
+```
+
+## Interaction Stages
+
+```typescript
+enum InteractionStage {
+  PRE = 0,   // Before trading (permits, allowances)
+  INTRA = 1, // During trading (AMM swaps)
+  POST = 2,  // After trading (cleanup)
+}
+```
+
+## EncodedSettlement
+
+The final output is a tuple containing:
+
+```typescript
+type EncodedSettlement = [
+  string[],         // Token addresses
+  BigNumberish[],   // Clearing prices
+  Trade[],          // Encoded trades
+  Interaction[][],  // [pre, intra, post] interactions
+];
+```
+
+## Best Practices
+
+- Maintain consistent token ordering for predictable indices
+- Use high precision for clearing prices to minimize rounding errors
+- Always specify `executedAmount` for partially fillable orders
+- Select appropriate interaction stages based on execution timing requirements

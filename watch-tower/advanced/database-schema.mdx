@@ -1,0 +1,96 @@
+---
+title: "Database Schema"
+description: "LevelDB key-value structure and data models for the Watch Tower"
+---
+
+# Database Schema
+
+LevelDB key-value structure and data models for the Watch Tower.
+
+The Watch Tower uses a NoSQL key-value database to store state about conditional orders and processing progress.
+
+## Storage keys
+
+The database uses four primary keys to manage state:
+
+### LAST_PROCESSED_BLOCK
+
+Stores the last block that was successfully processed by the watch-tower.
+
+**Structure:**
+
+```json
+{
+  "number": 12345678,
+  "timestamp": 1234567890,
+  "hash": "0x..."
+}
+```
+
+This key is critical for recovery - if the watch-tower crashes or restarts, it resumes processing from this block number.
+
+### CONDITIONAL_ORDER_REGISTRY
+
+Contains the registry of all active conditional orders grouped by owner (safe address).
+
+**Structure:**
+
+```typescript
+Map<Owner, Set<ConditionalOrder>>
+```
+
+Where each `ConditionalOrder` contains:
+
+* `id` - keccak256 hash of the serialized conditional order
+* `tx` - transaction hash that created the order
+* `params` - the conditional order parameters
+* `proof` - merkle proof if part of a merkle root, or null for single orders
+* `orders` - map of discrete order UIDs to their status (SUBMITTED or FILLED)
+* `composableCow` - address to poll for orders
+* `pollResult` - result of the last poll with timestamp and block number
+
+As orders expire or are cancelled, they are automatically removed from the registry to conserve storage space.
+
+### CONDITIONAL_ORDER_REGISTRY_VERSION
+
+Stores the schema version number of the conditional order registry.
+
+**Current version:** `2`
+
+This key is used to migrate the registry when the schema changes. Version 2 added the `id` field to conditional orders.
+
+### LAST_NOTIFIED_ERROR
+
+Tracks the last time an error notification was sent via Slack.
+
+**Structure:**
+
+```json
+"2024-03-04T12:34:56.789Z"
+```
+
+This ISO 8601 timestamp is used to implement rate limiting - no more than one error notification is sent every 2 hours.
+
+<Warning>
+All keys are prefixed with the network identifier (chain ID) to support multi-chain deployments in the same database.
+</Warning>
+
+## Data serialization
+
+The database stores complex JavaScript objects (Maps and Sets) by using custom serialization:
+
+* `Map` objects are serialized with a `dataType: "Map"` marker
+* `Set` objects are serialized with a `dataType: "Set"` marker
+* These are deserialized back to native JavaScript collections on read
+
+This allows efficient storage while preserving the data structure semantics.
+
+## Schema versioning
+
+The registry implements forward-compatible schema migrations:
+
+1. When loading data, the `CONDITIONAL_ORDER_REGISTRY_VERSION` is checked
+2. If the version is older than current, data is migrated in-memory
+3. The updated version is written back on the next save
+
+Example: Version 1 to 2 migration adds the missing `id` field to all conditional orders by computing it from the order parameters.

@@ -1,0 +1,101 @@
+---
+title: "GPv2AllowListAuthentication"
+description: "Solver authorization contract managing the allowlist-based access control system"
+---
+
+# GPv2AllowListAuthentication Contract
+
+The `GPv2AllowListAuthentication` contract manages solver authorization for CoW Protocol settlements through an allowlist-based access control system.
+
+## Architecture
+
+The contract employs a two-tier access model:
+
+- **Manager** - Handles day-to-day solver administration
+- **Proxy Owner** - Top-level administrator with override capabilities
+
+## State Variables
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `manager` | `address` | Address with permissions to add/remove solvers |
+| `solvers` | `mapping(address => bool)` | Private mapping tracking authorized solver addresses |
+
+## Functions
+
+### initializeManager()
+
+One-time initialization for proxy deployment:
+
+```solidity
+function initializeManager(address manager_) external initializer {
+    manager = manager_;
+    emit ManagerChanged(manager_);
+}
+```
+
+### setManager()
+
+Transfers the manager role. Can be called by the current manager or proxy owner:
+
+```solidity
+function setManager(address manager_) external onlyManagerOrOwner {
+    manager = manager_;
+    emit ManagerChanged(manager_);
+}
+```
+
+### addSolver()
+
+Grants solver authorization (manager only):
+
+```solidity
+function addSolver(address solver) external onlyManager {
+    solvers[solver] = true;
+    emit SolverAdded(solver);
+}
+```
+
+### removeSolver()
+
+Revokes solver authorization (manager only):
+
+```solidity
+function removeSolver(address solver) external onlyManager {
+    solvers[solver] = false;
+    emit SolverRemoved(solver);
+}
+```
+
+### isSolver()
+
+Checks solver authorization status (public view):
+
+```solidity
+function isSolver(address solver) external view returns (bool) {
+    return solvers[solver];
+}
+```
+
+## Access Control Modifiers
+
+| Modifier | Allowed Callers |
+|----------|----------------|
+| `onlyManager` | Current manager address only |
+| `onlyManagerOrOwner` | Manager or proxy admin |
+
+## Events
+
+```solidity
+event ManagerChanged(address newManager);
+event SolverAdded(address solver);
+event SolverRemoved(address solver);
+```
+
+## Proxy Integration
+
+The contract supports EIP-1967 compliant proxies, enabling:
+
+- Upgradeability of the authentication logic
+- Emergency governance override through proxy admin
+- Consistent address across upgrades

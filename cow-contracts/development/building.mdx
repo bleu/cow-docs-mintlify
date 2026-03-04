@@ -1,0 +1,113 @@
+---
+title: "Building"
+description: "Compiling CoW Protocol contracts, including Solidity smart contracts and TypeScript bindings"
+---
+
+# Building the Project
+
+The CoW Protocol contracts project uses a hybrid build system compiling both Solidity smart contracts and TypeScript bindings.
+
+## Prerequisites
+
+- **Node.js** v16 or higher
+- **Yarn** package manager
+- **Git**
+
+## Installation
+
+```bash
+git clone https://github.com/cowprotocol/contracts.git
+cd contracts
+yarn install
+```
+
+## Build Commands
+
+### Full Build
+
+Compiles Solidity contracts and generates TypeScript bindings:
+
+```bash
+yarn build
+```
+
+### Solidity Only
+
+Runs Hardhat compiler with force flag:
+
+```bash
+yarn build:sol
+```
+
+### TypeScript Only
+
+Compiles in ESM, CommonJS, and default formats:
+
+```bash
+yarn build:ts
+```
+
+## Compiler Settings
+
+The project is configured for gas-efficient contract execution:
+
+| Setting | Value |
+|---------|-------|
+| Optimizer | Enabled |
+| Optimizer Runs | 1,000,000 |
+| EVM Version | Cancun |
+
+This prioritizes minimal execution costs over deployment expenses.
+
+## Output Structure
+
+Successful builds generate:
+
+| Directory | Contents |
+|-----------|----------|
+| `out/` | Compiled Solidity contracts and artifacts |
+| `lib/esm/` | TypeScript ESM modules |
+| `lib/commonjs/` | TypeScript CommonJS modules |
+
+## Linting and Formatting
+
+### Solidity
+
+```bash
+# Lint
+yarn lint:sol
+
+# Format
+yarn fmt:sol
+```
+
+### TypeScript
+
+```bash
+# Lint
+yarn lint:ts
+
+# Format
+yarn fmt:ts
+```
+
+## Troubleshooting
+
+If you encounter build issues:
+
+1. **Clear build artifacts:**
+   ```bash
+   rm -rf out/ lib/ cache/
+   ```
+
+2. **Reinstall dependencies:**
+   ```bash
+   rm -rf node_modules
+   yarn install
+   ```
+
+3. **Force rebuild:**
+   ```bash
+   yarn build:sol --force
+   yarn build:ts
+   ```

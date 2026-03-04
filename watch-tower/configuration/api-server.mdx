@@ -1,0 +1,144 @@
+---
+title: "API Server Configuration"
+description: "Configure the Watch Tower REST API server and its endpoints"
+---
+
+# API Server Configuration
+
+The Watch Tower includes an HTTP API server providing version information, configuration details, database dumps, and Prometheus metrics. It starts automatically in watch mode.
+
+## Default Setup
+
+The API server launches on port `8080` when running watch commands:
+
+```bash
+yarn cli run --config-path ./config.json
+# API server running on http://localhost:8080
+```
+
+## Custom Port Configuration
+
+Use the `--api-port` option to specify an alternative port:
+
+```bash
+yarn cli run --config-path ./config.json --api-port 3000
+```
+
+Docker with custom port:
+
+```bash
+docker run --rm -it \
+  -p 3000:3000 \
+  -v "$(pwd)/config.json:/config.json" \
+  ghcr.io/cowprotocol/watch-tower:latest \
+  run --config-path /config.json --api-port 3000
+```
+
+## API Endpoints
+
+### GET /api/version
+
+Returns version details about the running instance:
+
+```bash
+curl http://localhost:8080/api/version
+```
+
+Response includes version number, package name, description, and Docker image tag (populated from `DOCKER_IMAGE_TAG` environment variable).
+
+### GET /config
+
+Returns current configuration for all monitored networks, including chain ID, contract address, deployment block, filter policies, and page size settings.
+
+### GET /api/dump/:chainId
+
+Exports the entire database for a specific chain. Supported chain IDs include:
+- `1` - Ethereum Mainnet
+- `11155111` - Sepolia
+- `42161` - Arbitrum One
+- `43114` - Avalanche
+- `8453` - Base
+- `100` - Gnosis Chain
+- `137` - Polygon
+
+The dump includes all conditional orders, owners, and the last processed block.
+
+### GET /metrics
+
+Exposes Prometheus-compatible metrics for CPU, memory, Node.js runtime, and custom Watch Tower performance data.
+
+### GET /health
+
+Returns health status with HTTP 200 (healthy) or 503 (unhealthy) codes:
+
+```bash
+curl http://localhost:8080/health
+```
+
+### GET /
+
+Root endpoint returns: `Moooo!`
+
+## Disabling the API Server
+
+Disable with the `--disable-api` flag:
+
+```bash
+yarn cli run --config-path ./config.json --disable-api
+```
+
+<Warning>
+This also disables Prometheus metrics, affecting monitoring capabilities.
+</Warning>
+
+## Docker Configuration
+
+Set `DOCKER_IMAGE_TAG` environment variable:
+
+```bash
+docker run --rm -it \
+  -e DOCKER_IMAGE_TAG=v1.2.3 \
+  -v "$(pwd)/config.json:/config.json" \
+  ghcr.io/cowprotocol/watch-tower:v1.2.3 \
+  run --config-path /config.json
+```
+
+Port mapping examples for Docker:
+
+```bash
+# Default mapping
+docker run --rm -it -p 8080:8080 ...
+
+# Custom port mapping
+docker run --rm -it -p 3000:3000 ... --api-port 3000
+
+# Map to different host port
+docker run --rm -it -p 9090:8080 ...
+```
+
+## Usage Examples
+
+Check version and health:
+
+```bash
+yarn cli run --config-path ./config.json
+curl http://localhost:8080/api/version
+curl http://localhost:8080/health
+```
+
+Monitor with Prometheus by adding to `prometheus.yml`:
+
+```yaml
+scrape_configs:
+  - job_name: 'watch-tower'
+    static_configs:
+      - targets: ['localhost:8080']
+    metrics_path: '/metrics'
+```
+
+Export database dumps:
+
+```bash
+curl http://localhost:8080/api/dump/1 | jq > mainnet-dump.json
+curl http://localhost:8080/api/dump/42161 | jq > arbitrum-dump.json
+```

@@ -1,0 +1,111 @@
+---
+title: "Deploy"
+description: "TypeScript utilities for deterministic contract deployment using CREATE2"
+---
+
+# Deploy
+
+The deploy module provides utilities for deterministic contract deployment using CREATE2, enabling CoW Protocol contracts to maintain identical addresses across all EVM-compatible networks.
+
+## Constants
+
+### SALT
+
+The deployment salt, a `bytes32` encoding of `"Mattresses in Berlin!"`:
+
+```typescript
+const SALT: string; // bytes32 encoding of "Mattresses in Berlin!"
+```
+
+### DEPLOYER_CONTRACT
+
+The Arachnid deterministic deployment proxy with consistent addresses across all EVM networks:
+
+```typescript
+const DEPLOYER_CONTRACT = "0x4e59b44847b379578588920ca78fbf26c0b4956c";
+```
+
+### CONTRACT_NAMES
+
+Dictionary of deployable contract names:
+
+```typescript
+const CONTRACT_NAMES = {
+  authenticator: "GPv2AllowListAuthentication",
+  settlement: "GPv2Settlement",
+};
+```
+
+## Types
+
+### ContractName
+
+```typescript
+type ContractName = "GPv2AllowListAuthentication" | "GPv2Settlement";
+```
+
+### DeploymentArguments
+
+Type-safe constructor arguments:
+
+```typescript
+type DeploymentArguments = {
+  GPv2AllowListAuthentication: []; // No constructor arguments
+  GPv2Settlement: [string, string]; // [authenticator, vaultRelayer]
+};
+```
+
+### ArtifactDeployment
+
+```typescript
+interface ArtifactDeployment {
+  abi: any[];
+  bytecode: string;
+}
+```
+
+## Functions
+
+### deterministicDeploymentAddress
+
+Calculates the precise deployment address using the CREATE2 formula:
+
+```typescript
+function deterministicDeploymentAddress(
+  artifact: ArtifactDeployment,
+  args: any[]
+): string;
+```
+
+The computation follows:
+
+```
+address = keccak256(0xff ++ deployerAddress ++ salt ++ keccak256(initCode))[12:]
+```
+
+## Deployed Addresses
+
+| Contract | Address |
+|----------|---------|
+| GPv2Settlement | `0x9008D19f58AAbD9eD0D60971565AA8510560ab41` |
+| GPv2AllowListAuthentication | Varies by network (proxy) |
+| GPv2VaultRelayer | `0xC92E8bdf79f0507f65a392b0ab4667716BFE0110` |
+
+## Usage
+
+```typescript
+import { deterministicDeploymentAddress, SALT, DEPLOYER_CONTRACT } from "@cowprotocol/contracts";
+
+const address = deterministicDeploymentAddress(
+  settlementArtifact,
+  [authenticatorAddress, vaultRelayerAddress]
+);
+
+console.log("Predicted address:", address);
+// 0x9008D19f58AAbD9eD0D60971565AA8510560ab41
+```
+
+The deterministic approach enables developers to:
+- Predict contract addresses before deployment
+- Verify correctness across networks
+- Maintain consistent multi-chain integration

@@ -1,0 +1,89 @@
+---
+title: "Supported Networks"
+description: "Multi-chain deployment information for CoW Protocol contracts"
+---
+
+# Supported Networks
+
+CoW Protocol maintains a multi-chain presence across numerous EVM-compatible blockchains. The protocol deploys identical core contracts across all networks using CREATE2 deterministic deployment.
+
+## Contract Addresses
+
+Three primary contracts deploy at the same addresses everywhere:
+
+| Contract | Address |
+|----------|---------|
+| GPv2Settlement | `0x9008D19f58AAbD9eD0D60971565AA8510560ab41` |
+| GPv2AllowListAuthentication | `0x2c4c28DDBdAc9C5E7055b4C863b72eA0149D8aFE` |
+| GPv2VaultRelayer | `0xC92E8bdf79f0507f65a392b0ab4667716BFE0110` |
+
+## Mainnet Deployments
+
+### Ethereum Mainnet
+- **Chain ID:** 1
+- **Native Token:** ETH
+- **Block Explorer:** [Etherscan](https://etherscan.io)
+
+### Gnosis Chain
+- **Chain ID:** 100
+- **Native Token:** xDAI
+- **Block Explorer:** [Gnosisscan](https://gnosisscan.io)
+- Formerly known as xDAI Chain
+
+### Arbitrum One
+- **Chain ID:** 42161
+- **Native Token:** ETH
+- **Block Explorer:** [Arbiscan](https://arbiscan.io)
+- Layer 2 optimistic rollup
+
+### Optimism
+- **Chain ID:** 10
+- **Native Token:** ETH
+- **Block Explorer:** [Optimistic Etherscan](https://optimistic.etherscan.io)
+
+### Polygon
+- **Chain ID:** 137
+- **Native Token:** MATIC
+- **Block Explorer:** [Polygonscan](https://polygonscan.com)
+
+### BNB Smart Chain
+- **Chain ID:** 56
+- **Native Token:** BNB
+- **Block Explorer:** [BscScan](https://bscscan.com)
+
+### Base
+- **Chain ID:** 8453
+- **Native Token:** ETH
+- **Block Explorer:** [Basescan](https://basescan.org)
+- Coinbase's Layer 2
+
+### Avalanche C-Chain
+- **Chain ID:** 43114
+- **Native Token:** AVAX
+- **Block Explorer:** [Snowtrace](https://snowtrace.io)
+
+## Testnet
+
+### Sepolia
+- **Chain ID:** 11155111
+- **Native Token:** SepoliaETH
+- **Block Explorer:** [Sepolia Etherscan](https://sepolia.etherscan.io)
+- Development and testing infrastructure with identical contract addresses
+
+## Integration Guidance
+
+- Select the appropriate network for your use case
+- Always verify contract addresses through official channels before integrating
+- Configure corresponding RPC endpoints for your target network
+- Account for each network's native token requirements for gas
+- Use the correct chain ID when constructing domain separators
+
+```typescript
+import { domain } from "@cowprotocol/contracts";
+
+// Always use the correct chain ID for your target network
+const networkDomain = domain(
+  chainId,
+  "0x9008D19f58AAbD9eD0D60971565AA8510560ab41"
+);
+```

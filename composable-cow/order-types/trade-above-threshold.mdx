@@ -1,0 +1,37 @@
+---
+title: "Trade Above Threshold"
+description: "Automated token sales triggered when balances surpass a specified threshold amount."
+---
+
+# Trade Above Threshold
+
+This conditional order type continuously monitors token balances and automatically triggers sell orders once a threshold is reached. The mechanism sells the entire current balance at the current market price.
+
+## Key Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `sellToken` / `buyToken` | Token pair for the exchange |
+| `receiver` | Destination address for purchased tokens |
+| `validityBucketSeconds` | Time window determining order freshness (recommended: 300-3600 seconds) |
+| `threshold` | Balance minimum triggering execution |
+| `appData` | Associated metadata hash |
+
+## Execution Behavior
+
+When triggered, the order sells your complete balance -- not just the excess above the threshold. The system uses `buyAmount = 1` to create a market order without price protection.
+
+<Note>
+While there's no explicit limit price, solvers are incentivized to maximize your output to win the batch.
+</Note>
+
+## Practical Applications
+
+- Automated yield reward conversions
+- Dollar-cost averaging out of positions
+- Protocol fee collection and conversion
+- Token stream liquidation
+
+<Warning>
+This order type sells at market price without price limits. The CoW Protocol's competitive solver mechanism provides execution incentives, but no guaranteed minimum output exists.
+</Warning>

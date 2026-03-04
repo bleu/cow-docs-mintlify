@@ -1,0 +1,101 @@
+---
+title: "Interaction"
+description: "TypeScript interaction module API for executing arbitrary smart contract calls during settlements"
+---
+
+# Interaction
+
+The interaction module enables CoW Protocol settlements to invoke arbitrary smart contracts, supporting capabilities such as EIP-2612 permit calls for gasless approvals and AMM trades (Uniswap, Balancer, Curve, etc.).
+
+## Types
+
+### Interaction
+
+Represents a complete smart contract call with three components:
+
+```typescript
+interface Interaction {
+  target: string;   // Contract address to invoke
+  value: BigNumberish; // Native Ether amount in wei (defaults to 0)
+  callData: string;    // Encoded function data (defaults to "0x")
+}
+```
+
+### InteractionLike
+
+A flexible partial type requiring only the target address:
+
+```typescript
+interface InteractionLike {
+  target: string;
+  value?: BigNumberish;
+  callData?: string;
+}
+```
+
+## Functions
+
+### normalizeInteraction
+
+Processes a single interaction, applying default values for optional fields.
+
+```typescript
+function normalizeInteraction(interaction: InteractionLike): Interaction;
+```
+
+### normalizeInteractions
+
+Handles arrays of interactions.
+
+```typescript
+function normalizeInteractions(interactions: InteractionLike[]): Interaction[];
+```
+
+Both functions ensure complete, ABI-compatible interaction objects with defaults of `0` for value and `"0x"` for callData.
+
+## Execution Stages
+
+```typescript
+enum InteractionStage {
+  PRE = 0,   // Setup operations before token transfers
+  INTRA = 1, // Swaps after sell tokens arrive (default)
+  POST = 2,  // Cleanup after all trading concludes
+}
+```
+
+## Common Use Cases
+
+```typescript
+import { ethers } from "ethers";
+
+// EIP-2612 permit (PRE stage)
+const permitInteraction = {
+  target: tokenAddress,
+  value: 0,
+  callData: tokenContract.interface.encodeFunctionData("permit", [
+    owner, spender, value, deadline, v, r, s
+  ]),
+};
+
+// Uniswap swap (INTRA stage)
+const swapInteraction = {
+  target: uniswapRouterAddress,
+  value: 0,
+  callData: router.interface.encodeFunctionData("exactInputSingle", [params]),
+};
+
+// WETH unwrap (POST stage)
+const unwrapInteraction = {
+  target: wethAddress,
+  value: 0,
+  callData: weth.interface.encodeFunctionData("withdraw", [amount]),
+};
+```
+
+## Best Practices
+
+- Validate target addresses before constructing interactions
+- Use Ethers.js for safe calldata encoding
+- Exercise caution with Ether transfers (non-zero `value`)
+- Test extensively on testnets prior to mainnet use
+- Select appropriate stages based on token balance availability

@@ -1,0 +1,64 @@
+---
+title: "Deploying"
+description: "Guide to deploying ComposableCoW contracts using script-based or deterministic CREATE2 deployment."
+---
+
+# Deploying
+
+## Core Deployment Methods
+
+ComposableCoW offers two primary approaches:
+
+1. **Script-Based Deployment**: Offers flexibility for testing but won't deploy to official addresses
+2. **Deterministic CREATE2 Deployment**: Ensures identical addresses across all networks for production use
+
+## Essential Setup
+
+You'll need to configure environment variables including:
+
+- RPC endpoints
+- Private keys
+- Settlement contract address (varies by network)
+
+Foundry installation is required:
+
+```bash
+curl -L https://foundry.paradigm.xyz | bash
+foundryup
+```
+
+## Deployment Options
+
+### Full Production Stack
+
+Deploys multiple components in one transaction:
+
+- ExtensibleFallbackHandler
+- ComposableCoW
+- Five order types (TWAP, GoodAfterTime, PerpetualStableSwap, TradeAboveThreshold, StopLoss)
+- Utilities
+
+### Individual Contract Deployment
+
+Separate scripts for ComposableCoW alone or order types specifically.
+
+## Deterministic CREATE2 Benefits
+
+- Consistent addresses across all networks
+- Simplified integration and documentation
+- Predictable contract locations
+- Enhanced user trust
+
+## Local Testing
+
+For integration testing, Anvil provides a local environment with the full CoW Protocol stack deployment capability, including a test Safe contract.
+
+```bash
+anvil --fork-url $ETH_RPC_URL
+```
+
+## Post-Deployment Tasks
+
+1. Verify deployments using `cast code`
+2. Update the `networks.json` registry
+3. Leverage the `broadcast/` directory artifacts containing deployment metadata and ABIs

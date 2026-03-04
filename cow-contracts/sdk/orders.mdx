@@ -1,0 +1,126 @@
+---
+title: "Orders"
+description: "Creating and managing CoW Protocol orders using the TypeScript SDK"
+---
+
+# Orders
+
+The `Order` interface represents a Gnosis Protocol v2 order with specific required fields for signing and settlement.
+
+## Order Interface
+
+```typescript
+interface Order {
+  sellToken: string;
+  buyToken: string;
+  receiver: string;
+  sellAmount: BigNumberish;
+  buyAmount: BigNumberish;
+  validTo: number | Date;
+  appData: string;
+  feeAmount: BigNumberish;
+  kind: OrderKind;
+  partiallyFillable: boolean;
+  sellTokenBalance?: OrderBalance;
+  buyTokenBalance?: OrderBalance;
+}
+```
+
+## Order Types
+
+### Sell Orders
+
+Specify an exact amount to sell with a minimum amount to receive:
+
+```typescript
+const sellOrder: Order = {
+  sellToken: WETH,
+  buyToken: DAI,
+  sellAmount: ethers.utils.parseEther("1.0"),   // Exact
+  buyAmount: ethers.utils.parseEther("2000"),    // Minimum
+  kind: OrderKind.SELL,
+  // ...
+};
+```
+
+### Buy Orders
+
+Specify an exact amount to receive with a maximum to spend:
+
+```typescript
+const buyOrder: Order = {
+  sellToken: WETH,
+  buyToken: DAI,
+  sellAmount: ethers.utils.parseEther("1.1"),    // Maximum
+  buyAmount: ethers.utils.parseEther("2000"),     // Exact
+  kind: OrderKind.BUY,
+  // ...
+};
+```
+
+## Balance Management
+
+Three balance modes are supported:
+
+| Mode | Enum | Description |
+|------|------|-------------|
+| Standard | `OrderBalance.ERC20` | Standard ERC20 token transfers |
+| External | `OrderBalance.EXTERNAL` | Balancer Vault external balances |
+| Internal | `OrderBalance.INTERNAL` | Balancer Vault internal balances |
+
+## Utility Functions
+
+### normalizeOrder
+
+Prepares orders for EIP-712 signing by converting Date objects to timestamps and normalizing optional fields.
+
+```typescript
+import { normalizeOrder } from "@cowprotocol/contracts";
+
+const normalized = normalizeOrder(order);
+```
+
+### hashOrder
+
+Generates the EIP-712 hash needed for cryptographic signing.
+
+```typescript
+import { hashOrder, domain } from "@cowprotocol/contracts";
+
+const settlementDomain = domain(1, "0x9008D19f58AAbD9eD0D60971565AA8510560ab41");
+const hash = hashOrder(settlementDomain, order);
+```
+
+### computeOrderUid
+
+Creates a 56-byte unique identifier combining order digest, owner address, and expiration.
+
+```typescript
+import { computeOrderUid } from "@cowprotocol/contracts";
+
+const uid = computeOrderUid(settlementDomain, order, ownerAddress);
+```
+
+### extractOrderUidParams
+
+Decodes order UID components back into individual parameters.
+
+```typescript
+import { extractOrderUidParams } from "@cowprotocol/contracts";
+
+const { orderDigest, owner, validTo } = extractOrderUidParams(uid);
+```
+
+## Constants
+
+```typescript
+// Special address for purchasing native ETH (use only in buyToken field)
+const BUY_ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+
+// Order UID length in bytes
+const ORDER_UID_LENGTH = 56;
+```
+
+<Warning>
+`BUY_ETH_ADDRESS` should only be used in the `buyToken` field. Using it elsewhere will cause unexpected behavior.
+</Warning>

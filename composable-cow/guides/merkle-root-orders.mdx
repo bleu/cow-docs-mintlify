@@ -1,0 +1,56 @@
+---
+title: "Merkle Root Orders"
+description: "Efficiently batch multiple conditional orders using merkle trees for reduced gas costs."
+---
+
+# Merkle Root Orders
+
+## Key Concept
+
+Merkle root orders enable efficient batching of multiple conditional orders through a single on-chain transaction. Rather than executing individual `create()` calls for each order, you establish one merkle root that authorizes all orders simultaneously -- dramatically reducing gas costs.
+
+## Core Process
+
+The implementation follows four main steps:
+
+1. **Collect orders** as `ConditionalOrderParams` structures
+2. **Construct merkle tree** where each leaf uses double hashing:
+   ```solidity
+   keccak256(bytes.concat(keccak256(abi.encode(params))))
+   ```
+3. **Register root on-chain** via `ComposableCoW.setRoot()`
+4. **Validate orders** by providing merkle proofs alongside order parameters
+
+## Critical Technical Details
+
+### Double Hashing Requirement
+
+The system employs double hashing to prevent second preimage attacks. This is essential -- always apply the following for leaf calculations:
+
+```solidity
+keccak256(bytes.concat(keccak256(abi.encode(params))))
+```
+
+### Proof Verification
+
+When retrieving tradeable orders, you must supply the merkle proof. An empty proof array signals a single order rather than a merkle-authorized order.
+
+## Gas Efficiency
+
+The overhead for `setRoot()` remains relatively constant regardless of tree size. For example:
+
+| Method | Gas for 50 orders |
+|--------|-------------------|
+| Individual `create()` | ~2.5M gas |
+| Merkle root `setRoot()` | ~55k gas |
+
+This represents approximately a **45x improvement**.
+
+## Context Storage
+
+Use `setRootWithContext()` to store supplementary data (like timestamps) on-chain. For TWAP orders where `t0=0`, this allows automatic reading of start times from stored context.
+
+## Management Flexibility
+
+- Updating orders requires recalculating the merkle root and invoking `setRoot()` again
+- Setting the root to `bytes32(0)` invalidates all prior authorizations

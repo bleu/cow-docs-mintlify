@@ -1,0 +1,39 @@
+---
+title: "Trade Above Threshold API"
+description: "API reference for the Trade Above Threshold conditional order type for balance-triggered trades."
+---
+
+# Trade Above Threshold API
+
+This conditional order automatically executes trades when a token balance surpasses a specified threshold, selling the entire balance at market rates.
+
+## Key Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `sellToken` / `buyToken` | Token pair for the exchange |
+| `threshold` | Balance minimum triggering execution |
+| `validityBucketSeconds` | Time window for order grouping |
+| `receiver` | Destination for trade proceeds |
+| `appData` | Associated metadata hash |
+
+## How It Works
+
+The `getTradeableOrder` function checks if the owner's balance meets the threshold requirement. When conditions are satisfied, it generates a market order selling the complete balance with a minimum buy amount of 1 token.
+
+Key characteristics:
+
+- Creates orders with `buyAmount = 1`, meaning it will accept any price
+- Uses validity bucketing so orders queried within the same bucket return the same `orderUid`
+- Reverts with `PollTryNextBlock` error if balance remains insufficient
+
+## Primary Applications
+
+- Yield harvesting
+- Treasury management
+- Automated rebalancing
+- Fee sweeping operations
+
+<Warning>
+This order type sells at market price with no minimum buy amount protection, exposing transactions to unfavorable pricing and MEV vulnerabilities. Liquidity and market conditions significantly impact execution quality.
+</Warning>

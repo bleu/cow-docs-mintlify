@@ -1,0 +1,140 @@
+---
+title: "Security Model"
+description: "Understanding the Flash-Loan Router's security guarantees, threat model, and trust assumptions"
+---
+
+## Overview
+
+The Flash-Loan Router implements a multi-layered security model ensuring that only authorized solvers can execute settlements, settlement data remains immutable throughout execution, and no funds can be extracted outside the settlement flow.
+
+## Core Security Properties
+
+### 1. Solver Authentication
+
+Only registered CoW Protocol solvers can call `flashLoanAndSettle()`. Authentication is verified through the same authentication contract used by the CoW Settlement contract.
+
+```solidity
+modifier onlySolver() {
+    require(
+        settlementAuthentication.isSolver(msg.sender),
+        "Not a solver"
+    );
+    _;
+}
+```
+
+The solver registry is managed by CoW Protocol governance, ensuring that only trusted entities can initiate flash loan settlements.
+
+### 2. Data Integrity
+
+Settlement call data is hashed and verified at each borrower callback stage. Any attempt to modify the data between callbacks will cause the transaction to revert.
+
+```solidity
+function borrowerCallBack(bytes memory loansWithSettlement) external onlyPendingBorrower {
+    require(
+        loansWithSettlement.hash() == pendingDataHash,
+        "Data from borrower not matching"
+    );
+    borrowNextLoan(loansWithSettlement);
+}
+```
+
+### 3. Execution Guarantees
+
+Each call to `flashLoanAndSettle` results in exactly one call to `settle()`. The state machine transitions ensure this property:
+
+- **READY** -> Borrower addresses -> **SETTLING** -> **READY**
+- No state can be skipped or repeated
+
+### 4. Reentrancy Protection
+
+The `pendingBorrower` transient storage variable prevents nested or concurrent settlement execution. When the state is not READY, new settlements cannot begin.
+
+## Borrower Security
+
+Borrower adapters restrict fund access through two mechanisms:
+
+- **`onlyRouter` modifier**: Only the registered router can trigger flash loans
+- **`onlySettlementContract` modifier**: Only the settlement contract can set ERC-20 approvals
+
+The only way to move funds out of a borrower is through ERC-20 approvals set during settlement execution. This ensures borrowed funds can only be accessed within the settlement context.
+
+## Threat Model
+
+### Protected Against
+
+| Threat | Protection |
+| --- | --- |
+| Unauthorized settlement execution | Solver authentication via CoW Protocol's authenticator |
+| Settlement data tampering | Hash verification at each callback step |
+| Reentrancy attacks | `pendingBorrower` state check prevents nesting |
+| Out-of-order loan execution | `onlyPendingBorrower` validates expected caller |
+| Unauthorized fund access | `onlySettlementContract` restricts approvals |
+| Multiple settlements per call | State machine enforces single settlement |
+
+### Risk Factors
+
+<Warning>
+  While user funds in CoW Protocol remain safe, solvers should be aware that malicious tokens, lenders, or borrowers can modify chain state before the `settle()` call. This could cause settlements to revert or execute at unfavorable prices, affecting solver profitability but not user fund security.
+</Warning>
+
+Specific risks include:
+
+- **Malicious tokens**: Non-standard ERC-20 implementations may behave unpredictably
+- **Malicious lenders**: Could manipulate state during flash loan callbacks
+- **Malicious borrowers**: Could attempt to alter execution flow (mitigated by hash verification)
+
+## Trust Assumptions
+
+The Flash-Loan Router security model relies on the following trusted components:
+
+### Trusted (CoW Protocol)
+
+- **Settlement Contract**: Correctly executes settlements
+- **Authentication Contract**: Correctly identifies authorized solvers
+- **Solver Registry**: Managed by governance with appropriate access controls
+
+### Requires Verification (External)
+
+- **Flash Loan Providers**: Solvers should verify lender legitimacy through reputable sources
+- **ERC-20 Tokens**: Token contracts should be audited and well-known
+- **Borrower Adapters**: Each adapter should be reviewed for correct implementation
+
+## Function-Level Security
+
+### `flashLoanAndSettle()`
+
+- Restricted to registered solvers
+- Validates no concurrent settlement
+- Hashes and stores settlement data
+- Emits event for transparency
+
+### `borrowerCallBack()`
+
+- Only callable by the expected pending borrower
+- Validates data integrity via hash comparison
+- Continues sequential loan processing
+
+### `settle()`
+
+- Validates only `settle()` function selector
+- Executes settlement and requires success
+- Sets state to SETTLING
+
+### Borrower `approve()`
+
+- Only callable by the settlement contract
+- Sets ERC-20 approvals for fund management
+- Cannot be called outside settlement context
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Router Design" icon="route" href="/flash-loan-router/concepts/router-design">
+    Understand the router's execution flow
+  </Card>
+
+  <Card title="Contract Reference" icon="code" href="/flash-loan-router/contracts/flash-loan-router">
+    Explore the contract API
+  </Card>
+</CardGroup>

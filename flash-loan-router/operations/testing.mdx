@@ -1,0 +1,456 @@
+---
+title: "Testing Guide"
+description: "Comprehensive guide for testing Flash Loan Router contracts with Forge"
+---
+
+This guide covers testing the Flash Loan Router contracts using Foundry's Forge testing framework.
+
+## Running Tests
+
+The project uses Forge for comprehensive smart contract testing.
+
+### Basic Test Execution
+
+Run all tests in the project:
+
+```bash
+forge test
+```
+
+This command:
+
+- Compiles all contracts
+- Executes all test files in the `test/` directory
+- Generates gas benchmarks (saved to `snapshots/` folder)
+- Reports test results with gas usage
+
+### Verbose Output
+
+For detailed test execution information:
+
+```bash
+# Show test names and results
+forge test -v
+
+# Show test names and console logs
+forge test -vv
+
+# Show stack traces for failures
+forge test -vvv
+
+# Show all traces and setup
+forge test -vvvv
+```
+
+<Tip>
+  Use `-vv` to see `console.log()` output from your tests, which is helpful for debugging.
+</Tip>
+
+## Excluding E2E Tests
+
+Some tests require internet connectivity to interact with live networks. To run tests without these end-to-end tests:
+
+```bash
+forge test --no-match-path 'test/e2e/**/*'
+```
+
+This is useful for:
+
+- CI/CD pipelines without network access
+- Faster local development iterations
+- Running tests without external dependencies
+
+<Note>
+  E2E tests validate integration with real flash loan providers like Aave and Maker, so they should be run before production deployments.
+</Note>
+
+## Test Organization
+
+Tests are typically organized in the following structure:
+
+```
+test/
+├── e2e/                    # End-to-end integration tests
+│   ├── AaveFlashLoan.t.sol
+│   └── MakerFlashLoan.t.sol
+├── unit/                   # Unit tests
+│   ├── FlashLoanRouter.t.sol
+│   ├── AaveBorrower.t.sol
+│   └── ERC3156Borrower.t.sol
+└── mocks/                  # Mock contracts for testing
+```
+
+## Running Specific Tests
+
+### By Test File
+
+```bash
+forge test --match-path test/unit/FlashLoanRouter.t.sol
+```
+
+### By Test Contract
+
+```bash
+forge test --match-contract FlashLoanRouterTest
+```
+
+### By Test Function
+
+```bash
+forge test --match-test testFlashLoanAndSettle
+```
+
+### Combined Filters
+
+```bash
+forge test --match-path test/unit/* --match-test testSuccess
+```
+
+## Gas Benchmarking
+
+The repository includes automated gas benchmarking for different flash loan providers.
+
+### Generate Benchmarks
+
+Gas snapshots are automatically generated when running tests:
+
+```bash
+forge test
+```
+
+Benchmark data is saved to the `snapshots/` directory:
+
+```
+snapshots/
+├── FlashLoanRouterTest.snap
+├── AaveBorrowerTest.snap
+└── ERC3156BorrowerTest.snap
+```
+
+### View Gas Report
+
+Generate a detailed gas usage report:
+
+```bash
+forge test --gas-report
+```
+
+Example output:
+
+```
+| Contract          | Function           | min  | avg   | max   | calls |
+|-------------------|--------------------|------|-------|-------|-------|
+| FlashLoanRouter   | flashLoanAndSettle | 1234 | 12456 | 23456 | 45    |
+| AaveBorrower      | flashLoan          | 456  | 5678  | 9876  | 30    |
+```
+
+### Update Snapshots
+
+To update gas snapshots after contract changes:
+
+```bash
+forge snapshot
+```
+
+<Warning>
+  Review gas snapshot changes carefully before committing. Significant increases may indicate performance regressions.
+</Warning>
+
+## Test Configuration
+
+Test settings are configured in `foundry.toml`:
+
+```toml
+[profile.default]
+# Test-specific settings
+isolate = true  # Execute each call as independent transaction
+
+# File system permissions for tests
+fs_permissions = [
+  { access = "read", path = "./networks.json"}
+]
+```
+
+### Transaction Isolation
+
+The `isolate = true` setting ensures:
+
+- Each function call in a test is an independent transaction
+- Transient storage is cleared between calls
+- More accurate simulation of real-world behavior
+
+This is particularly important for testing transient storage features. See [Foundry issue #6908](https://github.com/foundry-rs/foundry/issues/6908) for details.
+
+## Writing Tests
+
+### Test Structure
+
+Foundry tests use Solidity and follow this pattern:
+
+```solidity
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity ^0.8;
+
+import {Test} from "forge-std/Test.sol";
+import {FlashLoanRouter} from "src/FlashLoanRouter.sol";
+
+contract FlashLoanRouterTest is Test {
+    FlashLoanRouter router;
+
+    function setUp() public {
+        // Deploy contracts and set up test environment
+        router = new FlashLoanRouter(settlementContract);
+    }
+
+    function testFlashLoanSuccess() public {
+        // Arrange: Set up test conditions
+
+        // Act: Execute the function being tested
+
+        // Assert: Verify expected outcomes
+        assertEq(actual, expected);
+    }
+
+    function testFlashLoanRevert() public {
+        // Test expected failures
+        vm.expectRevert("Error message");
+        router.flashLoanAndSettle(...);
+    }
+}
+```
+
+### Common Test Patterns
+
+<AccordionGroup>
+  <Accordion title="Testing with different users">
+    ```solidity
+    function testOnlySolverCanCall() public {
+        address solver = makeAddr("solver");
+        address attacker = makeAddr("attacker");
+
+        // Test as solver
+        vm.prank(solver);
+        router.flashLoanAndSettle(...);
+
+        // Test as attacker (should fail)
+        vm.prank(attacker);
+        vm.expectRevert("Not a solver");
+        router.flashLoanAndSettle(...);
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Testing events">
+    ```solidity
+    function testEmitsEvent() public {
+        vm.expectEmit(true, true, false, true);
+        emit FlashLoanExecuted(lender, token, amount);
+
+        router.flashLoanAndSettle(...);
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Fuzzing tests">
+    ```solidity
+    function testFlashLoanWithFuzzedAmount(uint256 amount) public {
+        vm.assume(amount > 0 && amount < type(uint128).max);
+
+        // Test with random amounts
+        router.flashLoanAndSettle(amount, ...);
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Testing with mocks">
+    ```solidity
+    function testWithMockLender() public {
+        MockLender mockLender = new MockLender();
+
+        // Set up mock behavior
+        mockLender.setFlashLoanFee(100);
+
+        // Test with mock
+        router.flashLoanAndSettle(mockLender, ...);
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Continuous Integration
+
+For CI environments, use the CI profile with strict settings:
+
+```bash
+FOUNDRY_PROFILE=ci forge test --no-match-path 'test/e2e/**/*'
+```
+
+The CI profile (defined in `foundry.toml`):
+
+```toml
+[profile.ci]
+deny_warnings = true  # Treat warnings as errors
+fuzz.seed = '0'      # Deterministic fuzzing
+```
+
+## Test Coverage
+
+Generate test coverage reports:
+
+```bash
+# Generate coverage
+forge coverage
+
+# Generate detailed LCOV report
+forge coverage --report lcov
+
+# View coverage in browser (requires lcov)
+genhtml lcov.info -o coverage
+open coverage/index.html
+```
+
+<Tip>
+  Aim for >90% code coverage, with 100% coverage for critical security functions.
+</Tip>
+
+## Debugging Tests
+
+### Debug Mode
+
+Run a specific test in debug mode:
+
+```bash
+forge test --match-test testFlashLoanAndSettle --debug
+```
+
+This opens an interactive debugger where you can:
+
+- Step through transactions
+- Inspect state variables
+- View stack traces
+- Examine memory and storage
+
+### Console Logging
+
+Add debug output to your tests:
+
+```solidity
+import {console} from "forge-std/console.sol";
+
+function testDebug() public {
+    console.log("Router address:", address(router));
+    console.log("Balance:", token.balanceOf(address(this)));
+
+    router.flashLoanAndSettle(...);
+
+    console.log("Final balance:", token.balanceOf(address(this)));
+}
+```
+
+Run with `-vv` to see console output:
+
+```bash
+forge test --match-test testDebug -vv
+```
+
+## Common Testing Scenarios
+
+<CardGroup cols={2}>
+  <Card title="Unit Tests" icon="vial">
+    Test individual contract functions in isolation:
+
+    - FlashLoanRouter authentication
+    - Borrower flash loan triggers
+    - Approval management
+    - Access control
+  </Card>
+
+  <Card title="Integration Tests" icon="puzzle-piece">
+    Test contract interactions:
+
+    - Router + Borrower coordination
+    - Multiple flash loans in sequence
+    - Settlement execution flow
+    - Token transfers
+  </Card>
+
+  <Card title="E2E Tests" icon="globe">
+    Test with real protocols:
+
+    - Aave flash loans
+    - Maker flash mints
+    - CoW Protocol settlements
+    - Multi-network deployments
+  </Card>
+
+  <Card title="Security Tests" icon="shield">
+    Test security properties:
+
+    - Reentrancy protection
+    - Access control validation
+    - Flash loan repayment
+    - Invariant testing
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+1. **Test organization**: Group related tests in descriptive contracts
+2. **Clear test names**: Use descriptive names like `testFlashLoanRevertsWithInsufficientApproval`
+3. **Setup isolation**: Each test should be independent and reproducible
+4. **Edge cases**: Test boundary conditions, zero values, and maximum amounts
+5. **Error cases**: Test expected failures with `vm.expectRevert()`
+6. **Gas optimization**: Monitor gas usage with benchmarks
+7. **Documentation**: Comment complex test scenarios
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Test fails in CI but passes locally">
+    Common causes:
+
+    - Different Forge versions
+    - Network-dependent tests not excluded
+    - Non-deterministic behavior (use fixed seeds)
+    - Missing environment variables
+
+    Solution: Use `FOUNDRY_PROFILE=ci` locally to reproduce CI environment.
+  </Accordion>
+
+  <Accordion title="Out of gas errors">
+    Increase the gas limit for tests:
+
+    ```solidity
+    function testHighGas() public {
+        vm.txGasPrice(1 gwei);
+        // Your test code
+    }
+    ```
+
+    Or in `foundry.toml`:
+
+    ```toml
+    gas_limit = 10000000
+    ```
+  </Accordion>
+
+  <Accordion title="Transient storage issues">
+    The `isolate = true` setting handles transient storage. If you encounter issues:
+
+    1. Verify `isolate = true` in `foundry.toml`
+    2. Update to latest Forge version
+    3. Check [Foundry issue #6908](https://github.com/foundry-rs/foundry/issues/6908)
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Deployment Guide" icon="rocket" href="/flash-loan-router/operations/deployment-guide">
+    Deploy tested contracts to networks
+  </Card>
+
+  <Card title="Development Setup" icon="code" href="/flash-loan-router/getting-started/installation">
+    Set up your development environment
+  </Card>
+</CardGroup>

@@ -1,0 +1,92 @@
+---
+title: "TypeScript SDK Overview"
+description: "Introduction to the CoW Protocol TypeScript SDK for creating and managing orders"
+---
+
+# TypeScript SDK Overview
+
+The CoW Protocol TypeScript SDK enables developers to interact with Gnosis Protocol v2 smart contracts. It allows you to:
+
+- Create and sign orders
+- Encode settlements
+- Manage interactions with the protocol
+- Handle order execution and validation
+
+## Installation
+
+```bash
+npm install @cowprotocol/contracts
+```
+
+## Core Modules
+
+The SDK organizes functionality into four core areas:
+
+<CardGroup cols={2}>
+  <Card title="Orders" href="/cow-contracts/sdk/orders">
+    Type-safe order creation and management with full validation
+  </Card>
+  <Card title="Signing" href="/cow-contracts/sdk/signing">
+    Multiple signing schemes: EIP-712, EthSign, EIP-1271, PreSign
+  </Card>
+  <Card title="Settlement" href="/cow-contracts/sdk/settlement">
+    Trade execution encoding and clearing price management
+  </Card>
+  <Card title="Interactions" href="/cow-contracts/sdk/interactions">
+    Pre, intra, and post-settlement contract interactions
+  </Card>
+</CardGroup>
+
+## Key Features
+
+- **Full TypeScript support** with type definitions for all interfaces, enums, and functions
+- **Built on ethers.js v5** with integrated provider/signer support
+- **EIP-712 domain configuration** for replay attack prevention
+- **Multiple balance types** (ERC20, Vault External, Vault Internal)
+- **Multiple order kinds** (Sell, Buy, Fill-or-Kill, Partially Fillable)
+
+## Quick Example
+
+```typescript
+import {
+  domain,
+  Order,
+  OrderKind,
+  signOrder,
+  SigningScheme,
+} from "@cowprotocol/contracts";
+import { ethers } from "ethers";
+
+// Configure domain
+const settlementDomain = domain(
+  1, // Ethereum mainnet
+  "0x9008D19f58AAbD9eD0D60971565AA8510560ab41"
+);
+
+// Create order
+const order: Order = {
+  sellToken: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+  buyToken: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+  sellAmount: ethers.utils.parseEther("1.0"),
+  buyAmount: ethers.utils.parseEther("2000"),
+  validTo: Math.floor(Date.now() / 1000) + 3600,
+  appData: ethers.constants.HashZero,
+  feeAmount: ethers.utils.parseEther("0.01"),
+  kind: OrderKind.SELL,
+  partiallyFillable: false,
+  receiver: ethers.constants.AddressZero,
+};
+
+// Sign order
+const wallet = new ethers.Wallet("YOUR_PRIVATE_KEY");
+const signature = await signOrder(
+  settlementDomain,
+  order,
+  wallet,
+  SigningScheme.EIP712
+);
+```
+
+<Note>
+The SDK is written in TypeScript and provides full type definitions for all interfaces, enums, and functions, ensuring IDE autocompletion and inline documentation.
+</Note>

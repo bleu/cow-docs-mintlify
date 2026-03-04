@@ -1,0 +1,221 @@
+---
+title: "Hook Struct"
+description: "Specification for the Hook struct used in HooksTrampoline"
+---
+
+The `Hook` struct defines the parameters for user-specified hooks that execute during CoW Protocol settlements.
+
+## Definition
+
+```solidity
+struct Hook {
+    address target;
+    bytes callData;
+    uint256 gasLimit;
+}
+```
+
+The struct is defined within `HooksTrampoline` and specifies the parameters needed for a single hook call execution.
+
+## Fields
+
+### target
+
+| Property | Value |
+|----------|-------|
+| Type | `address` |
+| Required | Yes |
+
+The recipient contract address for hook execution.
+
+**Requirements:**
+- Must be a valid Ethereum address
+- Can be an EOA or a contract
+- The call executes regardless of whether code exists at the address
+
+### callData
+
+| Property | Value |
+|----------|-------|
+| Type | `bytes` |
+| Required | Yes |
+
+The encoded function signature and parameters.
+
+**Requirements:**
+- Can be empty (for plain ETH transfers)
+- Should be ABI-encoded for function calls
+- Use `abi.encodeWithSignature()` or `abi.encodeWithSelector()` for encoding
+
+### gasLimit
+
+| Property | Value |
+|----------|-------|
+| Type | `uint256` |
+| Required | Yes |
+
+The maximum gas forwarded to the hook call.
+
+**Requirements:**
+- Must be sufficient for the hook execution
+- Accounts for the 63/64 gas forwarding rule
+- If insufficient gas remains, the trampoline reverts
+- Setting too high risks reversion; setting too low causes hook failure
+
+## Code Examples
+
+### Basic Hook Construction
+
+```solidity
+Hook memory hook = Hook({
+    target: 0x1234567890123456789012345678901234567890,
+    callData: abi.encodeWithSignature("afterTrade()"),
+    gasLimit: 50000
+});
+```
+
+### Hook with Parameters
+
+```solidity
+Hook memory hook = Hook({
+    target: rewardsContract,
+    callData: abi.encodeWithSignature(
+        "distributeRewards(address,uint256)",
+        trader,
+        rewardAmount
+    ),
+    gasLimit: 100000
+});
+```
+
+### Multiple Hooks Array
+
+```solidity
+Hook[] memory hooks = new Hook[](3);
+
+hooks[0] = Hook({
+    target: priceOracle,
+    callData: abi.encodeWithSignature("updatePrice(address)", token),
+    gasLimit: 75000
+});
+
+hooks[1] = Hook({
+    target: analyticsContract,
+    callData: abi.encodeWithSignature("recordTrade(uint256)", tradeVolume),
+    gasLimit: 50000
+});
+
+hooks[2] = Hook({
+    target: notificationContract,
+    callData: abi.encodeWithSignature("notifyTrader(address)", trader),
+    gasLimit: 30000
+});
+```
+
+### Empty Call Data Hook
+
+```solidity
+Hook memory hook = Hook({
+    target: receiverContract,
+    callData: bytes(""),
+    gasLimit: 21000
+});
+```
+
+### Using Selector for Efficiency
+
+```solidity
+Hook memory hook = Hook({
+    target: stakingContract,
+    callData: abi.encodeWithSelector(
+        IStaking.stake.selector,
+        stakeAmount,
+        duration
+    ),
+    gasLimit: 80000
+});
+```
+
+## Gas Limit Considerations
+
+<Note>
+Due to the EVM's 63/64 rule for gas forwarding, the actual available gas to the hook may be slightly less than specified.
+</Note>
+
+### Calculating Gas Limits
+
+1. **Estimate** execution cost through testing
+2. **Add 10-20% buffer** as a safety margin
+3. **Account for** the trampoline's `gasleft() * 63 / 64` calculation
+4. **Consider** that failed hooks consume the gas limit without blocking the settlement
+
+```solidity
+Hook memory hook = Hook({
+    target: myContract,
+    callData: abi.encodeWithSignature("myFunction()"),
+    gasLimit: 55000
+});
+```
+
+## Common Patterns
+
+### Pre-Settlement Hook
+
+```solidity
+Hook memory preHook = Hook({
+    target: userContract,
+    callData: abi.encodeWithSignature(
+        "beforeSettle(address,uint256)",
+        sellToken,
+        sellAmount
+    ),
+    gasLimit: 100000
+});
+```
+
+### Post-Settlement Hook
+
+```solidity
+Hook memory postHook = Hook({
+    target: userContract,
+    callData: abi.encodeWithSignature(
+        "afterSettle(address,uint256)",
+        buyToken,
+        buyAmount
+    ),
+    gasLimit: 100000
+});
+```
+
+### Conditional Hook
+
+```solidity
+Hook memory conditionalHook = Hook({
+    target: smartContract,
+    callData: abi.encodeWithSignature(
+        "handleTrade(address,address,uint256)",
+        sellToken,
+        buyToken,
+        amount
+    ),
+    gasLimit: 150000
+});
+```
+
+## Best Practices
+
+<Warning>
+A hook that reverts due to insufficient gas or errors will not block the settlement, but it also won't execute its intended logic.
+</Warning>
+
+1. **Test gas usage** on testnets, measuring actual consumption
+2. **Handle reverts gracefully** in hook target design
+3. **Minimize complexity** to reduce gas costs and failure risk
+4. **Validate inputs** in hook target parameters
+5. **Emit events** for tracking execution and debugging
+
+## Related
+
+- [HooksTrampoline Contract](/hooks-trampoline/api/hooks-trampoline) — Contract API reference
+- [Errors](/hooks-trampoline/api/errors) — Error types and handling
+- [Usage Guide](/hooks-trampoline/usage) — Implementation guide

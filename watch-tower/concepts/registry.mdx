@@ -1,0 +1,327 @@
+---
+title: "Registry and State Management"
+description: "Learn how the Watch Tower stores and manages conditional order state"
+---
+
+# Registry and State Management
+
+The Registry serves as the core state management system for the Watch Tower, maintaining a persistent record of all active conditional orders, their owners, and associated metadata across restarts.
+
+## What the Registry Stores
+
+The Registry maintains several critical pieces of information:
+
+### Owner and Order Mapping
+
+The primary data structure maps owners to their conditional orders:
+
+```typescript
+type OrdersPerOwner = Map<Owner, Set<ConditionalOrder>>;
+```
+
+This structure enables:
+
+* Efficient lookup of all orders for a given owner
+* Quick iteration over all owners and their orders
+* Easy removal of orders when they expire or are cancelled
+
+### Block Tracking
+
+The registry tracks the last processed block to ensure no events are missed:
+
+```typescript
+interface RegistryBlock {
+  number: number;
+  timestamp: number;
+  hash: string;
+}
+```
+
+<Info>
+Storing the block hash allows the Watch Tower to detect blockchain reorganizations and handle them appropriately.
+</Info>
+
+### Error Tracking
+
+The registry maintains a timestamp of the last error notification:
+
+```typescript
+lastNotifiedError: Date | null;
+```
+
+This prevents spamming notification channels (like Slack) with repeated errors.
+
+### Poll Results
+
+Each conditional order stores its most recent poll result:
+
+```typescript
+pollResult?: {
+  lastExecutionTimestamp: number;
+  blockNumber: number;
+  result: PollResult;
+};
+```
+
+This enables smart scheduling of when to check orders again based on their last state.
+
+## Registry Class Structure
+
+```typescript
+class Registry {
+  version = CONDITIONAL_ORDER_REGISTRY_VERSION;
+  ownerOrders: OrdersPerOwner;
+  storage: DBService;
+  network: string;
+  lastNotifiedError: Date | null;
+  lastProcessedBlock: RegistryBlock | null;
+
+  constructor(
+    ownerOrders: OrdersPerOwner,
+    storage: DBService,
+    network: string,
+    lastNotifiedError: Date | null,
+    lastProcessedBlock: RegistryBlock | null
+  ) {
+    this.ownerOrders = ownerOrders;
+    this.storage = storage;
+    this.network = network;
+    this.lastNotifiedError = lastNotifiedError;
+    this.lastProcessedBlock = lastProcessedBlock;
+  }
+
+  get numOrders(): number {
+    return getOrdersCountFromOrdersPerOwner(this.ownerOrders);
+  }
+
+  get numOwners(): number {
+    return this.ownerOrders.size;
+  }
+}
+```
+
+## Persistent Storage
+
+The Watch Tower uses LevelDB for persistent storage, providing:
+
+* **ACID guarantees**: All writes are atomic
+* **Key-value simplicity**: Fast lookups and updates
+* **Batch operations**: Multiple writes in a single transaction
+
+### Database Schema
+
+The following keys are stored in the database:
+
+**CONDITIONAL_ORDER_REGISTRY**
+
+Stores the serialized registry of all conditional orders:
+
+```typescript
+const key = `CONDITIONAL_ORDER_REGISTRY_${network}`;
+// Value: JSON.stringify(ownerOrders, replacer)
+```
+
+**CONDITIONAL_ORDER_REGISTRY_VERSION**
+
+Tracks the schema version for migrations:
+
+```typescript
+const key = `CONDITIONAL_ORDER_REGISTRY_VERSION_${network}`;
+// Value: "2"
+```
+
+**LAST_PROCESSED_BLOCK**
+
+Stores the last successfully processed block:
+
+```typescript
+const key = `LAST_PROCESSED_BLOCK_${network}`;
+// Value: JSON.stringify({ number, timestamp, hash })
+```
+
+**LAST_NOTIFIED_ERROR**
+
+Tracks the last error notification time:
+
+```typescript
+const key = `LAST_NOTIFIED_ERROR_${network}`;
+// Value: ISO date string
+```
+
+<Info>
+Each key is prefixed with the network name to support multiple chains in the same database.
+</Info>
+
+## Loading and Saving
+
+### Loading the Registry
+
+When the Watch Tower starts, it loads the registry from storage:
+
+```typescript
+const registry = await Registry.load(
+  storage,
+  network,
+  genesisBlockNumber
+);
+```
+
+The load process:
+
+1. Retrieves the serialized owner orders from the database
+2. Checks the registry version and applies migrations if needed
+3. Loads the last processed block and error notification time
+4. Updates metrics with the current state
+
+### Writing the Registry
+
+The registry is persisted after processing events or orders:
+
+```typescript
+await registry.write();
+```
+
+The write process uses batch operations for atomicity:
+
+```typescript
+const batch = this.storage
+  .getDB()
+  .batch()
+  .put(CONDITIONAL_ORDER_REGISTRY_VERSION_KEY, this.version.toString())
+  .put(CONDITIONAL_ORDER_REGISTRY_STORAGE_KEY, this.stringifyOrders());
+
+if (this.lastNotifiedError !== null) {
+  batch.put(LAST_NOTIFIED_ERROR_STORAGE_KEY, this.lastNotifiedError.toISOString());
+}
+
+if (this.lastProcessedBlock !== null) {
+  batch.put(LAST_PROCESSED_BLOCK_STORAGE_KEY, JSON.stringify(this.lastProcessedBlock));
+}
+
+await batch.write();
+```
+
+<Info>
+Batch writes ensure that all registry data is updated atomically. If any part fails, the entire write is rolled back.
+</Info>
+
+## Order Tracking Lifecycle
+
+### Adding Orders
+
+When a new conditional order is detected:
+
+1. Check if the owner already exists in the registry
+2. If the owner exists, add the order to their set (if not duplicate)
+3. If the owner is new, create a new entry with the order
+4. Update metrics for active orders and owners
+
+### Tracking Order State
+
+As orders are polled and submitted:
+
+* Poll results are stored on the order
+* Discrete order UIDs are mapped to their status (SUBMITTED or FILLED)
+* The last execution timestamp and block number are recorded
+
+### Removing Orders
+
+Orders are removed from the registry when:
+
+* They return `DONT_TRY_AGAIN` from polling
+* They expire based on their validity period
+* They are explicitly cancelled
+* A new merkle root is set for the owner (previous orders are flushed)
+
+## Order Expiration and Cleanup
+
+The Watch Tower implements several cleanup mechanisms:
+
+### Automatic Cleanup During Polling
+
+While processing orders each block:
+
+```typescript
+if (pollResult.result === PollResultCode.DONT_TRY_AGAIN) {
+  ordersPendingDelete.push(conditionalOrder);
+}
+```
+
+Orders marked for deletion are removed in batches to maintain performance.
+
+### Owner Cleanup
+
+After processing all orders, owners with no remaining orders are removed:
+
+```typescript
+for (const [owner, conditionalOrders] of ownerOrders) {
+  if (conditionalOrders.size === 0) {
+    ownerOrders.delete(owner);
+    metrics.activeOwnersTotal.labels(chainId.toString()).dec();
+  }
+}
+```
+
+### Merkle Root Updates
+
+When a new merkle root is set, old orders are flushed:
+
+```typescript
+function flush(owner: Owner, root: BytesLike, registry: Registry) {
+  const conditionalOrders = registry.ownerOrders.get(owner);
+
+  for (const conditionalOrder of conditionalOrders.values()) {
+    if (
+      conditionalOrder.proof !== null &&
+      conditionalOrder.proof.merkleRoot !== root
+    ) {
+      conditionalOrders.delete(conditionalOrder);
+    }
+  }
+}
+```
+
+<Info>
+This cleanup ensures that only the latest set of orders from a merkle tree are tracked, preventing conflicts.
+</Info>
+
+## Serialization
+
+The registry uses custom serialization to handle Map and Set objects:
+
+```typescript
+function replacer(_key: any, value: any) {
+  if (value instanceof Map) {
+    return {
+      dataType: "Map",
+      value: Array.from(value.entries()),
+    };
+  } else if (value instanceof Set) {
+    return {
+      dataType: "Set",
+      value: Array.from(value.values()),
+    };
+  }
+  return value;
+}
+
+function reviver(_key: any, value: any) {
+  if (typeof value === "object" && value !== null) {
+    if (value.dataType === "Map") {
+      return new Map(value.value);
+    } else if (value.dataType === "Set") {
+      return new Set(value.value);
+    }
+  }
+  return value;
+}
+```
+
+## Metrics and Monitoring
+
+The registry exposes metrics for monitoring:
+
+* `activeOwnersTotal`: Current number of owners with active orders
+* `activeOrdersTotal`: Current number of active conditional orders
+
+These metrics are updated whenever the registry is loaded or modified.

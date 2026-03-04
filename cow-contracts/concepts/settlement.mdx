@@ -1,0 +1,77 @@
+---
+title: "Settlement"
+description: "Understanding CoW Protocol's batch auction settlement mechanism with uniform clearing prices"
+---
+
+# Settlement
+
+CoW Protocol's settlement mechanism executes batch auctions at uniform clearing prices, contrasting with traditional sequential AMM processing where each trade affects the next price.
+
+## Uniform Pricing Model
+
+Unlike AMMs where each trade impacts the next price, CoW Protocol uses a **price vector** where all trades in a batch settle at predetermined rates, ensuring equitable execution across participants.
+
+This eliminates MEV opportunities within batches, as all participants receive the same price for the same token pair.
+
+## Core Settlement Function
+
+The `settle()` function batches multiple orders and executes them atomically with identical clearing prices:
+
+```solidity
+function settle(
+    IERC20[] calldata tokens,
+    uint256[] calldata clearingPrices,
+    GPv2Trade.Data[] calldata trades,
+    GPv2Interaction.Data[][3] calldata interactions
+) external nonReentrant onlySolver;
+```
+
+## Three-Phase Execution
+
+Settlement involves three interaction phases:
+
+1. **Pre-interactions** - Setup tasks (e.g., permit approvals, token wrapping)
+2. **Intra-interactions** - DEX trades for liquidity sourcing (e.g., Uniswap, Balancer swaps)
+3. **Post-interactions** - Cleanup operations (e.g., token unwrapping, fee distribution)
+
+## Price Verification
+
+Orders validate through the equation:
+
+```
+sellAmount * sellPrice >= buyAmount * buyPrice
+```
+
+This ensures that the clearing price respects the limit prices specified in each order.
+
+## Partial Fills
+
+Orders can be marked `partiallyFillable`, enabling gradual execution across multiple settlements for large positions. The `filledAmount` mapping tracks how much of each order has been filled, preventing overfilling.
+
+## Balancer Integration
+
+A `swap()` function provides optimized direct trading against Balancer V2 pools:
+
+```solidity
+function swap(
+    IVault.SingleSwap calldata swap,
+    GPv2Trade.Data calldata trade
+) external nonReentrant onlySolver returns (int256);
+```
+
+## Security Invariants
+
+The protocol enforces critical security invariants:
+
+| Invariant | Description |
+|-----------|-------------|
+| **Signature Verification** | All orders must have valid signatures |
+| **Balance Validation** | Users must have sufficient token balances |
+| **Limit Price Compliance** | Clearing prices must respect order limits |
+| **Overfill Prevention** | `filledAmount` mapping prevents double-execution |
+| **Atomicity** | Entire settlement reverts if any trade fails |
+| **Reentrancy Protection** | `nonReentrant` modifier on all entry points |
+
+<Warning>
+Interactions cannot target the VaultRelayer to prevent exploitation of user token approvals.
+</Warning>

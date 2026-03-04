@@ -1,0 +1,60 @@
+---
+title: "Stop Loss"
+description: "Oracle-based conditional orders that trigger when asset prices fall below a specified threshold."
+---
+
+# Stop Loss Orders
+
+Stop Loss orders are oracle-based conditional orders that automatically trigger when asset prices fall below a specified threshold, providing automated risk management through Chainlink-compatible price feeds.
+
+## Core Mechanism
+
+The system monitors price ratios between two tokens. When the calculated exchange rate reaches or falls below the strike price, the order becomes executable:
+
+```
+(sellTokenPrice / buyTokenPrice) <= strike
+```
+
+## Essential Data Structure
+
+| Parameter | Description |
+|-----------|-------------|
+| `sellToken` / `buyToken` | Token pair addresses |
+| `sellAmount` / `buyAmount` | Trade amounts based on order type |
+| `sellTokenPriceOracle` | Chainlink-compatible price oracle for sell token |
+| `buyTokenPriceOracle` | Chainlink-compatible price oracle for buy token |
+| `strike` | Exchange rate threshold (18 decimals) that activates execution |
+| `validTo` | Expiration timestamp |
+| `maxTimeSinceLastOracleUpdate` | Staleness limit for oracle data |
+
+## Critical Oracle Requirements
+
+Both oracles must use identical quote currencies. Price feeds undergo validation checks for:
+
+- Positivity
+- Freshness within the specified time window
+- Decimal normalization to 18 decimals
+
+## Order Execution Flow
+
+The contract performs sequential validation:
+
+1. Confirms order hasn't expired
+2. Retrieves current oracle prices
+3. Validates both prices exceed zero
+4. Checks oracle data freshness
+5. Normalizes prices to 18 decimals
+6. Compares current rate against strike
+7. Returns executable `GPv2Order` if all conditions pass
+
+## Practical Examples
+
+- **Protecting GNO positions** at $200
+- **Selling up to 50 ETH** with partial fills at $2000
+- **Cross-asset trading** (WBTC for ETH at 15:1 ratio)
+
+Each demonstrates different parameter configurations for real-world scenarios.
+
+<Warning>
+Stop loss orders provide one-time protection. After execution, you'll need to create a new order for continued protection.
+</Warning>

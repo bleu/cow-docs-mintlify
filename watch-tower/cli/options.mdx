@@ -1,0 +1,171 @@
+---
+title: "CLI Options Reference"
+description: "Complete reference for all Watch Tower command-line options and environment variables"
+---
+
+# CLI Options Reference
+
+Complete reference for all Watch Tower command-line options and environment variables.
+
+This page provides a comprehensive reference for all CLI options available in the CoW Protocol Watch Tower.
+
+## Global options
+
+These options are available across multiple commands.
+
+### Database options
+
+**--database-path** (string, default: `./database`)
+
+Path to the database directory where the Watch Tower stores its state.
+
+- **Environment variable:** `DATABASE_PATH`
+- **Available in:** `run`, `dump-db`
+
+### Logging options
+
+**--log-level** (string, default: `INFO`)
+
+Log level for the Watch Tower. Controls the verbosity of logging output.
+
+- **Possible values:** `ERROR`, `WARN`, `INFO`, `DEBUG`, `TRACE`
+- **Environment variable:** `LOG_LEVEL`
+- **Available in:** `run`, `dump-db`
+
+## Run command options
+
+These options are specific to the `run` command.
+
+### Configuration
+
+**--config-path** (string, default: `./config.json`)
+
+Path to the chain configuration file. This file defines the networks to monitor and their settings.
+
+- **Environment variable:** `CONFIG_PATH`
+
+**--only-owner** (string[])
+
+Addresses of contracts or safes to monitor conditional orders for. Can be specified multiple times to monitor multiple owners. Addresses must be valid hex-prefixed Ethereum addresses.
+
+Example: `--only-owner 0x1234... --only-owner 0x5678...`
+
+### Execution mode
+
+**--dry-run** (boolean, default: `false`)
+
+Run in dry-run mode without publishing orders to the OrderBook API. The Watch Tower will process orders but not submit them.
+
+- **Environment variable:** `DRY_RUN`
+
+**--one-shot** (boolean, default: `false`)
+
+Run the Watch Tower once and exit immediately. Useful for testing or cron-based execution.
+
+- **Environment variable:** `ONE_SHOT`
+
+### API options
+
+**--disable-api** (boolean, default: `false`)
+
+Disable the REST API server. When disabled, the Watch Tower runs without the HTTP API interface.
+
+- **Environment variable:** `DISABLE_API`
+
+**--api-port** (number, default: `8080`)
+
+Port for the REST API server. Only applicable when the API is enabled.
+
+- **Environment variable:** `API_PORT`
+
+### Notification options
+
+**--silent** (boolean, default: `false`)
+
+Disable notifications and use local logging only. Conflicts with `--slack-webhook`.
+
+- **Environment variable:** `DISABLE_NOTIFICATIONS`
+
+**--slack-webhook** (string)
+
+Slack webhook URL for sending notifications. Cannot be used with `--silent`.
+
+- **Environment variable:** `SLACK_WEBHOOK`
+
+## Dump database command options
+
+These options are specific to the `dump-db` command.
+
+**--chain-id** (number, required)
+
+Chain ID to dump from the database. This is a required parameter.
+
+Examples: `1` (Ethereum mainnet), `100` (Gnosis Chain), `11155111` (Sepolia)
+
+## Environment variables
+
+All options can be configured using environment variables. The table below shows the mapping between CLI options and environment variables:
+
+| CLI Option        | Environment Variable    | Default Value   |
+| ----------------- | ----------------------- | --------------- |
+| `--config-path`   | `CONFIG_PATH`           | `./config.json` |
+| `--database-path` | `DATABASE_PATH`         | `./database`    |
+| `--log-level`     | `LOG_LEVEL`             | `INFO`          |
+| `--dry-run`       | `DRY_RUN`               | `false`         |
+| `--one-shot`      | `ONE_SHOT`              | `false`         |
+| `--disable-api`   | `DISABLE_API`           | `false`         |
+| `--api-port`      | `API_PORT`              | `8080`          |
+| `--silent`        | `DISABLE_NOTIFICATIONS` | `false`         |
+| `--slack-webhook` | `SLACK_WEBHOOK`         | -               |
+
+### Using environment variables
+
+You can use a `.env` file or export variables directly:
+
+```bash
+# .env file
+CONFIG_PATH=./my-config.json
+DATABASE_PATH=./my-database
+LOG_LEVEL=DEBUG
+DRY_RUN=true
+API_PORT=3000
+SLACK_WEBHOOK=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+```
+
+Or export them in your shell:
+
+```bash
+export CONFIG_PATH=./my-config.json
+export DATABASE_PATH=./my-database
+export LOG_LEVEL=DEBUG
+
+watch-tower run
+```
+
+## Option precedence
+
+When the same option is specified in multiple ways, the following precedence applies (highest to lowest):
+
+1. Command-line arguments
+2. Environment variables
+3. Default values
+
+## Type validation
+
+### Address validation
+
+The `--only-owner` option validates that addresses are:
+
+- Valid hexadecimal strings
+- Prefixed with `0x`
+- Valid Ethereum addresses (checksummed)
+
+### Number validation
+
+Numeric options like `--api-port` and `--chain-id` must be valid integers.
+
+## Conflicts
+
+The following options conflict with each other and cannot be used together:
+
+- `--silent` and `--slack-webhook`: You cannot disable notifications while also providing a Slack webhook.

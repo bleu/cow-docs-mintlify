@@ -1,0 +1,143 @@
+---
+title: "FlashLoanRouter"
+description: "Core solver contract that coordinates flash loans with CoW Protocol settlements"
+---
+
+## Overview
+
+The `FlashLoanRouter` is a solver contract that coordinates flash loans with CoW Protocol settlements. It serves as the central entry point for requesting flash loans and executing settlements atomically.
+
+The router manages three primary actors:
+- **Solvers**: Initiate settlements with flash loan specifications
+- **Borrower contracts**: Adapt protocol-specific flash loan mechanics
+- **Settlement contract**: Executes the final CoW Protocol settlement
+
+## Contract Details
+
+- **Source**: `src/FlashLoanRouter.sol`
+- **License**: GPL-3.0-or-later
+- **Solidity**: ^0.8.28
+- **Address**: `0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69` (all networks)
+
+## State Variables
+
+### Immutable
+
+| Variable | Type | Description |
+| --- | --- | --- |
+| `settlementContract` | `ICowSettlement` | CoW Protocol settlement contract |
+| `settlementAuthentication` | `ICowAuthentication` | Solver authentication contract |
+
+### Transient Storage
+
+| Variable | Type | Description |
+| --- | --- | --- |
+| `pendingBorrower` | `IBorrower` | Current state: READY, borrower address, or SETTLING |
+| `pendingDataHash` | `bytes32` | Hash of remaining loans and settlement data |
+
+## Functions
+
+### flashLoanAndSettle
+
+```solidity
+function flashLoanAndSettle(
+    Loan.Data[] calldata loans,
+    bytes calldata settlement
+) external onlySolver
+```
+
+Main entry point for solvers. Requests all specified flash loans sequentially, then executes the settlement.
+
+**Parameters:**
+- `loans`: Array of flash loan specifications (amount, token, lender, borrower)
+- `settlement`: ABI-encoded call data for `settle()` on the CoW Settlement contract
+
+**Requirements:**
+- Caller must be a registered solver
+- No other settlement can be in progress
+- Settlement data must encode a valid `settle()` call
+
+**Emits:** `Settlement(address solver)`
+
+### borrowerCallBack
+
+```solidity
+function borrowerCallBack(bytes memory loansWithSettlement) external onlyPendingBorrower
+```
+
+Called by borrower contracts after receiving flash loan proceeds. Validates data integrity and continues processing.
+
+**Parameters:**
+- `loansWithSettlement`: Encoded remaining loans and settlement data (must match stored hash)
+
+**Requirements:**
+- Caller must be the expected pending borrower
+- Data hash must match the stored `pendingDataHash`
+
+### settlementContract (view)
+
+```solidity
+function settlementContract() external view returns (ICowSettlement)
+```
+
+Returns the CoW Protocol settlement contract address.
+
+### settlementAuthentication (view)
+
+```solidity
+function settlementAuthentication() external view returns (ICowAuthentication)
+```
+
+Returns the solver authentication contract address.
+
+## Events
+
+### Settlement
+
+```solidity
+event Settlement(address indexed solver);
+```
+
+Emitted when a solver initiates a flash loan settlement.
+
+## Modifiers
+
+### onlySolver
+
+Restricts function access to registered CoW Protocol solvers verified through the settlement authenticator.
+
+### onlyPendingBorrower
+
+Restricts callback access to the borrower contract that the router is currently expecting a callback from.
+
+## Security
+
+- **Reentrancy prevention**: `pendingBorrower` transient storage prevents concurrent settlements
+- **Data integrity**: Hash comparison validates callback data has not been tampered with
+- **Settlement validation**: Only the `settle()` function selector is allowed
+- **Sequential processing**: Loans must be processed in the specified order
+
+<Warning>
+  The router does not validate that flash loan proceeds are available for the settlement. It is the solver's responsibility to ensure that loan parameters are correct and that the settlement will succeed.
+</Warning>
+
+## Integration
+
+Solvers integrating with the FlashLoanRouter must:
+
+1. Be registered in the settlement authenticator
+2. Encode settlement data as a valid `settle()` call
+3. Specify correct loan parameters (lender, borrower, token, amount)
+4. Ensure settlement logic includes repayment of all borrowed amounts plus fees
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="AaveBorrower" icon="coins" href="/flash-loan-router/contracts/aave-borrower">
+    Aave flash loan adapter
+  </Card>
+
+  <Card title="ERC3156Borrower" icon="file-contract" href="/flash-loan-router/contracts/erc3156-borrower">
+    ERC-3156 flash loan adapter
+  </Card>
+</CardGroup>

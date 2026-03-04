@@ -1,0 +1,196 @@
+---
+title: "Logging Configuration"
+description: "Configure logging levels and module-specific logging for Watch Tower"
+---
+
+# Logging Configuration
+
+Configure logging levels and module-specific logging for Watch Tower.
+
+The Watch Tower provides flexible logging configuration through the `LOG_LEVEL` environment variable. You can control both global and module-specific logging levels.
+
+## Log levels
+
+The following log levels are available, from most to least verbose:
+
+* `TRACE` - Most detailed logging
+* `DEBUG` - Debug information
+* `INFO` - Informational messages
+* `WARN` - Warning messages
+* `ERROR` - Error messages only
+
+## Setting the log level
+
+Set the `LOG_LEVEL` environment variable to control logging verbosity:
+
+<CodeGroup>
+  ```bash Default (INFO)
+  LOG_LEVEL=INFO yarn cli run --config-path ./config.json
+  ```
+
+  ```bash Warnings only
+  LOG_LEVEL=WARN yarn cli run --config-path ./config.json
+  ```
+
+  ```bash Debug mode
+  LOG_LEVEL=DEBUG yarn cli run --config-path ./config.json
+  ```
+
+  ```bash Full trace
+  LOG_LEVEL=TRACE yarn cli run --config-path ./config.json
+  ```
+</CodeGroup>
+
+## Module-specific logging
+
+You can override the log level for specific modules using comma-separated values:
+
+```bash
+LOG_LEVEL=WARN,chainContext=INFO
+```
+
+This sets the global log level to `WARN`, but enables `INFO` level logging for the `chainContext` module.
+
+### Multiple module overrides
+
+Specify multiple module overrides separated by commas:
+
+```bash
+LOG_LEVEL=WARN,chainContext=INFO,_placeOrder=TRACE
+```
+
+In this example:
+
+* Global log level: `WARN`
+* `chainContext` module: `INFO`
+* `_placeOrder` module: `TRACE`
+
+## Regex patterns for logger names
+
+Module names can be regex patterns, allowing fine-grained control over logging:
+
+### Pattern matching examples
+
+<CodeGroup>
+  ```bash Match specific block processing
+  # Matches: chainContext:processBlock:100:30212964
+  # Matches: chainContext:processBlock:1:30212964
+  # Matches: chainContext:processBlock:5:30212964
+  LOG_LEVEL='chainContext:processBlock:(\d{1,3}):(\d*)$=DEBUG'
+  ```
+
+  ```bash Match specific block numbers
+  # Matches: chainContext:processBlock:100:30212964
+  # Matches: chainContext:processBlock:1:30212964
+  # But not: chainContext:processBlock:5:30212964
+  LOG_LEVEL='chainContext:processBlock:(100|1):(\d*)$=DEBUG'
+  ```
+
+  ```bash Match module prefix
+  # Matches any logger starting with "chainContext"
+  LOG_LEVEL='^chainContext=INFO'
+  ```
+
+  ```bash Match order placement
+  # Matches loggers starting with "checkForAndPlaceOrder"
+  LOG_LEVEL='^checkForAndPlaceOrder=WARN'
+  ```
+</CodeGroup>
+
+<Info>
+Use single quotes around the `LOG_LEVEL` value when using regex patterns to prevent shell interpretation of special characters.
+</Info>
+
+## Complex logging configuration
+
+Combine multiple techniques for precise control:
+
+```bash
+LOG_LEVEL="WARN,commands=DEBUG,^checkForAndPlaceOrder=WARN,^chainContext=INFO,_checkForAndPlaceOrder:1:=INFO" yarn cli
+```
+
+This configuration:
+
+* Sets global log level to `WARN`
+* Enables `DEBUG` for `commands` module
+* Sets `WARN` for loggers starting with `checkForAndPlaceOrder`
+* Sets `INFO` for loggers starting with `chainContext`
+* Sets `INFO` for `_checkForAndPlaceOrder:1:` loggers
+
+## Using with Docker
+
+When running the Watch Tower in Docker, pass the `LOG_LEVEL` environment variable:
+
+<CodeGroup>
+  ```bash Docker with environment variable
+  docker run --rm -it \
+    -e LOG_LEVEL=WARN \
+    -v "$(pwd)/config.json:/config.json" \
+    ghcr.io/cowprotocol/watch-tower:latest \
+    run --config-path /config.json
+  ```
+
+  ```bash Docker with module-specific logging
+  docker run --rm -it \
+    -e LOG_LEVEL="WARN,chainContext=INFO" \
+    -v "$(pwd)/config.json:/config.json" \
+    ghcr.io/cowprotocol/watch-tower:latest \
+    run --config-path /config.json
+  ```
+</CodeGroup>
+
+## Using with environment files
+
+Create a `.env` file for persistent configuration:
+
+```ini
+LOG_LEVEL=WARN
+```
+
+Or with module-specific logging:
+
+```ini
+LOG_LEVEL=WARN,chainContext=INFO,_placeOrder=TRACE
+```
+
+Then load it with Docker:
+
+```bash
+docker run --rm -it \
+  --env-file .env \
+  -v "$(pwd)/config.json:/config.json" \
+  ghcr.io/cowprotocol/watch-tower:latest \
+  run --config-path /config.json
+```
+
+## Common logging patterns
+
+<CodeGroup>
+  ```bash Production (errors and warnings only)
+  LOG_LEVEL=WARN
+  ```
+
+  ```bash Development (verbose)
+  LOG_LEVEL=DEBUG
+  ```
+
+  ```bash Debugging chain context
+  LOG_LEVEL=WARN,chainContext=DEBUG
+  ```
+
+  ```bash Debugging order placement
+  LOG_LEVEL=WARN,_placeOrder=TRACE,checkForAndPlaceOrder=DEBUG
+  ```
+
+  ```bash Quiet mode (errors only)
+  LOG_LEVEL=ERROR
+  ```
+</CodeGroup>
+
+## Tips
+
+* Start with `WARN` in production to reduce log volume
+* Use `DEBUG` or `TRACE` when troubleshooting specific issues
+* Module-specific logging helps debug particular components without flooding logs
+* Regex patterns are powerful but require careful escaping in shell commands
+* Remember to quote complex `LOG_LEVEL` values containing special characters

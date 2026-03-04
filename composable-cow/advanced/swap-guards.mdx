@@ -1,0 +1,45 @@
+---
+title: "Swap Guards"
+description: "Implement the ISwapGuard interface to restrict which conditional orders can settle via CoW Protocol."
+---
+
+# Swap Guards
+
+Swap Guards implement the `ISwapGuard` interface to restrict which conditional orders can settle via CoW Protocol. They provide an additional layer of security and control over conditional orders by validating orders during settlement verification.
+
+## How Verification Works
+
+During order processing, ComposableCoW checks if an owner has configured a guard. If present, the guard's `verify` function must return `true` to permit settlement. The verification receives four parameters:
+
+| Parameter | Description |
+|-----------|-------------|
+| `order` | Complete `GPv2Order.Data` struct with all settlement details |
+| `ctx` | Context identifier (`bytes32(0)` for merkle trees or `H(params)` for single orders) |
+| `params` | Conditional order configuration data |
+| `offchainInput` | Dynamic off-chain data for order generation |
+
+If verification fails, settlement triggers a `SwapGuardRestricted` error.
+
+## Implementation Pattern
+
+Guards should extend `BaseSwapGuard` for ERC165 interface support. The `ReceiverLock` example demonstrates restricting orders so funds return only to the owner (receiver address `0x0` in GPv2 terminology means "self").
+
+## Practical Applications
+
+- Preventing fund transfers to external addresses
+- Restricting trading to whitelisted token pairs
+- Enforcing time-window limitations
+- Setting transaction size or volume caps
+
+## Important Constraints
+
+Guard implementations must be:
+
+- **Gas-efficient** since they execute during signature verification
+- **Deterministic** providing the same results for the same inputs (they execute as view functions)
+- They cannot reliably depend on mutable external state
+
+## Setup and Management
+
+- Activate guards via `setSwapGuard()`
+- Disable them by passing `address(0)` to the same function

@@ -1,0 +1,83 @@
+---
+title: "GPv2VaultRelayer API"
+description: "Vault relayer contract API for Balancer Vault interactions and token transfers"
+---
+
+# GPv2VaultRelayer API
+
+The `GPv2VaultRelayer` contract serves as an intermediary between CoW Protocol's settlement system and Balancer Vault, facilitating fund transfers and swap execution with protocol fees.
+
+## State Variables
+
+```solidity
+address public immutable creator;
+IVault public immutable vault;
+```
+
+## Access Control
+
+```solidity
+modifier onlyCreator {
+    require(msg.sender == creator, "GPv2: not creator");
+    _;
+}
+```
+
+All external functions are restricted to the creator (settlement contract) through the `onlyCreator` modifier.
+
+## Functions
+
+### transferFromAccounts
+
+Moves sell token amounts from user accounts to the settlement contract.
+
+```solidity
+function transferFromAccounts(
+    GPv2Transfer.Data[] calldata transfers
+) external onlyCreator;
+```
+
+Supports three balance types:
+
+| Balance Type | Description |
+|-------------|-------------|
+| **ERC20** | Standard ERC20 token transfers |
+| **External** | Balancer Vault external balances |
+| **Internal** | Balancer Vault internal balances |
+
+### batchSwapWithFee
+
+Executes multi-step swaps through Balancer pools and simultaneously collects protocol fees.
+
+```solidity
+function batchSwapWithFee(
+    IVault.BatchSwapStep[] calldata swaps,
+    IERC20[] calldata tokens,
+    IVault.FundManagement calldata funds,
+    int256[] calldata limits,
+    uint256 deadline,
+    GPv2Transfer.Data calldata feeTransfer
+) external onlyCreator returns (int256[] memory tokenDeltas);
+```
+
+**Parameters:**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `swaps` | `BatchSwapStep[]` | Batch swap steps to execute |
+| `tokens` | `IERC20[]` | Token addresses involved |
+| `funds` | `FundManagement` | Fund management configuration |
+| `limits` | `int256[]` | Maximum token amounts |
+| `deadline` | `uint256` | Transaction deadline |
+| `feeTransfer` | `Transfer.Data` | Fee collection transfer |
+
+**Returns:** `int256[]` - Token deltas indicating amounts sent and received.
+
+The function handles both sell orders (`GIVEN_IN`) and buy orders (`GIVEN_OUT`) swap kinds.
+
+## Security
+
+- Access restricted exclusively to the creator through `onlyCreator`
+- Unauthorized calls revert with `"GPv2: not creator"`
+- Immutable state prevents tampering
+- Users never interact with this contract directly

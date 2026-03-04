@@ -1,0 +1,156 @@
+---
+title: "HooksTrampoline Contract"
+description: "Complete API reference for the HooksTrampoline contract"
+---
+
+The `HooksTrampoline` contract provides a secure execution environment for user-specified hooks during CoW Protocol settlements. It ensures hooks are executed in an unprivileged context and prevents hook failures from blocking settlements.
+
+## Contract Overview
+
+```solidity
+contract HooksTrampoline {
+    address public immutable settlement;
+
+    constructor(address settlement_);
+    function execute(Hook[] calldata hooks) external onlySettlement;
+}
+```
+
+## Constructor
+
+Initializes the trampoline with the CoW Protocol settlement contract address.
+
+```solidity
+constructor(address settlement_)
+```
+
+### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `settlement_` | `address` | The address of the CoW Protocol settlement contract. This address will be the only caller authorized to execute hooks through this trampoline. |
+
+### Example
+
+```solidity
+// Deploy trampoline for a specific settlement contract
+address settlementAddress = 0x9008D19f58AAbD9eD0D60971565AA8510560ab41;
+HooksTrampoline trampoline = new HooksTrampoline(settlementAddress);
+```
+
+## State Variables
+
+### settlement
+
+```solidity
+address public immutable settlement
+```
+
+The address of the CoW Protocol settlement contract. This is set during construction and cannot be changed.
+
+| Property | Value |
+|----------|-------|
+| Type | `address` |
+| Visibility | `public` |
+| Mutability | `immutable` |
+
+Returns the address of the authorized settlement contract. Only this address can call the `execute()` function.
+
+## Functions
+
+### execute
+
+Executes an array of user-specified hooks during a CoW Protocol settlement.
+
+```solidity
+function execute(Hook[] calldata hooks) external onlySettlement
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `hooks` | `Hook[]` | An array of `Hook` structs to execute sequentially. Each hook specifies a target address, call data, and gas limit. See [Hook Struct](/hooks-trampoline/api/hook-struct) for details. |
+
+#### Behavior
+
+- **Access Control**: Can only be called by the settlement contract (enforced by `onlySettlement` modifier)
+- **Gas Management**: Each hook is called with its specified gas limit using the formula `forwardedGas = gasleft() * 63 / 64`
+- **Revert Handling**: Hook failures do NOT cause the entire transaction to revert, protecting the settlement
+- **Sequential Execution**: Hooks execute in array order
+- **Gas Limit Verification**: If insufficient gas remains for a hook's gas limit, the function reverts by wasting all remaining gas
+
+#### Gas Limit Notes
+
+<Note>
+The trampoline attempts to forward exactly the specified gas limit to each hook, but may forward slightly less due to gas overhead between measurement and execution.
+</Note>
+
+<Warning>
+If a hook's gas limit exceeds available gas (accounting for the 63/64 forwarding rule), the transaction will revert by consuming all remaining gas. This is necessary for proper gas estimation with some node implementations.
+</Warning>
+
+#### Example
+
+```solidity
+// Called by settlement contract during order execution
+Hook[] memory hooks = new Hook[](2);
+
+hooks[0] = Hook({
+    target: 0x1234...,
+    callData: abi.encodeWithSignature("beforeSettle()"),
+    gasLimit: 50000
+});
+
+hooks[1] = Hook({
+    target: 0x5678...,
+    callData: abi.encodeWithSignature("afterSettle(uint256)", amount),
+    gasLimit: 100000
+});
+
+trampoline.execute(hooks);
+```
+
+## Modifiers
+
+### onlySettlement
+
+```solidity
+modifier onlySettlement()
+```
+
+Ensures that `msg.sender` is the CoW Protocol settlement contract. Methods with this modifier are guaranteed to only be called as part of a CoW Protocol settlement.
+
+#### Behavior
+
+- Checks if `msg.sender == settlement`
+- Reverts with `NotASettlement()` if the check fails
+- Allows function execution to proceed if the check passes
+
+#### Example
+
+```solidity
+// This call succeeds only if made from settlement contract
+trampoline.execute(hooks); // From settlement: OK
+trampoline.execute(hooks); // From other address: reverts with NotASettlement()
+```
+
+## Security Features
+
+### Unprivileged Execution
+
+Hooks execute in the trampoline's context, not the settlement contract's context. This prevents hooks from accessing privileged settlement contract state or functionality.
+
+### Revert Isolation
+
+Hook reverts are caught and ignored, preventing a single malicious or badly configured hook from blocking an entire settlement batch.
+
+### Gas Limit Enforcement
+
+Each hook has a specified gas limit, preventing runaway execution from consuming excessive gas or causing out-of-gas errors for subsequent operations.
+
+## Related
+
+- [Hook Struct](/hooks-trampoline/api/hook-struct) — Structure specification for hooks
+- [Errors](/hooks-trampoline/api/errors) — Error types and handling
+- [Usage Guide](/hooks-trampoline/usage) — Guide to implementing hooks

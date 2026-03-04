@@ -1,0 +1,93 @@
+---
+title: "Benchmarking"
+description: "Tools and techniques for gas benchmarking and performance tracing of CoW Protocol smart contracts"
+---
+
+# Benchmarking
+
+Tools and techniques for measuring and optimizing gas consumption in CoW Protocol smart contracts.
+
+## Benchmark Commands
+
+### Full Suite
+
+Execute the complete benchmark suite across settlement scenarios:
+
+```bash
+yarn bench
+```
+
+### Execution Tracing
+
+Generate detailed execution traces identifying gas consumption patterns:
+
+```bash
+yarn bench:trace
+```
+
+Tracing reveals:
+- Call stack hierarchy
+- Per-operation gas consumption
+- Storage operations
+- External calls
+- Event emission expenses
+
+### Version Comparison
+
+Compare performance between code versions:
+
+```bash
+yarn bench:compare [ref]
+```
+
+The comparison script performs five steps:
+
+1. Stash current changes
+2. Benchmark current code
+3. Check out reference commit
+4. Benchmark reference code
+5. Generate differential report
+
+**Interpreting results:**
+- Positive values indicate regressions (increased gas)
+- Negative values show improvements (decreased gas)
+
+### Single Scenario
+
+Test individual settlement scenarios:
+
+```bash
+yarn bench:single
+```
+
+## Optimization Strategy
+
+Follow a structured five-phase approach:
+
+1. **Establish baseline** - Measure current gas consumption
+2. **Identify hotspots** - Use tracing to find expensive operations
+3. **Implement improvements** - Target specific gas-heavy operations
+4. **Verify gains** - Compare against baseline measurements
+5. **Comprehensive testing** - Ensure correctness is maintained
+
+## Compiler Configuration
+
+The project compiler prioritizes execution costs:
+
+| Setting | Value | Rationale |
+|---------|-------|-----------|
+| Optimizer | Enabled | Gas efficiency |
+| Optimizer Runs | 1,000,000 | Favor execution over deployment |
+| EVM Version | Cancun | Latest EVM features |
+
+## Best Practices
+
+- Ensure clean builds without coverage instrumentation before benchmarking
+- Use a stable environment (same machine, similar load)
+- Run multiple iterations for consistent results
+- Compare against known reference points
+- Document significant performance changes
+
+<Warning>
+Coverage instrumentation alters contract bytecode and gas costs. Always benchmark against clean, non-instrumented builds.
+</Warning>

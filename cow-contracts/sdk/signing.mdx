@@ -1,0 +1,135 @@
+---
+title: "Signing"
+description: "Signing mechanisms for CoW Protocol orders with multiple scheme support"
+---
+
+# Signing
+
+CoW Protocol supports four distinct signing approaches for order authorization.
+
+## Signing Schemes
+
+```typescript
+enum SigningScheme {
+  EIP712 = 0,   // Structured data signing (recommended)
+  ETHSIGN = 1,  // Legacy eth_sign RPC
+  EIP1271 = 2,  // Smart contract signatures
+  PRESIGN = 3,  // On-chain pre-approval
+}
+```
+
+### EIP-712 (Recommended)
+
+Shows users a structured representation of the order data in their wallet, making it clear what they are signing.
+
+```typescript
+const signature = await signOrder(
+  settlementDomain,
+  order,
+  wallet,
+  SigningScheme.EIP712
+);
+```
+
+### EthSign
+
+Available for legacy wallet compatibility but provides minimal context to users about transaction details.
+
+```typescript
+const signature = await signOrder(
+  settlementDomain,
+  order,
+  wallet,
+  SigningScheme.ETHSIGN
+);
+```
+
+### EIP-1271
+
+For smart contract wallets like multi-signature systems. Enables verification through contract-based signature validation.
+
+```typescript
+const eip1271Sig: Eip1271Signature = {
+  scheme: SigningScheme.EIP1271,
+  verifier: safeAddress,
+  data: signatureBytes,
+};
+
+const encoded = encodeEip1271SignatureData(eip1271Sig);
+```
+
+### PreSign
+
+Orders approved directly on-chain by calling `setPreSignature` on the settlement contract.
+
+```typescript
+const preSignSig: PreSignSignature = {
+  scheme: SigningScheme.PRESIGN,
+  signer: ownerAddress,
+};
+```
+
+## Signature Types
+
+### EcdsaSignature
+
+```typescript
+interface EcdsaSignature {
+  scheme: SigningScheme.EIP712 | SigningScheme.ETHSIGN;
+  data: string; // r, s, v values
+}
+```
+
+### Eip1271Signature
+
+```typescript
+interface Eip1271Signature {
+  scheme: SigningScheme.EIP1271;
+  verifier: string;
+  data: string;
+}
+```
+
+### PreSignSignature
+
+```typescript
+interface PreSignSignature {
+  scheme: SigningScheme.PRESIGN;
+  signer: string;
+}
+```
+
+## Core Functions
+
+### signOrder
+
+```typescript
+async function signOrder(
+  domain: TypedDataDomain,
+  order: Order,
+  signer: Signer,
+  scheme: SigningScheme.EIP712 | SigningScheme.ETHSIGN
+): Promise<EcdsaSignature>;
+```
+
+### encodeEip1271SignatureData
+
+```typescript
+function encodeEip1271SignatureData(signature: {
+  verifier: string;
+  data: string;
+}): string;
+```
+
+### decodeEip1271SignatureData
+
+```typescript
+function decodeEip1271SignatureData(encoded: string): {
+  verifier: string;
+  data: string;
+};
+```
+
+<Tip>
+Always use the correct domain with appropriate chain IDs and settlement contract addresses to prevent replay attacks across different networks.
+</Tip>

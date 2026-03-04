@@ -1,0 +1,149 @@
+---
+title: "Deployment"
+description: "Deploy Hooks Trampoline using Cannon for deterministic CREATE2 deployments"
+---
+
+This guide covers deploying Hooks Trampoline using [Cannon](https://usecannon.com), which provides:
+
+- Deterministic CREATE2 deployments
+- Deployment manifest with ABIs and addresses
+- Multi-chain support with identical addresses
+
+## Building
+
+<Steps>
+
+<Step title="Install dependencies">
+
+```bash
+pnpm install
+```
+
+</Step>
+
+<Step title="Build the Cannon package">
+
+```bash
+yarn build:cannon
+```
+
+Or alternatively:
+
+```bash
+pnpm cannon build --wipe
+```
+
+</Step>
+
+<Step title="Verify build artifacts">
+
+Check the `cannon/` directory for generated artifacts.
+
+</Step>
+
+</Steps>
+
+The build process:
+
+- Recompiles Solidity contracts
+- Generates deployment manifests
+- Includes ABIs
+- Calculates predicted deployment addresses
+
+## Configuration
+
+The `cannonfile.toml` defines deployment settings:
+
+- **Package name and version**: Identifies the deployment package
+- **Dependencies**: Pulls from the `cow-settlement` package (version 2.0.2)
+- **CREATE2 salt**: Deterministic salt value for address calculation
+- **Constructor arguments**: Settlement contract address passed automatically from the dependency
+
+## Publishing
+
+<Steps>
+
+<Step title="Verify version">
+
+Check the version number in the configuration file.
+
+</Step>
+
+<Step title="Build the package">
+
+```bash
+yarn build:cannon
+```
+
+</Step>
+
+<Step title="Publish to Cannon registry">
+
+```bash
+yarn cannon:publish
+```
+
+<Note>
+Publishing requires an authorized account with 0.0025 ETH + gas fees on Optimism Mainnet.
+</Note>
+
+</Step>
+
+<Step title="Select network and provide credentials">
+
+Provide your private key and select the target network when prompted.
+
+</Step>
+
+<Step title="Record deployment artifacts">
+
+Use Cannon inspection commands to record deployment artifacts.
+
+</Step>
+
+<Step title="Bump version and commit">
+
+Update the version number and commit the changes.
+
+</Step>
+
+</Steps>
+
+## CREATE2 Deterministic Deployment
+
+The CREATE2 deployment method ensures the same contract address across all EVM networks. The address is determined by:
+
+- Deployer address
+- Salt value
+- Contract bytecode
+- Constructor arguments
+
+This means you can predict the deployment address before deploying, and the address will be identical on every chain.
+
+## Production Deployment
+
+Actual mainnet deployments are handled through the separate [cowprotocol/deployments](https://github.com/cowprotocol/deployments) repository, with staging and production phases.
+
+## Troubleshooting
+
+<AccordionGroup>
+
+<Accordion title="Build failures">
+Ensure all dependencies are installed with `pnpm install` and that you're using the correct Solidity version (0.8.20).
+</Accordion>
+
+<Accordion title="Authorization issues">
+Publishing requires an authorized account. Ensure your account has sufficient ETH on Optimism Mainnet.
+</Accordion>
+
+<Accordion title="Recording commands">
+Some recording commands may require manual execution. Check the Cannon documentation for the latest commands.
+</Accordion>
+
+</AccordionGroup>
+
+## Resources
+
+- [cowprotocol/deployments](https://github.com/cowprotocol/deployments) — Production deployment addresses
+- [Cannon Explorer: cow-omnibus](https://usecannon.com/packages/cow-omnibus) — Package on Cannon registry
+- [Installation Guide](/hooks-trampoline/installation) — Local setup and Forge deployment

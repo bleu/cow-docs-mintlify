@@ -1,0 +1,214 @@
+---
+title: "Deployment Guide"
+description: "Complete guide for deploying Flash Loan Router contracts to new and existing networks"
+---
+
+This guide covers deploying the Flash Loan Router contracts to blockchain networks using Forge deployment scripts.
+
+## Overview
+
+The Flash Loan Router consists of three main contracts:
+
+- **FlashLoanRouter**: Main entry point for flash loan settlements
+- **AaveBorrower**: Adapter for Aave flash loans
+- **ERC3156Borrower**: Adapter for ERC-3156 compliant lenders (e.g., Maker)
+
+All contracts are deployed deterministically using `CREATE2` with the same addresses across all supported networks.
+
+## Environment Setup
+
+<Steps>
+  <Step title="Create environment file">
+    Copy the `.env.example` file to `.env` in the project root:
+
+    ```bash
+    cp .env.example .env
+    ```
+  </Step>
+
+  <Step title="Configure environment variables">
+    Edit `.env` and set the required variables:
+
+    ```bash
+    # Network configuration
+    CHAIN_ID=1  # Target network chain ID
+    ETH_RPC_URL=https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY
+    PRIVATE_KEY=0x...  # Deployer private key
+
+    # Optional: For contract verification
+    ETHERSCAN_API_KEY=your_etherscan_api_key
+
+    # Optional: For single contract deployments
+    # FLASHLOAN_ROUTER_ADDRESS=0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69
+    ```
+  </Step>
+
+  <Step title="Load environment variables">
+    Source the environment file before running deployment commands:
+
+    ```bash
+    source .env
+    ```
+  </Step>
+</Steps>
+
+## Deploy All Contracts
+
+For new network deployments, use the `DeployAllContracts` script to deploy all three contracts in a single transaction.
+
+<Steps>
+  <Step title="Dry-run the deployment">
+    Test the deployment without broadcasting transactions:
+
+    ```bash
+    forge script script/DeployAllContracts.s.sol:DeployAllContracts \
+      --rpc-url $ETH_RPC_URL \
+      --private-key $PRIVATE_KEY
+    ```
+
+    Review the output to ensure expected contract addresses and gas costs.
+  </Step>
+
+  <Step title="Broadcast deployment">
+    Execute the actual deployment:
+
+    ```bash
+    forge script script/DeployAllContracts.s.sol:DeployAllContracts \
+      --rpc-url $ETH_RPC_URL \
+      --private-key $PRIVATE_KEY \
+      --broadcast
+    ```
+  </Step>
+
+  <Step title="Deploy with verification">
+    For Etherscan verification, add the `--verify` flag:
+
+    ```bash
+    forge script script/DeployAllContracts.s.sol:DeployAllContracts \
+      --rpc-url $ETH_RPC_URL \
+      --private-key $PRIVATE_KEY \
+      --broadcast \
+      --verify
+    ```
+
+    <Note>
+      Ensure `ETHERSCAN_API_KEY` is set in your `.env` file for verification to succeed.
+    </Note>
+  </Step>
+</Steps>
+
+## Deploy Single Contract
+
+To deploy individual contracts on existing networks, use the single-deployment scripts.
+
+### FlashLoanRouter
+
+```bash
+forge script script/single-deployment/DeployFlashLoanRouter.s.sol:DeployFlashLoanRouter \
+  --rpc-url $ETH_RPC_URL \
+  --private-key $PRIVATE_KEY \
+  --broadcast
+```
+
+### AaveBorrower
+
+```bash
+forge script script/single-deployment/DeployAAVEBorrower.s.sol:DeployAAVEBorrower \
+  --rpc-url $ETH_RPC_URL \
+  --private-key $PRIVATE_KEY \
+  --broadcast
+```
+
+### ERC3156Borrower
+
+```bash
+forge script script/single-deployment/DeployERC3156Borrower.s.sol:DeployERC3156Borrower \
+  --rpc-url $ETH_RPC_URL \
+  --private-key $PRIVATE_KEY \
+  --broadcast
+```
+
+## Update Deployment Records
+
+After successful deployment, update the `networks.json` file to track contract addresses.
+
+<Steps>
+  <Step title="Generate networks.json">
+    Run the generation script to update deployment records:
+
+    ```bash
+    bash script/generate-networks-file.sh > networks.json
+    ```
+
+    This script reads broadcast files from `broadcast/` directory and generates the updated `networks.json`.
+  </Step>
+
+  <Step title="Manual updates (if needed)">
+    For networks deployed outside of Forge scripts, manually update `broadcast/networks-manual.json` before regenerating.
+  </Step>
+
+  <Step title="Verify addresses">
+    Check that `networks.json` contains the correct addresses for your deployed contracts:
+
+    ```json
+    {
+      "FlashLoanRouter": {
+        "1": {
+          "address": "0x9da8b48441583a2b93e2ef8213aad0ec0b392c69",
+          "transactionHash": "0x..."
+        }
+      },
+      "AaveBorrower": { ... },
+      "ERC3156Borrower": { ... }
+    }
+    ```
+  </Step>
+</Steps>
+
+## Deployment Architecture
+
+The deployment process uses CREATE2 for deterministic addresses:
+
+1. **FlashLoanRouter** is deployed first with the CoW Settlement contract address
+2. **Borrower contracts** are deployed with the FlashLoanRouter address as constructor argument
+3. All deployments use a fixed salt (`Constants.SALT`) for address determinism
+4. If a contract already exists at the computed address, deployment is skipped
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="CREATE2 collision error">
+    This occurs when a contract already exists at the computed CREATE2 address. The deployment scripts automatically detect existing contracts and skip re-deployment.
+
+    For single deployments requiring the FlashLoanRouter address, set the `FLASHLOAN_ROUTER_ADDRESS` environment variable.
+  </Accordion>
+
+  <Accordion title="Verification fails">
+    Common causes:
+
+    - Missing or invalid `ETHERSCAN_API_KEY`
+    - Network not supported by Etherscan API
+    - Constructor arguments mismatch
+
+    See the [Contract Verification](/flash-loan-router/operations/verification) guide for manual verification steps.
+  </Accordion>
+
+  <Accordion title="Insufficient funds">
+    Ensure the deployer account has sufficient native tokens (ETH, MATIC, etc.) for:
+
+    - Contract deployment gas costs
+    - Multiple contract deployments if using `DeployAllContracts`
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Contract Verification" icon="shield-check" href="/flash-loan-router/operations/verification">
+    Verify deployed contracts on block explorers
+  </Card>
+
+  <Card title="Supported Networks" icon="network-wired" href="/flash-loan-router/operations/networks">
+    View all deployed contract addresses by network
+  </Card>
+</CardGroup>

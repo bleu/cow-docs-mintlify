@@ -1,0 +1,60 @@
+---
+title: "Order Types Overview"
+description: "Overview of the five primary conditional order types available in ComposableCoW."
+---
+
+# Order Types Overview
+
+ComposableCoW offers a conditional order framework with five primary order types.
+
+## Core Order Types
+
+### TWAP Orders
+
+Divide large trades into scheduled portions over time, helping traders minimize price impact and achieve better execution prices on low-liquidity pairs.
+
+### Stop Loss Orders
+
+Use oracle-based price triggers to automatically sell when token prices fall below specified thresholds, supporting risk management and portfolio protection.
+
+### Good After Time Orders
+
+Delay execution until a designated timestamp, with optional price validation through Milkman checkers for time-locked strategies.
+
+### Perpetual Stable Swap
+
+Automatically rebalances between two stablecoins by trading whichever token has higher balance, supporting liquidity provision with continuous rebalancing.
+
+### Trade Above Threshold
+
+Executes sales when token balances exceed specified limits, useful for yield harvesting and threshold-based portfolio management.
+
+## Technical Implementation
+
+All order types inherit from `BaseConditionalOrder` and implement a `getTradeableOrder` function accepting:
+
+- Owner address
+- Sender address
+- Context hash
+- Static parameters
+- Optional off-chain data
+
+## Error States
+
+The framework supports three error states:
+
+| Error | Description |
+|-------|-------------|
+| `OrderNotValid` | Conditions not met |
+| `PollTryNextBlock` | Temporary invalidity |
+| `PollTryAtEpoch` | Future validity date |
+
+## Characteristics Comparison
+
+| Order Type | Repeatable | Oracle Required | Partial Fill |
+|------------|-----------|----------------|--------------|
+| TWAP | No | No | No |
+| Stop Loss | No | Yes | Optional |
+| Good After Time | No | No | Optional |
+| Perpetual Stable Swap | Yes | No | No |
+| Trade Above Threshold | Yes | No | No |

@@ -1,0 +1,169 @@
+---
+title: "Quickstart"
+description: "Create and sign your first CoW Protocol order using TypeScript"
+---
+
+# Quickstart
+
+This guide walks you through creating and signing CoW Protocol orders using TypeScript.
+
+## Prerequisites
+
+- `@cowprotocol/contracts` installed
+- `ethers@^5.4.0` installed
+- A wallet or signer
+
+## Setup
+
+```typescript
+import {
+  domain,
+  Order,
+  OrderKind,
+  OrderBalance,
+  signOrder,
+  SigningScheme,
+  computeOrderUid,
+} from "@cowprotocol/contracts";
+import { ethers } from "ethers";
+```
+
+## Step 1: Define Your Order
+
+Orders specify trading parameters: the tokens being exchanged, amounts, validity period, and balance types.
+
+```typescript
+const order: Order = {
+  sellToken: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", // WETH
+  buyToken: "0x6B175474E89094C44Da98b954EedeAC495271d0F",  // DAI
+  sellAmount: ethers.utils.parseEther("1.0"),
+  buyAmount: ethers.utils.parseEther("2000"),
+  validTo: Math.floor(Date.now() / 1000) + 3600, // 1 hour
+  appData: ethers.constants.HashZero,
+  feeAmount: ethers.utils.parseEther("0.01"),
+  kind: OrderKind.SELL,
+  partiallyFillable: false,
+  sellTokenBalance: OrderBalance.ERC20,
+  buyTokenBalance: OrderBalance.ERC20,
+  receiver: ethers.constants.AddressZero,
+};
+```
+
+### Order Kinds
+
+- **SELL** - Exchange an exact amount of sell tokens for a minimum amount of buy tokens
+- **BUY** - Purchase an exact amount of buy tokens spending at most a specified amount of sell tokens
+
+## Step 2: Create Domain Separator
+
+A domain separator ensures orders remain valid only for specific blockchain networks and settlement contracts.
+
+```typescript
+const settlementDomain = domain(
+  1, // Ethereum mainnet chain ID
+  "0x9008D19f58AAbD9eD0D60971565AA8510560ab41" // GPv2Settlement address
+);
+```
+
+<Warning>
+Use the correct settlement contract address for your target network. An incorrect address will invalidate signatures.
+</Warning>
+
+## Step 3: Sign the Order
+
+CoW Protocol supports multiple signing schemes:
+
+- **EIP712** - Recommended for best user experience
+- **ETHSIGN** - For compatibility with wallets that don't support EIP-712
+- **EIP1271** - For smart contract wallets (e.g., Gnosis Safe)
+- **PRESIGN** - For on-chain order placement
+
+```typescript
+const wallet = new ethers.Wallet("your-private-key");
+
+const signature = await signOrder(
+  settlementDomain,
+  order,
+  wallet,
+  SigningScheme.EIP712
+);
+```
+
+## Step 4: Compute Order UID
+
+```typescript
+const orderUid = computeOrderUid(
+  settlementDomain,
+  order,
+  wallet.address
+);
+```
+
+## Complete Example
+
+```typescript
+import {
+  domain,
+  Order,
+  OrderKind,
+  OrderBalance,
+  signOrder,
+  SigningScheme,
+  computeOrderUid,
+} from "@cowprotocol/contracts";
+import { ethers } from "ethers";
+
+async function createOrder() {
+  const provider = new ethers.providers.JsonRpcProvider("YOUR_RPC_URL");
+  const wallet = new ethers.Wallet("YOUR_PRIVATE_KEY", provider);
+
+  const settlementDomain = domain(
+    1,
+    "0x9008D19f58AAbD9eD0D60971565AA8510560ab41"
+  );
+
+  const order: Order = {
+    sellToken: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    buyToken: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+    sellAmount: ethers.utils.parseEther("1.0"),
+    buyAmount: ethers.utils.parseEther("2000"),
+    validTo: Math.floor(Date.now() / 1000) + 3600,
+    appData: ethers.constants.HashZero,
+    feeAmount: ethers.utils.parseEther("0.01"),
+    kind: OrderKind.SELL,
+    partiallyFillable: false,
+    sellTokenBalance: OrderBalance.ERC20,
+    buyTokenBalance: OrderBalance.ERC20,
+    receiver: ethers.constants.AddressZero,
+  };
+
+  const signature = await signOrder(
+    settlementDomain,
+    order,
+    wallet,
+    SigningScheme.EIP712
+  );
+
+  const orderUid = computeOrderUid(
+    settlementDomain,
+    order,
+    wallet.address
+  );
+
+  console.log("Order UID:", orderUid);
+  console.log("Signature:", signature);
+}
+
+createOrder();
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Orders" href="/cow-contracts/concepts/orders">
+    Learn about order types and lifecycle
+  </Card>
+  <Card title="Signing" href="/cow-contracts/sdk/signing">
+    Explore advanced signing schemes
+  </Card>
+</CardGroup>

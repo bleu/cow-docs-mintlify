@@ -1,0 +1,135 @@
+---
+title: "Order"
+description: "TypeScript order module API for creating, hashing, and managing CoW Protocol orders"
+---
+
+# Order
+
+The Order module provides structures and utilities for managing CoW Protocol orders, including creation, hashing, and management functions.
+
+## Types
+
+### Order
+
+```typescript
+interface Order {
+  sellToken: string;
+  buyToken: string;
+  receiver: string;
+  sellAmount: BigNumberish;
+  buyAmount: BigNumberish;
+  validTo: number | Date;
+  appData: string;
+  feeAmount: BigNumberish;
+  kind: OrderKind;
+  partiallyFillable: boolean;
+  sellTokenBalance?: OrderBalance;
+  buyTokenBalance?: OrderBalance;
+}
+```
+
+### OrderKind
+
+```typescript
+enum OrderKind {
+  SELL = "sell",
+  BUY = "buy",
+}
+```
+
+- **SELL** - Exact sell amount with minimum buy amount guaranteed
+- **BUY** - Exact buy amount with maximum sell amount capped
+
+### OrderBalance
+
+```typescript
+enum OrderBalance {
+  ERC20 = "erc20",
+  EXTERNAL = "external",
+  INTERNAL = "internal",
+}
+```
+
+- **ERC20** - Standard ERC20 token balances
+- **EXTERNAL** - Balancer Vault external balances
+- **INTERNAL** - Balancer Vault internal balances
+
+## Functions
+
+### normalizeOrder
+
+Prepares orders for EIP-712 hashing by converting Date objects to timestamps and normalizing optional fields.
+
+```typescript
+function normalizeOrder(order: Order): NormalizedOrder;
+```
+
+### hashOrder
+
+Generates the EIP-712 signing hash for an order.
+
+```typescript
+function hashOrder(domain: TypedDataDomain, order: Order): string;
+```
+
+### computeOrderUid
+
+Creates a unique 56-byte order identifier combining order digest, owner address, and expiration.
+
+```typescript
+function computeOrderUid(
+  domain: TypedDataDomain,
+  order: Order,
+  owner: string
+): string;
+```
+
+### extractOrderUidParams
+
+Decodes order UID components back into individual parameters.
+
+```typescript
+function extractOrderUidParams(
+  orderUid: string
+): {
+  orderDigest: string;
+  owner: string;
+  validTo: number;
+};
+```
+
+## Constants
+
+```typescript
+const BUY_ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+const ORDER_UID_LENGTH = 56;
+```
+
+<Note>
+`BUY_ETH_ADDRESS` enables purchasing native ETH and should only be used in the `buyToken` field.
+</Note>
+
+## Example
+
+```typescript
+import { domain, Order, OrderKind, hashOrder, computeOrderUid } from "@cowprotocol/contracts";
+import { ethers } from "ethers";
+
+const settlementDomain = domain(1, "0x9008D19f58AAbD9eD0D60971565AA8510560ab41");
+
+const order: Order = {
+  sellToken: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+  buyToken: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+  sellAmount: ethers.utils.parseEther("1.0"),
+  buyAmount: ethers.utils.parseEther("2000"),
+  validTo: Math.floor(Date.now() / 1000) + 3600,
+  appData: ethers.constants.HashZero,
+  feeAmount: ethers.utils.parseEther("0.01"),
+  kind: OrderKind.SELL,
+  partiallyFillable: false,
+  receiver: ethers.constants.AddressZero,
+};
+
+const orderHash = hashOrder(settlementDomain, order);
+const orderUid = computeOrderUid(settlementDomain, order, "0xYourAddress");
+```

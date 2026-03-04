@@ -1,0 +1,272 @@
+---
+title: "Contract Verification"
+description: "Guide for verifying deployed Flash Loan Router contracts on block explorers"
+---
+
+Contract verification allows users and developers to view and interact with your contract source code on block explorers like Etherscan.
+
+## Automatic Verification
+
+The easiest way to verify contracts is during deployment by adding the `--verify` flag to your Forge script command.
+
+### During Deployment
+
+```bash
+forge script script/DeployAllContracts.s.sol:DeployAllContracts \
+  --rpc-url $ETH_RPC_URL \
+  --private-key $PRIVATE_KEY \
+  --broadcast \
+  --verify
+```
+
+<Note>
+  Ensure the `ETHERSCAN_API_KEY` environment variable is set before using the `--verify` flag.
+</Note>
+
+## Manual Verification
+
+If automatic verification fails or you need to verify an already deployed contract, use the `forge verify-contract` command.
+
+### Prerequisites
+
+<Steps>
+  <Step title="Set environment variables">
+    ```bash
+    export CHAIN_ID=1  # Target network chain ID
+    export ETHERSCAN_API_KEY=your_api_key_here
+    ```
+  </Step>
+
+  <Step title="Identify contract addresses">
+    Find the deployed contract addresses in `networks.json` or from your deployment output.
+  </Step>
+</Steps>
+
+### Verify FlashLoanRouter
+
+The FlashLoanRouter is initialized with the CoW Settlement contract address (`0x9008D19f58AAbD9eD0D60971565AA8510560ab41`).
+
+```bash
+forge verify-contract \
+  0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69 \
+  src/FlashLoanRouter.sol:FlashLoanRouter \
+  --chain-id $CHAIN_ID \
+  --etherscan-api-key $ETHERSCAN_API_KEY \
+  --constructor-args $(cast abi-encode "constructor(address)" 0x9008D19f58AAbD9eD0D60971565AA8510560ab41)
+```
+
+<Info>
+  The constructor argument is the CoW Settlement contract address, which is consistent across all supported networks.
+</Info>
+
+### Verify AaveBorrower
+
+The AaveBorrower is initialized with the FlashLoanRouter address.
+
+```bash
+forge verify-contract \
+  0x7d9C4DeE56933151Bc5C909cfe09DEf0d315CB4A \
+  src/AaveBorrower.sol:AaveBorrower \
+  --chain-id $CHAIN_ID \
+  --etherscan-api-key $ETHERSCAN_API_KEY \
+  --constructor-args $(cast abi-encode "constructor(address)" 0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69)
+```
+
+### Verify ERC3156Borrower
+
+The ERC3156Borrower is also initialized with the FlashLoanRouter address.
+
+```bash
+forge verify-contract \
+  0x47d71b4B3336AB2729436186C216955F3C27cD04 \
+  src/ERC3156Borrower.sol:ERC3156Borrower \
+  --chain-id $CHAIN_ID \
+  --etherscan-api-key $ETHERSCAN_API_KEY \
+  --constructor-args $(cast abi-encode "constructor(address)" 0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69)
+```
+
+## Understanding Constructor Arguments
+
+The `cast abi-encode` command encodes constructor arguments in the format expected by Etherscan.
+
+### Syntax
+
+```bash
+cast abi-encode "constructor(type1,type2,...)" arg1 arg2 ...
+```
+
+### Examples
+
+<CodeGroup>
+  ```bash Single Address
+  # For contracts with single address parameter
+  cast abi-encode "constructor(address)" 0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69
+  ```
+
+  ```bash Multiple Parameters
+  # For contracts with multiple parameters
+  cast abi-encode "constructor(address,uint256,bool)" 0x... 1000000 true
+  ```
+</CodeGroup>
+
+## Network-Specific API Keys
+
+Different networks require different API keys:
+
+| Network   | Explorer             | API Key Environment Variable |
+| --------- | -------------------- | ---------------------------- |
+| Ethereum  | Etherscan            | `ETHERSCAN_API_KEY`          |
+| Polygon   | Polygonscan          | `POLYGONSCAN_API_KEY`        |
+| Arbitrum  | Arbiscan             | `ARBISCAN_API_KEY`           |
+| Optimism  | Optimistic Etherscan | `OPTIMISM_API_KEY`           |
+| Base      | Basescan             | `BASESCAN_API_KEY`           |
+| BSC       | BscScan              | `BSCSCAN_API_KEY`            |
+| Avalanche | Snowtrace            | `SNOWTRACE_API_KEY`          |
+| Gnosis    | Gnosisscan           | `GNOSISSCAN_API_KEY`         |
+| Linea     | Lineascan            | `LINEASCAN_API_KEY`          |
+
+<Tip>
+  Most explorers use the same API key infrastructure. Register at the respective explorer website to obtain your API key.
+</Tip>
+
+## Verification Status
+
+After running the verification command, you'll see one of these outputs:
+
+<AccordionGroup>
+  <Accordion title="Success">
+    ```
+    Start verifying contract `0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69` deployed on mainnet
+    Submitting verification for [src/FlashLoanRouter.sol:FlashLoanRouter] "0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69".
+    Submitted contract for verification:
+            Response: `OK`
+            GUID: `abc123...`
+            URL: https://etherscan.io/address/0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69
+    Contract verification status:
+    Response: `OK`
+    Details: `Pass - Verified`
+    ```
+
+    The contract is successfully verified and visible on the explorer.
+  </Accordion>
+
+  <Accordion title="Already Verified">
+    ```
+    Contract source code already verified
+    ```
+
+    The contract was previously verified. No action needed.
+  </Accordion>
+
+  <Accordion title="Failed">
+    ```
+    Error: Verification failed
+    Response: `NOTOK`
+    Details: `Error message here`
+    ```
+
+    Common causes:
+
+    - Incorrect constructor arguments
+    - Wrong compiler version or settings
+    - Invalid API key
+    - Network issues
+
+    See troubleshooting section below.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Constructor argument mismatch">
+    Ensure you're using the correct addresses for constructor arguments:
+
+    - **FlashLoanRouter**: Uses CoW Settlement address `0x9008D19f58AAbD9eD0D60971565AA8510560ab41`
+    - **Borrower contracts**: Use FlashLoanRouter address `0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69`
+
+    Verify addresses in `networks.json` for the specific network.
+  </Accordion>
+
+  <Accordion title="Compiler version mismatch">
+    The contracts are compiled with specific settings from `foundry.toml`:
+
+    ```toml
+    solc = "0.8.28"
+    evm_version = "cancun"
+    optimizer = true
+    optimizer_runs = 1000000
+    ```
+
+    Forge automatically uses these settings during verification.
+  </Accordion>
+
+  <Accordion title="Rate limiting">
+    Block explorer APIs have rate limits. If you encounter rate limiting:
+
+    1. Wait a few minutes before retrying
+    2. Verify contracts sequentially, not in parallel
+    3. Check your API key tier for rate limit details
+  </Accordion>
+
+  <Accordion title="Invalid API key">
+    Verify your API key is:
+
+    - Correctly set in environment variables
+    - Valid and not expired
+    - For the correct network (e.g., mainnet vs testnet)
+    - Has verification permissions enabled
+  </Accordion>
+</AccordionGroup>
+
+## Verify Multiple Contracts
+
+To verify all three contracts sequentially:
+
+```bash
+#!/bin/bash
+
+source .env
+
+echo "Verifying FlashLoanRouter..."
+forge verify-contract \
+  0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69 \
+  src/FlashLoanRouter.sol:FlashLoanRouter \
+  --chain-id $CHAIN_ID \
+  --etherscan-api-key $ETHERSCAN_API_KEY \
+  --constructor-args $(cast abi-encode "constructor(address)" 0x9008D19f58AAbD9eD0D60971565AA8510560ab41)
+
+echo "Verifying AaveBorrower..."
+forge verify-contract \
+  0x7d9C4DeE56933151Bc5C909cfe09DEf0d315CB4A \
+  src/AaveBorrower.sol:AaveBorrower \
+  --chain-id $CHAIN_ID \
+  --etherscan-api-key $ETHERSCAN_API_KEY \
+  --constructor-args $(cast abi-encode "constructor(address)" 0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69)
+
+echo "Verifying ERC3156Borrower..."
+forge verify-contract \
+  0x47d71b4B3336AB2729436186C216955F3C27cD04 \
+  src/ERC3156Borrower.sol:ERC3156Borrower \
+  --chain-id $CHAIN_ID \
+  --etherscan-api-key $ETHERSCAN_API_KEY \
+  --constructor-args $(cast abi-encode "constructor(address)" 0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69)
+
+echo "Verification complete!"
+```
+
+<Tip>
+  Make the script executable with `chmod +x verify-all.sh` before running.
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Deployment Guide" icon="rocket" href="/flash-loan-router/operations/deployment-guide">
+    Learn how to deploy contracts to new networks
+  </Card>
+
+  <Card title="Supported Networks" icon="network-wired" href="/flash-loan-router/operations/networks">
+    View verified contracts across all networks
+  </Card>
+</CardGroup>

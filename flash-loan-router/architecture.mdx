@@ -1,0 +1,45 @@
+---
+title: "System Architecture"
+description: "Understanding the Flash Loan Router's modular design, component interactions, and execution flow"
+---
+
+## Overview
+
+The Flash Loan Router employs a modular design separating routing logic, lender-specific adapters, and settlement execution. This enables support for multiple flash loan providers while preserving security and predictable execution.
+
+## Components
+
+The system consists of four main components:
+
+1. **Flash Loan Router** - Core orchestrator for flash loans and settlement
+2. **Borrower adapters** - Lender-specific contracts handling protocol differences
+3. **Flash loan lenders** - External protocols (Aave, Maker) providing liquidity
+4. **CoW Settlement** - Target contract executing trades
+
+## Execution Flow
+
+The system processes settlements through four phases:
+
+**Phase 1:** A solver calls `flashLoanAndSettle()` with loan specifications and settlement data.
+
+**Phase 2:** The router requests loans sequentially from each borrower adapter, which triggers lender-specific callbacks.
+
+**Phase 3:** Once all loans are received, the router executes the settlement contract with the provided data.
+
+**Phase 4:** Lenders pull repayment from borrower contracts through ERC-20 transfers.
+
+## Core Security Guarantees
+
+The router maintains these critical properties:
+
+- Only registered CoW Protocol solvers can call `flashLoanAndSettle()`
+- Exactly one settlement call per loan request, using unmodified data
+- Sequential loan processing prevents out-of-order execution
+- Atomic execution -- all operations succeed or fail together
+
+## Supported Lenders
+
+- **Aave V3** via AaveBorrower
+- **ERC-3156 compatible** providers (including Maker) via ERC3156Borrower
+
+New lenders can be added by creating borrower contracts implementing the lender's callback interface without modifying core router code.

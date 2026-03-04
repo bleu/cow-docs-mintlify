@@ -1,0 +1,47 @@
+---
+title: "Good After Time"
+description: "Conditional orders that activate after a specified timestamp with optional price validation."
+---
+
+# Good After Time Orders
+
+Good After Time (GAT) orders are conditional trades that remain dormant until their `startTime` is reached, functioning as scheduled executions with optional price validation.
+
+## Core Mechanics
+
+### Time-Based Activation
+
+Orders activate only after a specified timestamp and expire at an `endTime`. The system returns `PollTryAtEpoch(startTime)` if execution is attempted too early.
+
+### Balance Protection
+
+The `minSellBalance` parameter ensures sufficient token availability, preventing execution after funds have been withdrawn or the order has already filled.
+
+### Dynamic Buy Amounts
+
+The off-chain input accepts varying `buyAmount` values, meaning different `buyAmount` values create different `orderUid`s, allowing multiple fills of the same order.
+
+## Price Validation
+
+Optional Milkman price checkers validate that provided buy amounts meet minimum requirements. The acceptable minimum calculates as:
+
+```
+expectedOut * (10000 - allowedSlippage) / 10000
+```
+
+Where slippage uses basis points (100 bp = 1%).
+
+## Key Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `sellToken` / `buyToken` | Token pair for the trade |
+| `receiver` | Destination address for purchased tokens |
+| `startTime` / `endTime` | UNIX timestamps controlling order validity window |
+| `allowPartialFill` | Whether solvers can execute partial quantities |
+| `priceCheckerPayload` | ABI-encoded validation rules (optional) |
+| `minSellBalance` | Minimum balance required to execute |
+
+## Order Structure
+
+The implementation uses `GPv2Order.Data` structures integrated with ComposableCoW's conditional order framework, enabling sophisticated DeFi automation patterns with time-based constraints and price protections.

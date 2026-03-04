@@ -1,0 +1,121 @@
+---
+title: "IBorrower"
+description: "Interface for borrower adapters that bridge the Flash-Loan Router with various lending protocols"
+---
+
+## Overview
+
+The `IBorrower` interface defines the contract API for borrower adapters that serve as intermediaries between CoW Protocol's Flash-Loan Router and various lending protocols. Since different flash-loan protocols have varying callback mechanisms, each requires a dedicated borrower implementation.
+
+## Contract Details
+
+- **Source**: `src/interfaces/IBorrower.sol`
+- **License**: GPL-3.0-or-later
+- **Solidity**: ^0.8.28
+
+## Functions
+
+### flashLoanAndCallBack
+
+```solidity
+function flashLoanAndCallBack(
+    address lender,
+    IERC20 token,
+    uint256 amount,
+    bytes calldata callBackData
+) external;
+```
+
+Initiates a flash loan request with a specific lender. The borrower contacts the lender, receives funds via a protocol-specific callback, then notifies the router through `borrowerCallBack()`.
+
+**Parameters:**
+- `lender`: Address of the flash loan provider
+- `token`: ERC-20 token to borrow
+- `amount`: Amount of tokens to borrow
+- `callBackData`: Data to pass back to the router unchanged
+
+**Requirements:**
+- Only callable by the registered Flash Loan Router
+
+### approve
+
+```solidity
+function approve(
+    IERC20 token,
+    address target,
+    uint256 amount
+) external;
+```
+
+Grants spending permissions on borrowed tokens. Used by the settlement contract to authorize lender repayment.
+
+**Parameters:**
+- `token`: ERC-20 token to approve
+- `target`: Address to approve for spending (typically the lender)
+- `amount`: Amount to approve
+
+**Requirements:**
+- Only callable by the settlement contract
+
+<Note>
+  Approvals persist beyond individual transaction execution. Setting unlimited approvals once can save gas across multiple settlements.
+</Note>
+
+### settlementContract
+
+```solidity
+function settlementContract() external view returns (ICowSettlement);
+```
+
+Returns the CoW Protocol settlement contract associated with this borrower.
+
+### router
+
+```solidity
+function router() external view returns (IFlashLoanRouter);
+```
+
+Returns the Flash Loan Router contract that manages this borrower.
+
+## Protocol-Specific Implementations
+
+Different lending protocols require different callback mechanisms:
+
+| Protocol | Flash Loan Function | Callback Function |
+| --- | --- | --- |
+| Aave V3 | `flashLoan()` | `executeOperation()` |
+| ERC-3156 | `flashLoan()` | `onFlashLoan()` |
+| Uniswap V2 | `swap()` | `uniswapV2Call()` |
+| Uniswap V3 | `flash()` | `uniswapV3FlashCallback()` |
+| Balancer | `flashLoan()` | `receiveFlashLoan()` |
+
+Each protocol requires a separate borrower implementation adapting these mechanisms to the standard `IBorrower` interface.
+
+## Implementation Requirements
+
+When implementing a borrower contract:
+
+1. **Restrict access**: Only the router should be able to trigger flash loans via `flashLoanAndCallBack()`
+2. **Pass data unchanged**: The `callBackData` must be forwarded to the router exactly as received
+3. **No fund retention**: The borrower should not hold funds between transactions
+4. **Careful approvals**: Manage token approvals carefully to prevent unauthorized transfers
+5. **Implement provider callback**: Handle the provider-specific callback and forward to `router.borrowerCallBack()`
+
+## Security Considerations
+
+- `flashLoanAndCallBack()` must only be callable by the authorized router
+- `approve()` must only be callable by the settlement contract
+- Callback data integrity must be maintained throughout the execution flow
+- Token approvals should be managed with care to prevent exploitation
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="IFlashLoanRouter" icon="route" href="/flash-loan-router/contracts/interfaces/iflash-loan-router">
+    Router interface reference
+  </Card>
+
+  <Card title="Borrower Base" icon="code" href="/flash-loan-router/contracts/base/borrower">
+    Abstract base implementation
+  </Card>
+</CardGroup>

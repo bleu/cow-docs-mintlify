@@ -1,0 +1,198 @@
+---
+title: "Blockchain Events"
+description: "Learn how the Watch Tower monitors blockchain events to track conditional orders"
+---
+
+# Blockchain Events
+
+The Watch Tower monitors specific blockchain events emitted by the ComposableCoW contract to discover and track conditional orders. These events signal when new orders are created or when existing orders are modified.
+
+## Monitored Events
+
+The Watch Tower listens for two primary events from the ComposableCoW contract:
+
+### ConditionalOrderCreated Event
+
+Emitted when a single new conditional order is created.
+
+**Event Structure:**
+
+```typescript
+event ConditionalOrderCreated(
+  address indexed owner,
+  IConditionalOrder.ConditionalOrderParams params
+);
+```
+
+**Purpose:**
+
+- Signals the creation of an individual conditional order
+- Provides the order's parameters and owner information
+- Triggers the Watch Tower to add the order to its registry
+
+<Info>
+Single orders are more common for testing or simple use cases where gas costs for individual transactions are acceptable.
+</Info>
+
+### MerkleRootSet Event
+
+Emitted when a new merkle root containing multiple conditional orders is set for a Safe.
+
+**Event Structure:**
+
+```typescript
+event MerkleRootSet(
+  address indexed owner,
+  bytes32 root,
+  ComposableCoW.ProofStruct proof
+);
+```
+
+**Purpose:**
+
+- Enables batch creation of multiple conditional orders efficiently
+- Reduces gas costs by creating many orders in a single transaction
+- Includes merkle proof data for order verification
+
+<Note>
+When a new merkle root is set, the Watch Tower automatically removes any previous orders from the same owner that reference different merkle roots.
+</Note>
+
+## Event Processing Workflow
+
+When the Watch Tower detects a new event, it follows this process:
+
+### 1. Event Detection
+
+The Watch Tower queries the blockchain for new events starting from the last processed block:
+
+```typescript
+// Events are fetched using eth_getLogs
+// The Watch Tower tracks the last processed block to avoid reprocessing
+```
+
+### 2. Event Decoding
+
+Events are decoded to extract order information:
+
+**For ConditionalOrderCreated:**
+
+```typescript
+const [owner, params] = composableCow.decodeEventLog(
+  "ConditionalOrderCreated",
+  eventLog.data,
+  eventLog.topics
+) as [string, IConditionalOrder.ConditionalOrderParamsStruct];
+```
+
+**For MerkleRootSet:**
+
+```typescript
+const [owner, root, proof] = composableCow.decodeEventLog(
+  "MerkleRootSet",
+  eventLog.data,
+  eventLog.topics
+) as [string, BytesLike, ComposableCoW.ProofStruct];
+```
+
+### 3. Order Registration
+
+Decoded orders are added to the Watch Tower's registry:
+
+- The order is validated against filter policies
+- Duplicate orders are detected and skipped
+- The order is associated with its owner
+- Metrics are updated to track active orders
+
+### 4. Registry Persistence
+
+After processing events, the registry is written to persistent storage:
+
+```typescript
+await registry.write();
+```
+
+<Info>
+All writes to the database are atomic. If a write fails, the Watch Tower will reprocess from the last successfully indexed block.
+</Info>
+
+## Event Monitoring Details
+
+### Block Processing
+
+The Watch Tower processes blocks sequentially:
+
+- Tracks the last processed block number, timestamp, and hash
+- Fetches events in configurable page sizes (default: 5000 blocks)
+- Handles blockchain reorganizations by storing block hashes
+
+### Event Filtering
+
+Before adding orders to the registry, the Watch Tower applies filter policies:
+
+```typescript
+if (filterPolicy) {
+  const filterResult = filterPolicy.preFilter({
+    conditionalOrderId,
+    transaction: tx,
+    owner,
+    conditionalOrderParams,
+  });
+
+  if (filterResult === policy.FilterAction.DROP) {
+    // Order is not added to the registry
+    return false;
+  }
+}
+```
+
+Filter actions:
+
+- **ACCEPT**: Order is added to the registry
+- **DROP**: Order is permanently ignored
+- **SKIP**: Order is skipped for this block but may be reconsidered
+
+### Merkle Proof Handling
+
+For `MerkleRootSet` events, the Watch Tower:
+
+1. **Flushes old orders**: Removes orders from the same owner with different merkle roots
+2. **Decodes proof data**: Extracts individual orders from the merkle proof
+3. **Registers each order**: Adds each order with its merkle path for verification
+
+```typescript
+// Only process if proofs are emitted (location === 1)
+if (proof.location === 1) {
+  const proofData = ethers.utils.defaultAbiCoder.decode(
+    ["bytes[]"],
+    proof.data as BytesLike
+  );
+
+  for (const order of proofData) {
+    // Decode and add each order
+  }
+}
+```
+
+## Error Handling
+
+The Watch Tower implements robust error handling for event processing:
+
+- **Decoding errors**: Logged and tracked, but don't stop processing
+- **Registry write failures**: Cause the Watch Tower to exit and restart
+- **Provider failures**: Handled with retries and backoff
+
+<Info>
+The Watch Tower uses a LevelDB database with ACID guarantees to ensure consistency between the registry and blockchain state.
+</Info>
+
+## Metrics and Monitoring
+
+The Watch Tower tracks metrics for event processing:
+
+- `ownersTotal`: Total number of owners added
+- `activeOrdersTotal`: Current count of active orders
+- `singleOrdersTotal`: Count of individually created orders
+- `merkleRootTotal`: Count of orders created via merkle roots
+- `addContractsRunDurationSeconds`: Time spent processing events
+- `addContractsErrorsTotal`: Count of errors during event processing

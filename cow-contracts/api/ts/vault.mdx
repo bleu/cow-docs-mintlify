@@ -1,0 +1,71 @@
+---
+title: "Vault"
+description: "TypeScript utilities for integrating CoW Protocol with Balancer Vault"
+---
+
+# Vault
+
+The Vault module provides utilities for integrating CoW Protocol with Balancer Vault, enabling advanced trading features like internal balance usage and batch swaps.
+
+## Constants
+
+### VAULT_INTERFACE
+
+A partial ABI interface for the Balancer Vault containing methods for `manageUserBalance` and `batchSwap`:
+
+```typescript
+const VAULT_INTERFACE: Interface;
+```
+
+### Key Addresses (Mainnet)
+
+| Contract | Address |
+|----------|---------|
+| Balancer Vault | `0xBA12222222228d8Ba445958a75a0704d566BF2C8` |
+| CoW Protocol Vault Relayer | `0xC92E8bdf79f0507f65a392b0ab4667716BFE0110` |
+
+## Functions
+
+### grantRequiredRoles
+
+Grants necessary permissions to the CoW Protocol Vault Relayer.
+
+```typescript
+async function grantRequiredRoles(
+  vault: Contract,
+  vaultRelayerAddress: string
+): Promise<void>;
+```
+
+<Warning>
+This function is intended to be called by the Balancer Vault admin, **not** by traders.
+</Warning>
+
+## Balance Types
+
+Users can configure token handling through three balance types:
+
+| Type | Description | Gas Cost |
+|------|-------------|----------|
+| **ERC20** | Standard transfers requiring token approval | Standard |
+| **EXTERNAL** | Leverages existing Vault approvals | Reduced |
+| **INTERNAL** | Uses Vault internal balances | Lowest |
+
+## Example
+
+```typescript
+import { ethers } from "ethers";
+
+const provider = new ethers.providers.JsonRpcProvider("YOUR_RPC_URL");
+
+// Balancer Vault on mainnet
+const vaultAddress = "0xBA12222222228d8Ba445958a75a0704d566BF2C8";
+const vaultRelayer = "0xC92E8bdf79f0507f65a392b0ab4667716BFE0110";
+
+// Check internal balance
+const vault = new ethers.Contract(vaultAddress, VAULT_INTERFACE, provider);
+```
+
+<Tip>
+Internal balance operations have different gas cost characteristics than standard ERC20 transfers. Test thoroughly on testnets before using Vault integration in production.
+</Tip>

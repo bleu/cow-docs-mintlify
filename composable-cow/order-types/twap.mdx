@@ -1,0 +1,58 @@
+---
+title: "TWAP"
+description: "Time-Weighted Average Price orders that split large trades into multiple smaller executions at fixed intervals."
+---
+
+# TWAP Orders
+
+TWAP (Time-Weighted Average Price) orders enable splitting large trades into multiple smaller executions at fixed intervals, helping reduce price impact and achieve better average prices.
+
+## Core Structure
+
+The TWAP mechanism divides a total trade into `n` equal parts executing every `t` seconds, with each part having a validity window defined by the `span` parameter.
+
+## Key Parameters
+
+| Parameter | Type | Purpose |
+|-----------|------|---------|
+| `sellToken` | `IERC20` | Token being sold |
+| `buyToken` | `IERC20` | Token being purchased |
+| `receiver` | `address` | Recipient of bought tokens |
+| `partSellAmount` | `uint256` | Amount per execution part |
+| `minPartLimit` | `uint256` | Minimum buy amount per part |
+| `t0` | `uint256` | Start timestamp (0 for dynamic) |
+| `n` | `uint256` | Number of parts (>1) |
+| `t` | `uint256` | Seconds between parts |
+| `span` | `uint256` | Validity window (must be less than or equal to t) |
+| `appData` | `bytes32` | IPFS metadata hash |
+
+## Validation Requirements
+
+Orders must satisfy:
+
+- Different sell and buy tokens
+- Non-zero addresses
+- `partSellAmount` > 0
+- `minPartLimit` > 0
+- `n` between 2 and `type(uint32).max`
+- `t` between 1 and 365 days
+- `span` must be less than or equal to `t`
+
+## Validity Window Calculation
+
+With `span = 0`, each part remains valid until the next part begins. When `span > 0`, validity is restricted to that duration. This ensures unique order identifiers preventing duplicate executions.
+
+## Error Conditions
+
+| Error | Description |
+|-------|-------------|
+| `BEFORE_TWAP_START` | Current time precedes order start |
+| `AFTER_TWAP_FINISH` | All parts completed |
+| `NOT_WITHIN_SPAN` | Current time outside part's validity window |
+
+## Implementation
+
+The contract resides at `/src/types/twap/TWAP.sol`. Key functions include:
+
+- `getTradeableOrder()` - Retrieves the current executable part
+- `orderFor()` - Constructs the CoW Protocol order with calculated validity timestamps

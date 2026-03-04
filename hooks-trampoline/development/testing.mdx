@@ -1,0 +1,319 @@
+---
+title: "Testing"
+description: "Run the test suite and write tests for your own hooks using Foundry"
+---
+
+The Hooks Trampoline testing framework uses [Foundry](https://book.getfoundry.sh/) to verify contract behavior including gas limits, hook reverts, and settlement protection.
+
+## Running Tests
+
+Execute all tests:
+
+```bash
+forge test
+```
+
+Run with verbose output and stack traces:
+
+```bash
+forge test -vvv
+```
+
+## Test Organization
+
+The test suite is organized into two primary test contracts:
+
+| Contract | Purpose |
+|----------|---------|
+| `HooksTrampoline.t.sol` | Core functionality verification |
+| `GasLimitEnforcement.t.sol` | Gas enforcement edge cases |
+
+The main test setup deploys a trampoline with a mock settlement address:
+
+```solidity
+address settlement = address(0x4242424242424242424242424242424242424242);
+HooksTrampoline trampoline = new HooksTrampoline(settlement);
+```
+
+## Core Test Scenarios
+
+### Authorization Verification
+
+The trampoline rejects calls from non-settlement addresses:
+
+```solidity
+function test_RevertsWhenNotCalledFromSettlement() public {
+    HooksTrampoline.Hook[] memory hooks;
+
+    vm.expectRevert(HooksTrampoline.NotASettlement.selector);
+    trampoline.execute(hooks);
+}
+```
+
+### Gas Allocation
+
+Tests confirm hooks receive their specified gas allowances using a `GasRecorder` helper contract:
+
+```solidity
+function test_SpecifiesGasLimit() public {
+    GasRecorder gas = new GasRecorder();
+    uint256 gasLimit = 133700;
+
+    HooksTrampoline.Hook[] memory hooks = new HooksTrampoline.Hook[](1);
+    hooks[0] = HooksTrampoline.Hook({
+        target: address(gas),
+        callData: abi.encodeCall(GasRecorder.record, ()),
+        gasLimit: gasLimit
+    });
+
+    vm.prank(settlement);
+    trampoline.execute(hooks);
+
+    assertApproxEqAbs(gas.value(), gasLimit, 200);
+}
+```
+
+### Revert Tolerance
+
+Multiple hooks execute sequentially even when individual hooks fail:
+
+```solidity
+function test_AllowsReverts() public {
+    Counter counter = new Counter();
+    Reverter reverter = new Reverter();
+
+    HooksTrampoline.Hook[] memory hooks = new HooksTrampoline.Hook[](3);
+
+    hooks[0] = HooksTrampoline.Hook({
+        target: address(counter),
+        callData: abi.encodeCall(Counter.increment, ()),
+        gasLimit: 50000
+    });
+
+    hooks[1] = HooksTrampoline.Hook({
+        target: address(reverter),
+        callData: abi.encodeCall(Reverter.doRevert, ("boom")),
+        gasLimit: 50000
+    });
+
+    hooks[2] = HooksTrampoline.Hook({
+        target: address(counter),
+        callData: abi.encodeCall(Counter.increment, ()),
+        gasLimit: 50000
+    });
+
+    vm.prank(settlement);
+    trampoline.execute(hooks);
+
+    assertEq(counter.value(), 2);
+}
+```
+
+### Sequential Execution
+
+Hook ordering is enforced through a `CallInOrder` helper:
+
+```solidity
+function test_ExecutesHooksInOrder() public {
+    CallInOrder order = new CallInOrder();
+
+    HooksTrampoline.Hook[] memory hooks = new HooksTrampoline.Hook[](10);
+    for (uint256 i = 0; i < hooks.length; i++) {
+        hooks[i] = HooksTrampoline.Hook({
+            target: address(order),
+            callData: abi.encodeCall(CallInOrder.called, (i)),
+            gasLimit: 25000
+        });
+    }
+
+    vm.prank(settlement);
+    trampoline.execute(hooks);
+
+    assertEq(order.count(), hooks.length);
+}
+```
+
+### Out-of-Gas Protection
+
+The trampoline limits gas usage to approximately the specified amount plus call overhead:
+
+```solidity
+function test_HandlesOutOfGas() public {
+    Hummer hummer = new Hummer();
+    HooksTrampoline.Hook[] memory hooks = new HooksTrampoline.Hook[](1);
+    hooks[0] = HooksTrampoline.Hook({
+        target: address(hummer),
+        callData: abi.encodeCall(Hummer.drive, ()),
+        gasLimit: 133700
+    });
+
+    vm.prank(settlement);
+    uint256 gas = gasleft();
+    trampoline.execute(hooks);
+    uint256 gasUsed = gas - gasleft();
+    uint256 callOverhead = (2600 + 700) * 2;
+
+    assertApproxEqAbs(gasUsed, hooks[0].gasLimit + callOverhead, 500);
+}
+```
+
+## Helper Contracts
+
+The test suite uses several mock contracts:
+
+| Contract | Purpose |
+|----------|---------|
+| `GasRecorder` | Captures `gasleft()` during execution |
+| `Counter` | Tracks successful invocations via a public `value` |
+| `Reverter` | Intentionally fails with custom error messages |
+| `CallInOrder` | Validates execution sequence by requiring sequential indices |
+| `Hummer` | Consumes excessive gas via assembly memory operations |
+| `GasCraver` | Requires specific gas thresholds before modifying state |
+
+## Writing Custom Hook Tests
+
+<Steps>
+
+<Step title="Create test contract">
+
+Inherit from `forge-std/Test.sol`:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import {Test} from "forge-std/Test.sol";
+import {HooksTrampoline} from "../src/HooksTrampoline.sol";
+
+contract MyHookTest is Test {
+    HooksTrampoline trampoline;
+    address settlement = address(0x4242424242424242424242424242424242424242);
+
+    function setUp() public {
+        trampoline = new HooksTrampoline(settlement);
+    }
+}
+```
+
+</Step>
+
+<Step title="Deploy hook in setUp">
+
+```solidity
+MyHook myHook;
+
+function setUp() public {
+    trampoline = new HooksTrampoline(settlement);
+    myHook = new MyHook(address(trampoline));
+}
+```
+
+</Step>
+
+<Step title="Build hook arrays">
+
+```solidity
+function test_MyHookExecutes() public {
+    HooksTrampoline.Hook[] memory hooks = new HooksTrampoline.Hook[](1);
+    hooks[0] = HooksTrampoline.Hook({
+        target: address(myHook),
+        callData: abi.encodeCall(MyHook.execute, ()),
+        gasLimit: 100000
+    });
+
+    vm.prank(settlement);
+    trampoline.execute(hooks);
+
+    // Assert expected state changes
+}
+```
+
+</Step>
+
+<Step title="Execute via settlement context">
+
+Always use `vm.prank(settlement)` before calling `execute()`:
+
+```solidity
+vm.prank(settlement);
+trampoline.execute(hooks);
+```
+
+</Step>
+
+<Step title="Verify state and gas">
+
+```solidity
+// Verify state changes
+assertEq(myHook.wasExecuted(), true);
+
+// Verify gas consumption
+assertApproxEqAbs(gasUsed, expectedGas, tolerance);
+```
+
+</Step>
+
+<Step title="Test authorization">
+
+If your hook validates `msg.sender`:
+
+```solidity
+function test_RejectsDirectCalls() public {
+    vm.expectRevert("not a settlement");
+    myHook.execute();
+}
+```
+
+</Step>
+
+</Steps>
+
+## Gas Testing Constants
+
+Key values used in gas calculations:
+
+```solidity
+/// @dev Trampoline operations before calling the desired contract
+uint256 constant TRAMPOLINE_OVERHEAD = 4_000;
+
+/// @dev Gas craver contract overhead (exact, from debugger)
+uint256 constant GAS_CRAVER_OVERHEAD = 117;
+
+/// @dev Bound on actual gas spent executing the gas craver function
+uint256 constant BOUND_ON_GAS_COST = 60_000;
+```
+
+## Best Practices
+
+<AccordionGroup>
+
+<Accordion title="Always use settlement context">
+Call `execute()` from the settlement address using `vm.prank(settlement)`. Direct calls will revert with `NotASettlement`.
+</Accordion>
+
+<Accordion title="Test insufficient gas scenarios">
+Verify behavior when hooks don't receive enough gas. The trampoline should revert by consuming all remaining gas.
+</Accordion>
+
+<Accordion title="Verify reverts don't cascade">
+Test that a reverting hook doesn't prevent subsequent hooks from executing.
+</Accordion>
+
+<Accordion title="Confirm sequential ordering">
+Use helper contracts like `CallInOrder` to verify hooks execute in the correct order.
+</Accordion>
+
+<Accordion title="Use simple helper contracts">
+Create focused mock contracts that test specific behaviors rather than complex multi-purpose mocks.
+</Accordion>
+
+<Accordion title="Include edge cases">
+Test authorization failures, out-of-gas conditions, empty hook arrays, and hooks targeting EOAs.
+</Accordion>
+
+</AccordionGroup>
+
+## Related
+
+- [Gas Management](/hooks-trampoline/architecture/gas-management) — Deep dive into gas limit enforcement
+- [Usage Guide](/hooks-trampoline/usage) — Implementation patterns for hooks

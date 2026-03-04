@@ -1,0 +1,239 @@
+---
+title: "Prometheus Metrics"
+description: "Available metrics and monitoring integration for the Watch Tower"
+---
+
+# Prometheus Metrics
+
+Available metrics and monitoring integration for the Watch Tower.
+
+The Watch Tower exposes Prometheus metrics for monitoring and alerting.
+
+## Metrics endpoint
+
+When running the watch-tower in watch mode, a metrics endpoint is automatically exposed:
+
+```
+http://localhost:8080/metrics
+```
+
+You can customize the port using the `--api-port` option:
+
+```bash
+yarn cli run --api-port 9090
+```
+
+The metrics endpoint can be disabled entirely with `--disable-api`.
+
+## Available metrics
+
+### Sync status
+
+**`watch_tower_sync_status`** (Gauge)
+
+Indicates whether the watch-tower is in sync with the blockchain.
+
+* `1` - In sync
+* `0` - Out of sync
+
+Labels: `chain_id`
+
+### Block metrics
+
+**`watch_tower_block_timestamp`** (Gauge)
+
+Timestamp of the last processed block.
+
+Labels: `chain_id`
+
+**`watch_tower_block_height`** (Gauge)
+
+Block number of the last processed block.
+
+Labels: `chain_id`
+
+**`watch_tower_block_height_latest`** (Gauge)
+
+Block number of the latest block (tip of the chain).
+
+Labels: `chain_id`
+
+**`watch_tower_block_production_seconds`** (Gauge)
+
+Time since the last block was produced.
+
+Labels: `chain_id`
+
+**`watch_tower_process_block_duration_seconds`** (Histogram)
+
+Duration of block processing operations.
+
+Labels: `chain_id`
+
+### Reorg metrics
+
+**`watch_tower_latest_reorg_depth`** (Gauge)
+
+Depth of the most recent blockchain reorganization.
+
+Labels: `chain_id`
+
+**`watch_tower_reorg_total`** (Counter)
+
+Total number of reorgs detected.
+
+Labels: `chain_id`
+
+### Order metrics
+
+**`watch_tower_active_owners_total`** (Gauge)
+
+Number of owners (safes) with active conditional orders.
+
+Labels: `chain_id`
+
+**`watch_tower_active_orders_total`** (Gauge)
+
+Total number of active conditional orders being monitored.
+
+Labels: `chain_id`
+
+**`conditional_order_owners_total`** (Counter)
+
+Total number of owner contracts that have created orders.
+
+Labels: `chain_id`
+
+**`watch_tower_single_orders_total`** (Counter)
+
+Total number of single conditional orders processed.
+
+Labels: `chain_id`
+
+**`watch_tower_merkle_roots_total`** (Counter)
+
+Total number of merkle roots processed.
+
+Labels: `chain_id`
+
+### Event processing
+
+**`watch_tower_order_mutation_events_total`** (Counter)
+
+Total number of events for conditional order creation or merkle root updates (`ConditionalOrderCreated` and `MerkleRootSet`).
+
+Labels: `chain_id`
+
+### OrderBook API metrics
+
+**`watch_tower_orderbook_discrete_orders_total`** (Counter)
+
+Total number of discrete orders posted to the OrderBook API.
+
+Labels: `chain_id`, `handler`, `owner`, `id`
+
+**`watch_tower_orderbook_errors_total`** (Counter)
+
+Total number of errors when interacting with the OrderBook API.
+
+Labels: `chain_id`, `handler`, `owner`, `id`, `status`, `error`
+
+### Polling metrics
+
+**`watch_tower_polling_runs_total`** (Counter)
+
+Total number of polling runs executed.
+
+Labels: `chain_id`, `handler`, `owner`, `id`
+
+**`watch_tower_polling_onchain_checks_total`** (Counter)
+
+Total number of on-chain hint checks performed.
+
+Labels: `chain_id`, `handler`, `owner`, `id`
+
+**`watch_tower_polling_onchain_duration_seconds`** (Histogram)
+
+Duration of on-chain hint checks.
+
+Labels: `chain_id`, `handler`, `owner`, `id`
+
+**`watch_tower_polling_onchain_invalid_interface_total`** (Counter)
+
+Total number of invalid on-chain hint interfaces encountered.
+
+Labels: `chain_id`, `handler`, `owner`, `id`
+
+**`watch_tower_polling_onchain_ethers_errors_total`** (Counter)
+
+Total number of ethers errors during on-chain hint checks.
+
+Labels: `chain_id`, `handler`, `owner`, `id`
+
+**`watch_tower_polling_unexpected_errors_total`** (Counter)
+
+Total number of unexpected polling errors.
+
+Labels: `chain_id`, `handler`, `owner`, `id`
+
+### Contract addition metrics
+
+**`watch_tower_add_contract_runs_total`** (Counter)
+
+Total number of contract addition runs.
+
+Labels: `chain_id`
+
+**`watch_tower_add_contracts_errors_total`** (Counter)
+
+Total number of errors when adding contracts.
+
+Labels: `chain_id`, `function`
+
+**`watch_tower_add_contracts_run_duration_seconds`** (Histogram)
+
+Duration of contract addition operations.
+
+Labels: `chain_id`
+
+## Monitoring integration
+
+To integrate with Prometheus:
+
+1. Add the watch-tower metrics endpoint to your Prometheus configuration:
+
+```yaml
+scrape_configs:
+  - job_name: 'watch-tower'
+    static_configs:
+      - targets: ['localhost:8080']
+```
+
+2. Create alerting rules for critical metrics:
+
+```yaml
+groups:
+  - name: watch-tower
+    rules:
+      - alert: WatchTowerOutOfSync
+        expr: watch_tower_sync_status == 0
+        for: 5m
+        annotations:
+          summary: "Watch Tower is out of sync"
+
+      - alert: WatchTowerHighErrorRate
+        expr: rate(watch_tower_orderbook_errors_total[5m]) > 0.1
+        for: 5m
+        annotations:
+          summary: "High error rate posting orders"
+```
+
+3. Import metrics into Grafana to visualize:
+   * Order processing rate
+   * Block sync progress
+   * Error rates
+   * Polling performance
+
+<Warning>
+The metrics endpoint is exposed on all network interfaces by default. In production, ensure it's properly secured or bound to localhost only.
+</Warning>

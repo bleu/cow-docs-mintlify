@@ -1,0 +1,252 @@
+---
+title: "Configuration"
+description: "Configure the Watch Tower to monitor blockchain networks and manage programmatic orders"
+---
+
+# Configuration
+
+Configure the Watch Tower to monitor blockchain networks and manage programmatic orders.
+
+The Watch Tower uses a JSON configuration file to define network settings, RPC endpoints, and filtering policies.
+
+## Configuration file
+
+The Watch Tower requires a `config.json` file. You can use the provided example as a starting point:
+
+```bash
+cp config.json.example config.json
+```
+
+## Configuration schema
+
+The configuration file follows this structure:
+
+```json
+{
+  "networks": [
+    {
+      "name": "mainnet",
+      "rpc": "https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY",
+      "deploymentBlock": 17883049,
+      "filterPolicy": {
+        "defaultAction": "ACCEPT"
+      }
+    }
+  ]
+}
+```
+
+## Network configuration
+
+Each network in the `networks` array supports the following options:
+
+### Required fields
+
+**name** (string, required)
+Network identifier (e.g., `mainnet`, `sepolia`, `arbitrum_one`, `gnosis_chain`, `base`)
+
+**rpc** (string, required)
+RPC endpoint URL. Supports both HTTP/HTTPS and WebSocket connections.
+
+Examples:
+- `https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY`
+- `wss://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY`
+- `https://sepolia.drpc.org`
+
+**deploymentBlock** (integer, required)
+Block number where the ComposableCoW contract was deployed. The Watch Tower only processes events from this block onwards to optimize performance.
+
+Deployment blocks by network:
+- Mainnet: `17883049`
+- Sepolia: `8468184`
+- Arbitrum One: `343493668`
+- Gnosis Chain: `40394915`
+- Base: `31084679`
+- Avalanche: `63235114`
+- Polygon: `72315184`
+- Linea: `25028604`
+- Plasma: `4810535`
+- Ink: `37142449`
+
+<Info>
+See [Deployed Contracts](https://github.com/cowprotocol/composable-cow#deployed-contracts) for the complete list.
+</Info>
+
+**filterPolicy** (object, required)
+Defines filtering rules for conditional orders. See [Filter policy](#filter-policy) below.
+
+### Optional fields
+
+**orderBookApi** (string)
+Custom OrderBook API endpoint URL. If not specified, uses the default CoW Protocol API for the network.
+
+**pageSize** (integer, default: 5000)
+Number of blocks to fetch per request when querying historical events (`eth_getLogs`).
+
+- Default: `5000` (Infura's maximum)
+- Set to `0` to fetch all blocks in one request (useful for private RPC nodes)
+
+<Warning>
+Setting `pageSize` to `0` may cause issues with some RPC providers that have block range limits.
+</Warning>
+
+**watchdogTimeout** (integer)
+Timeout in milliseconds for the watchdog timer. If no new blocks are received within this time, the Watch Tower will alert.
+
+**processEveryNumBlocks** (integer, default: 1)
+Throttle block processing to only process every N blocks.
+
+- `1` - Process every block (default)
+- `2` - Process every other block
+- `10` - Process every 10th block
+
+Useful for reducing RPC load on networks with high block production rates.
+
+## Filter policy
+
+The filter policy controls which conditional orders are processed by the Watch Tower.
+
+### Structure
+
+```json
+{
+  "filterPolicy": {
+    "defaultAction": "ACCEPT",
+    "conditionalOrderIds": {
+      "0x5b3cdb6ffa3c95507cbfc459162609007865c2e87340312d3cd469c4ffbfae81": "DROP"
+    },
+    "transactions": {
+      "0x33ef06af308d1e4f94dd61fa8df43fe52b67e8a485f4e4fff75235080e663bfa": "DROP"
+    },
+    "handlers": {
+      "0xd3338f21c89745e46af56aeaf553cf96ba9bc66f": "DROP"
+    },
+    "owners": {
+      "0xd3338f21c89745e46af56aeaf553cf96ba9bc66f": "DROP"
+    }
+  }
+}
+```
+
+### Filter actions
+
+**defaultAction** (string, required)
+Default action for items not explicitly listed in filters.
+
+- `ACCEPT` - Process the order (recommended)
+- `DROP` - Ignore the order
+- `SKIP` - Skip processing temporarily
+
+**conditionalOrderIds** (object)
+Map of conditional order IDs to filter actions. Use this to block or allow specific order IDs.
+
+**transactions** (object)
+Map of transaction hashes to filter actions. Use this to filter orders from specific transactions.
+
+**handlers** (object)
+Map of handler contract addresses to filter actions. Use this to filter orders by their handler contract.
+
+**owners** (object)
+Map of owner addresses (safes) to filter actions. Use this to filter orders by the owning address.
+
+## Example configurations
+
+### Multi-network setup
+
+```json
+{
+  "networks": [
+    {
+      "name": "mainnet",
+      "rpc": "https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY",
+      "deploymentBlock": 17883049,
+      "pageSize": 5000,
+      "filterPolicy": {
+        "defaultAction": "ACCEPT"
+      }
+    },
+    {
+      "name": "arbitrum_one",
+      "rpc": "https://arb1.arbitrum.io/rpc",
+      "deploymentBlock": 343493668,
+      "filterPolicy": {
+        "defaultAction": "ACCEPT"
+      }
+    },
+    {
+      "name": "gnosis_chain",
+      "rpc": "https://rpc.gnosischain.com",
+      "deploymentBlock": 40394915,
+      "filterPolicy": {
+        "defaultAction": "ACCEPT"
+      }
+    }
+  ]
+}
+```
+
+### Development setup (Sepolia)
+
+```json
+{
+  "networks": [
+    {
+      "name": "sepolia",
+      "rpc": "https://sepolia.drpc.org",
+      "deploymentBlock": 8468184,
+      "pageSize": 0,
+      "filterPolicy": {
+        "defaultAction": "ACCEPT"
+      }
+    }
+  ]
+}
+```
+
+### With custom filtering
+
+```json
+{
+  "networks": [
+    {
+      "name": "mainnet",
+      "rpc": "wss://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY",
+      "deploymentBlock": 17883049,
+      "filterPolicy": {
+        "defaultAction": "ACCEPT",
+        "owners": {
+          "0xblockedaddress": "DROP"
+        },
+        "handlers": {
+          "0xcustomhandler": "ACCEPT"
+        }
+      }
+    }
+  ]
+}
+```
+
+## Configuration via environment variables
+
+You can override the configuration file path using the `CONFIG_PATH` environment variable:
+
+```bash
+CONFIG_PATH=/path/to/custom/config.json yarn cli run
+```
+
+## Important notes
+
+<Warning>
+Conditional order types may consume considerable RPC calls. Monitor your RPC provider's rate limits and usage.
+</Warning>
+
+<Note>
+The `deploymentBlock` setting is critical for performance. Setting it too low will cause unnecessary historical event queries, while setting it too high will miss orders.
+</Note>
+
+## Next steps
+
+After configuring the Watch Tower:
+
+- [Run the Watch Tower locally](/getting-started/running-locally)
+- Learn about [deployment options](/deployment/docker)

@@ -1,0 +1,261 @@
+---
+title: "Network Configuration"
+description: "Configure blockchain networks for Watch Tower monitoring"
+---
+
+# Network Configuration
+
+Configure blockchain networks for Watch Tower monitoring.
+
+## Overview
+
+The Watch Tower monitors multiple blockchain networks simultaneously. Each network is configured in the `networks` array in your `config.json` file.
+
+## Networks array structure
+
+The configuration file contains a `networks` array where each element defines a blockchain network to monitor:
+
+```json
+{
+  "networks": [
+    {
+      "name": "mainnet",
+      "rpc": "https://mainnet.infura.io/v3/YOUR_API_KEY",
+      "deploymentBlock": 17883049,
+      "filterPolicy": {
+        "defaultAction": "ACCEPT"
+      }
+    }
+  ]
+}
+```
+
+## Per-network settings
+
+Each network configuration supports the following fields:
+
+### name
+
+**Required** - String identifier for the network.
+
+```json
+"name": "mainnet"
+```
+
+Supported network names:
+
+- `mainnet` - Ethereum Mainnet
+- `sepolia` - Ethereum Sepolia testnet
+- `arbitrum_one` - Arbitrum One
+- `avalanche` - Avalanche C-Chain
+- `base` - Base
+- `gnosis_chain` - Gnosis Chain
+- `polygon` - Polygon PoS
+- `linea` - Linea
+- `plasma` - Plasma
+- `ink` - Ink
+
+### rpc
+
+**Required** - RPC endpoint URL for connecting to the blockchain. Supports both HTTP(S) and WebSocket protocols.
+
+HTTP RPC:
+```json
+"rpc": "https://mainnet.infura.io/v3/YOUR_API_KEY"
+```
+
+WebSocket RPC:
+```json
+"rpc": "ws://172.20.0.5:8546"
+```
+
+<Warning>
+Conditional order types may consume considerable RPC calls. Ensure your RPC provider has sufficient rate limits.
+</Warning>
+
+### deploymentBlock
+
+**Required** - Block number at which the ComposableCoW contract was deployed on the network.
+
+This optimizes the watch-tower by only fetching events from the blockchain after this block number.
+
+```json
+"deploymentBlock": 17883049
+```
+
+Refer to [Deployed Contracts](https://github.com/cowprotocol/composable-cow#deployed-contracts) for the correct deployment block for each chain.
+
+### watchdogTimeout
+
+**Optional** - Timeout in milliseconds for the watchdog timer. If the watch-tower doesn't process a block within this time, it will restart.
+
+```json
+"watchdogTimeout": 300000
+```
+
+### processEveryNumBlocks
+
+**Optional** - Throttle block processing to only process blocks every N blocks. Default is `1` (process every block).
+
+Process every block:
+```json
+"processEveryNumBlocks": 1
+```
+
+Process every other block:
+```json
+"processEveryNumBlocks": 2
+```
+
+### orderBookApi
+
+**Optional** - Custom URL for the CoW Protocol OrderBook API. If not specified, uses the default API for the network.
+
+```json
+"orderBookApi": "https://api.cow.fi/mainnet/api/v1"
+```
+
+### pageSize
+
+**Optional** - Number of blocks to fetch when querying historical events (`eth_getLogs`).
+
+Default is `5000`, which is the maximum number of blocks that can be fetched in a single request from Infura.
+
+Default (Infura-compatible):
+```json
+"pageSize": 5000
+```
+
+No paging (own RPC node):
+```json
+"pageSize": 0
+```
+
+<Info>
+If running against your own RPC node, you may set `pageSize` to `0` to fetch all blocks in one request instead of paging.
+</Info>
+
+### filterPolicy
+
+**Required** - Defines filtering rules for conditional orders. See [Filter policy configuration](/configuration/filter-policy) for details.
+
+## Supported chains
+
+Ethereum Mainnet:
+```json
+{
+  "name": "mainnet",
+  "rpc": "https://mainnet.infura.io/v3/YOUR_API_KEY",
+  "deploymentBlock": 17883049
+}
+```
+
+Ethereum Sepolia:
+```json
+{
+  "name": "sepolia",
+  "rpc": "https://sepolia.drpc.org",
+  "deploymentBlock": 8468184
+}
+```
+
+Arbitrum One:
+```json
+{
+  "name": "arbitrum_one",
+  "rpc": "https://arb1.arbitrum.io/rpc",
+  "deploymentBlock": 343493668
+}
+```
+
+Avalanche:
+```json
+{
+  "name": "avalanche",
+  "rpc": "https://avax-mainnet.g.alchemy.com/v2/YOUR_API_KEY",
+  "deploymentBlock": 63235114
+}
+```
+
+Base:
+```json
+{
+  "name": "base",
+  "rpc": "https://mainnet.base.org",
+  "deploymentBlock": 31084679
+}
+```
+
+Gnosis Chain:
+```json
+{
+  "name": "gnosis_chain",
+  "rpc": "https://rpc.gnosischain.com",
+  "deploymentBlock": 40394915
+}
+```
+
+Polygon:
+```json
+{
+  "name": "polygon",
+  "rpc": "https://polygon-rpc.com",
+  "deploymentBlock": 72315184
+}
+```
+
+Linea:
+```json
+{
+  "name": "linea",
+  "rpc": "https://rpc.linea.build",
+  "deploymentBlock": 25028604
+}
+```
+
+Plasma:
+```json
+{
+  "name": "plasma",
+  "rpc": "https://rpc.plasma.to",
+  "deploymentBlock": 4810535
+}
+```
+
+Ink:
+```json
+{
+  "name": "ink",
+  "rpc": "https://rpc-ten.inkonchain.com",
+  "deploymentBlock": 37142449
+}
+```
+
+## Example configuration
+
+Complete example with multiple networks:
+
+```json
+{
+  "networks": [
+    {
+      "name": "mainnet",
+      "rpc": "ws://172.20.0.5:8546",
+      "deploymentBlock": 17883049,
+      "pageSize": 5000,
+      "processEveryNumBlocks": 1,
+      "filterPolicy": {
+        "defaultAction": "ACCEPT"
+      }
+    },
+    {
+      "name": "arbitrum_one",
+      "rpc": "https://arb1.arbitrum.io/rpc",
+      "deploymentBlock": 343493668,
+      "filterPolicy": {
+        "defaultAction": "ACCEPT"
+      }
+    }
+  ]
+}
+```

@@ -224,6 +224,21 @@
             ]
           },
           {
+            "group": "Other Reference",
+            "icon": "ellipsis",
+            "pages": [
+              "cow-protocol/reference/widget-params",
+              "cow-protocol/reference/hook-dapp",
+              "cow-protocol/reference/custom-links"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Contracts",
+        "icon": "file-contract",
+        "groups": [
+          {
             "group": "Contracts",
             "icon": "file-contract",
             "expanded": false,
@@ -252,12 +267,244 @@
             ]
           },
           {
-            "group": "Other Reference",
-            "icon": "ellipsis",
+            "group": "Hooks Trampoline",
+            "icon": "hook",
             "pages": [
-              "cow-protocol/reference/widget-params",
-              "cow-protocol/reference/hook-dapp",
-              "cow-protocol/reference/custom-links"
+              "hooks-trampoline/introduction",
+              "hooks-trampoline/installation",
+              "hooks-trampoline/how-it-works",
+              "hooks-trampoline/usage",
+              {
+                "group": "API Reference",
+                "pages": [
+                  "hooks-trampoline/api/hooks-trampoline",
+                  "hooks-trampoline/api/hook-struct",
+                  "hooks-trampoline/api/errors"
+                ]
+              },
+              {
+                "group": "Architecture",
+                "pages": [
+                  "hooks-trampoline/architecture/settlement-flow",
+                  "hooks-trampoline/architecture/gas-management",
+                  "hooks-trampoline/architecture/security"
+                ]
+              },
+              {
+                "group": "Development",
+                "expanded": false,
+                "pages": [
+                  "hooks-trampoline/development/deployment",
+                  "hooks-trampoline/development/testing"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Composable CoW",
+            "icon": "puzzle-piece",
+            "pages": [
+              "composable-cow/introduction",
+              "composable-cow/quickstart",
+              "composable-cow/architecture",
+              {
+                "group": "Guides",
+                "pages": [
+                  "composable-cow/guides/setup",
+                  "composable-cow/guides/creating-orders",
+                  "composable-cow/guides/managing-orders",
+                  "composable-cow/guides/merkle-root-orders"
+                ]
+              },
+              {
+                "group": "Order Types",
+                "pages": [
+                  "composable-cow/order-types/overview",
+                  "composable-cow/order-types/twap",
+                  "composable-cow/order-types/stop-loss",
+                  "composable-cow/order-types/good-after-time",
+                  "composable-cow/order-types/perpetual-stable-swap",
+                  "composable-cow/order-types/trade-above-threshold"
+                ]
+              },
+              {
+                "group": "Advanced",
+                "pages": [
+                  "composable-cow/advanced/custom-orders",
+                  "composable-cow/advanced/swap-guards",
+                  "composable-cow/advanced/value-factories"
+                ]
+              },
+              {
+                "group": "API Reference",
+                "expanded": false,
+                "pages": [
+                  "composable-cow/api/composable-cow",
+                  "composable-cow/api/base-conditional-order",
+                  "composable-cow/api/extensible-fallback-handler",
+                  {
+                    "group": "Interfaces",
+                    "pages": [
+                      "composable-cow/api/interfaces/iconditional-order",
+                      "composable-cow/api/interfaces/iswap-guard",
+                      "composable-cow/api/interfaces/ivalue-factory"
+                    ]
+                  },
+                  {
+                    "group": "Order Contracts",
+                    "pages": [
+                      "composable-cow/api/orders/twap",
+                      "composable-cow/api/orders/stop-loss",
+                      "composable-cow/api/orders/good-after-time",
+                      "composable-cow/api/orders/perpetual-stable-swap",
+                      "composable-cow/api/orders/trade-above-threshold"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Deployment",
+                "pages": [
+                  "composable-cow/deployment/deploying",
+                  "composable-cow/deployment/networks",
+                  "composable-cow/deployment/testing"
+                ]
+              },
+              {
+                "group": "Security",
+                "pages": [
+                  "composable-cow/security/audits",
+                  "composable-cow/security/best-practices"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Contracts SDK",
+            "icon": "file-signature",
+            "pages": [
+              "cow-contracts/introduction",
+              "cow-contracts/installation",
+              "cow-contracts/quickstart",
+              {
+                "group": "Concepts",
+                "pages": [
+                  "cow-contracts/concepts/architecture",
+                  "cow-contracts/concepts/orders",
+                  "cow-contracts/concepts/settlement",
+                  "cow-contracts/concepts/authentication",
+                  "cow-contracts/concepts/solvers"
+                ]
+              },
+              {
+                "group": "Contracts",
+                "pages": [
+                  "cow-contracts/contracts/overview",
+                  "cow-contracts/contracts/settlement",
+                  "cow-contracts/contracts/vault-relayer",
+                  "cow-contracts/contracts/authentication",
+                  "cow-contracts/contracts/libraries"
+                ]
+              },
+              {
+                "group": "SDK",
+                "pages": [
+                  "cow-contracts/sdk/overview",
+                  "cow-contracts/sdk/orders",
+                  "cow-contracts/sdk/signing",
+                  "cow-contracts/sdk/settlement",
+                  "cow-contracts/sdk/interactions"
+                ]
+              },
+              {
+                "group": "API - Solidity",
+                "expanded": false,
+                "pages": [
+                  "cow-contracts/api/contracts/settlement",
+                  "cow-contracts/api/contracts/authentication",
+                  "cow-contracts/api/contracts/order",
+                  "cow-contracts/api/contracts/trade",
+                  "cow-contracts/api/contracts/interaction",
+                  "cow-contracts/api/contracts/vault-relayer"
+                ]
+              },
+              {
+                "group": "API - TypeScript",
+                "expanded": false,
+                "pages": [
+                  "cow-contracts/api/ts/domain",
+                  "cow-contracts/api/ts/order",
+                  "cow-contracts/api/ts/signing",
+                  "cow-contracts/api/ts/settlement",
+                  "cow-contracts/api/ts/interaction",
+                  "cow-contracts/api/ts/swap",
+                  "cow-contracts/api/ts/deploy",
+                  "cow-contracts/api/ts/proxy",
+                  "cow-contracts/api/ts/vault"
+                ]
+              },
+              {
+                "group": "Deployment",
+                "pages": [
+                  "cow-contracts/deployment/addresses",
+                  "cow-contracts/deployment/networks",
+                  "cow-contracts/deployment/verification"
+                ]
+              },
+              {
+                "group": "Development",
+                "expanded": false,
+                "pages": [
+                  "cow-contracts/development/building",
+                  "cow-contracts/development/testing",
+                  "cow-contracts/development/benchmarking"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Flash Loan Router",
+            "icon": "bolt",
+            "pages": [
+              "flash-loan-router/introduction",
+              "flash-loan-router/architecture",
+              {
+                "group": "Getting Started",
+                "pages": [
+                  "flash-loan-router/getting-started/installation",
+                  "flash-loan-router/getting-started/quickstart",
+                  "flash-loan-router/getting-started/deployment"
+                ]
+              },
+              {
+                "group": "Concepts",
+                "pages": [
+                  "flash-loan-router/concepts/flash-loans",
+                  "flash-loan-router/concepts/router-design",
+                  "flash-loan-router/concepts/borrower-adapters",
+                  "flash-loan-router/concepts/security-model"
+                ]
+              },
+              {
+                "group": "Contracts",
+                "pages": [
+                  "flash-loan-router/contracts/flash-loan-router",
+                  "flash-loan-router/contracts/aave-borrower",
+                  "flash-loan-router/contracts/erc3156-borrower",
+                  "flash-loan-router/contracts/base/borrower",
+                  "flash-loan-router/contracts/interfaces/iflash-loan-router",
+                  "flash-loan-router/contracts/interfaces/iborrower"
+                ]
+              },
+              {
+                "group": "Operations",
+                "pages": [
+                  "flash-loan-router/operations/networks",
+                  "flash-loan-router/operations/deployment-guide",
+                  "flash-loan-router/operations/testing",
+                  "flash-loan-router/operations/verification"
+                ]
+              }
             ]
           }
         ]
@@ -492,6 +739,83 @@
                   "services/deployment/configuration",
                   "services/deployment/database",
                   "services/deployment/monitoring"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Watch Tower",
+            "icon": "tower-observation",
+            "pages": [
+              "watch-tower/introduction",
+              "watch-tower/architecture",
+              {
+                "group": "Getting Started",
+                "pages": [
+                  "watch-tower/getting-started/installation",
+                  "watch-tower/getting-started/running-locally",
+                  "watch-tower/getting-started/configuration"
+                ]
+              },
+              {
+                "group": "Concepts",
+                "pages": [
+                  "watch-tower/concepts/conditional-orders",
+                  "watch-tower/concepts/events",
+                  "watch-tower/concepts/polling",
+                  "watch-tower/concepts/registry"
+                ]
+              },
+              {
+                "group": "Configuration",
+                "pages": [
+                  "watch-tower/configuration/networks",
+                  "watch-tower/configuration/logging",
+                  "watch-tower/configuration/filter-policy",
+                  "watch-tower/configuration/api-server"
+                ]
+              },
+              {
+                "group": "CLI",
+                "pages": [
+                  "watch-tower/cli/run-command",
+                  "watch-tower/cli/options",
+                  "watch-tower/cli/dump-db-command"
+                ]
+              },
+              {
+                "group": "Deployment",
+                "pages": [
+                  "watch-tower/deployment/requirements",
+                  "watch-tower/deployment/docker",
+                  "watch-tower/deployment/dappnode"
+                ]
+              },
+              {
+                "group": "Advanced",
+                "expanded": false,
+                "pages": [
+                  "watch-tower/advanced/storage",
+                  "watch-tower/advanced/database-schema",
+                  "watch-tower/advanced/metrics",
+                  "watch-tower/advanced/notifications"
+                ]
+              },
+              {
+                "group": "Development",
+                "expanded": false,
+                "pages": [
+                  "watch-tower/development/setup",
+                  "watch-tower/development/building",
+                  "watch-tower/development/testing",
+                  {
+                    "group": "Architecture",
+                    "pages": [
+                      "watch-tower/development/architecture/overview",
+                      "watch-tower/development/architecture/domain-model",
+                      "watch-tower/development/architecture/services"
+                    ]
+                  }
                 ]
               }
             ]

@@ -1,0 +1,93 @@
+---
+title: "Testing"
+description: "Testing guide for CoW Protocol smart contracts using Hardhat and Waffle"
+---
+
+# Testing
+
+A comprehensive testing guide for the CoW Protocol smart contracts project, covering test execution, debugging, gas reporting, and code coverage analysis.
+
+## Test Framework
+
+Tests leverage:
+- **Hardhat** - Development environment
+- **Waffle** - Smart contract testing library
+- **Chai** - Assertion library
+- **ethers.js** - Ethereum interaction library
+
+## Running Tests
+
+### Standard Suite
+
+Run the complete test battery:
+
+```bash
+yarn test
+```
+
+### Excluded Tests
+
+Execute tests that skip coverage analysis:
+
+```bash
+yarn test:ignored-in-coverage
+```
+
+### Coverage Reports
+
+Generate detailed instrumentation metrics:
+
+```bash
+yarn coverage
+```
+
+## Debugging
+
+Enable verbose output to track contract deployments, transaction details, state changes, and event emissions:
+
+```bash
+DEBUG=* yarn test
+```
+
+## Gas Reporting
+
+Activate gas tracking to produce consumption tables showing costs per operation and deployment expenses:
+
+```bash
+REPORT_GAS=1 yarn test
+```
+
+## Coverage Analysis
+
+The `yarn coverage` command instruments contracts and generates:
+
+- **Terminal summary** with coverage percentages
+- **Interactive HTML report** at `coverage/index.html`
+
+### Coverage Color Coding
+
+| Color | Meaning |
+|-------|---------|
+| Red | Uncovered lines |
+| Yellow | Partial coverage |
+| Green | Fully covered |
+
+<Warning>
+Coverage instrumentation alters bytecode, making it unsuitable for gas benchmarking. Do not use coverage reports for gas analysis.
+</Warning>
+
+## Configuration
+
+The `MOCHA_CONF` environment variable controls test scope across different execution contexts:
+
+```bash
+MOCHA_CONF=custom yarn test
+```
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Test failures after contract changes | Rebuild with `yarn build:sol` |
+| Cached state issues | Clear Hardhat cache: `rm -rf cache/` |
+| Memory errors during coverage | Increase heap: `NODE_OPTIONS="--max-old-space-size=4096" yarn coverage` |

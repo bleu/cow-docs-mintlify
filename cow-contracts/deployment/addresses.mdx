@@ -1,0 +1,80 @@
+---
+title: "Contract Addresses"
+description: "Comprehensive reference of all CoW Protocol smart contract addresses across supported networks"
+---
+
+# Contract Addresses
+
+All CoW Protocol smart contract addresses deployed across supported networks.
+
+## Core Contracts
+
+### GPv2Settlement
+
+The main settlement contract, deployed at the same address across all networks:
+
+```
+0x9008D19f58AAbD9eD0D60971565AA8510560ab41
+```
+
+### GPv2AllowListAuthentication
+
+Solver authentication contract using a proxy pattern:
+
+| Component | Address |
+|-----------|---------|
+| Proxy | `0x2c4c28DDBdAc9C5E7055b4C863b72eA0149D8aFE` |
+| Implementation | `0x9E7Ae8Bdba9AA346739792d219a808884996Db67` |
+
+### GPv2VaultRelayer
+
+Balancer V2 Vault interaction relayer, deployed as part of the GPv2Settlement deployment:
+
+```
+0xC92E8bdf79f0507f65a392b0ab4667716BFE0110
+```
+
+## Supported Networks
+
+| Network | Chain ID | Status |
+|---------|----------|--------|
+| Ethereum Mainnet | 1 | Active |
+| Optimism | 10 | Active |
+| BNB Smart Chain | 56 | Active |
+| Gnosis Chain | 100 | Active |
+| Polygon | 137 | Active |
+| Base | 8453 | Active |
+| Arbitrum One | 42161 | Active |
+| Avalanche C-Chain | 43114 | Active |
+| Sepolia (testnet) | 11155111 | Active |
+
+All core contracts are deployed at identical addresses across all supported networks using CREATE2 deterministic deployment.
+
+## Deprecated Networks
+
+| Network | Status |
+|---------|--------|
+| Rinkeby | Deprecated - not recommended for new integrations |
+| Goerli | Deprecated - not recommended for new integrations |
+
+## Integration Example
+
+```typescript
+import { domain } from "@cowprotocol/contracts";
+
+// Ethereum Mainnet
+const mainnetDomain = domain(1, "0x9008D19f58AAbD9eD0D60971565AA8510560ab41");
+
+// Gnosis Chain
+const gnosisDomain = domain(100, "0x9008D19f58AAbD9eD0D60971565AA8510560ab41");
+
+// Arbitrum One
+const arbitrumDomain = domain(42161, "0x9008D19f58AAbD9eD0D60971565AA8510560ab41");
+```
+
+## Best Practices
+
+- Store addresses in configuration files rather than hardcoding them
+- Use environment variables for different networks
+- Validate addresses before executing transactions
+- Always verify contract addresses through official channels before integrating

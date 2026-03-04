@@ -1,0 +1,127 @@
+---
+title: "IFlashLoanRouter"
+description: "Interface for the Flash Loan Router enabling CoW Protocol solvers to request flash loans and execute settlements atomically"
+---
+
+## Overview
+
+The `IFlashLoanRouter` interface defines the contract API for coordinating flash loans with CoW Protocol settlements. It acts as a solver for CoW Protocol, enabling solvers to request flash loans and execute settlements in a single transaction.
+
+## Contract Details
+
+- **Source**: `src/interfaces/IFlashLoanRouter.sol`
+- **License**: GPL-3.0-or-later
+- **Solidity**: ^0.8.28
+
+## Functions
+
+### flashLoanAndSettle
+
+```solidity
+function flashLoanAndSettle(
+    Loan.Data[] calldata loans,
+    bytes calldata settlement
+) external;
+```
+
+Requests flash loans and executes a CoW Protocol settlement atomically. All specified loans are requested sequentially before the settlement is executed.
+
+**Parameters:**
+- `loans`: Array of flash loan specifications, each containing:
+  - `amount` (`uint256`): Amount of tokens to borrow
+  - `token` (`IERC20`): Token contract address
+  - `lender` (`address`): Flash loan provider contract
+  - `borrower` (`IBorrower`): Adapter contract for the lender
+- `settlement`: ABI-encoded `settle()` call data for the CoW Settlement contract
+
+**Requirements:**
+- Caller must be a registered CoW Protocol solver
+- No concurrent settlement in progress
+- Settlement data must encode a valid `settle()` call
+
+<Warning>
+  It is the solver's responsibility to ensure the loan is specified correctly. The router does not validate that flash loan proceeds will be available for the settlement.
+</Warning>
+
+### borrowerCallBack
+
+```solidity
+function borrowerCallBack(bytes memory loansWithSettlement) external;
+```
+
+Callback function for borrower contracts to signal flash loan receipt. The borrower must pass the encoded data back unmodified.
+
+**Parameters:**
+- `loansWithSettlement`: Encoded remaining loans and settlement data
+
+**Requirements:**
+- Caller must be the expected pending borrower
+- Data must match the stored hash
+
+### settlementContract
+
+```solidity
+function settlementContract() external view returns (ICowSettlement);
+```
+
+Returns the CoW Protocol settlement contract address.
+
+### settlementAuthentication
+
+```solidity
+function settlementAuthentication() external view returns (ICowAuthentication);
+```
+
+Returns the solver authentication contract address used to verify solver identity.
+
+## Events
+
+### Settlement
+
+```solidity
+event Settlement(address indexed solver);
+```
+
+Emitted when a solver initiates a flash loan settlement.
+
+## Data Types
+
+### Loan.Data
+
+```solidity
+struct Data {
+    uint256 amount;
+    IERC20 token;
+    address lender;
+    IBorrower borrower;
+}
+```
+
+Specification for a single flash loan request within a settlement.
+
+## Execution Flow
+
+1. Solver calls `flashLoanAndSettle()` with loan array and settlement data
+2. Router requests each loan sequentially through borrower adapters
+3. Each borrower receives funds and calls `borrowerCallBack()`
+4. After all loans are obtained, the router executes the settlement
+5. Settlement repays loans through borrower approvals
+
+## Key Constraints
+
+- Only one settlement execution per call
+- Settlement data cannot be modified during execution
+- Only the `settle()` function can be called during execution
+- Callback data must be passed through unmodified
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="IBorrower" icon="plug" href="/flash-loan-router/contracts/interfaces/iborrower">
+    Borrower interface reference
+  </Card>
+
+  <Card title="FlashLoanRouter" icon="code" href="/flash-loan-router/contracts/flash-loan-router">
+    Full contract reference
+  </Card>
+</CardGroup>

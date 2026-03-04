@@ -1,0 +1,52 @@
+---
+title: "TWAP API"
+description: "API reference for TWAP (Time-Weighted Average Price) conditional orders."
+---
+
+# TWAP API
+
+TWAP (Time-Weighted Average Price) orders split transactions into multiple parts executed at regular intervals, helping traders achieve better average prices.
+
+## Key Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `sellToken` | `IERC20` | Token being sold |
+| `buyToken` | `IERC20` | Token being purchased |
+| `receiver` | `address` | Recipient of bought tokens |
+| `partSellAmount` | `uint256` | Amount per execution part |
+| `minPartLimit` | `uint256` | Minimum buy amount per part |
+| `t0` | `uint256` | Start timestamp (0 for dynamic from cabinet) |
+| `n` | `uint256` | Number of parts |
+| `t` | `uint256` | Interval between parts (seconds) |
+| `span` | `uint256` | Validity window per part |
+| `appData` | `bytes32` | IPFS metadata hash |
+
+## Core Function
+
+The `getTradeableOrder()` function returns the currently executable order portion. It:
+
+1. Decodes input data
+2. Retrieves the start time if needed from protocol storage
+3. Generates the appropriate order for the present moment
+4. Confirms it remains within valid timeframes
+
+## Validation Requirements
+
+Orders fail validation when:
+
+- Tokens are identical
+- Either token is zero-addressed
+- Sell amounts equal zero
+- Price limits are zero
+- Timing parameters exceed allowed ranges
+- `span` exceeds interval frequency
+- Execution windows have expired
+
+The system ensures each order segment has a unique identifier, preventing accidental duplicate settlements.
+
+## Technical Notes
+
+- TWAP orders function as non-partial sells with zero fees
+- The protocol itself manages fee distribution
+- Each execution segment receives its own expiration timestamp, creating distinct order identifiers across the entire sequence

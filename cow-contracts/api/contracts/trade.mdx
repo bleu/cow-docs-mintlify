@@ -1,0 +1,90 @@
+---
+title: "GPv2Trade API"
+description: "Trade library API for encoding and decoding trade data in settlement batches"
+---
+
+# GPv2Trade API
+
+The `GPv2Trade` library is a Solidity utility for encoding and decoding trade data in settlement batches, enabling gas-efficient batch settlements.
+
+## Data Structure
+
+```solidity
+struct Data {
+    uint256 sellTokenIndex;
+    uint256 buyTokenIndex;
+    address receiver;
+    uint256 sellAmount;
+    uint256 buyAmount;
+    uint32 validTo;
+    bytes32 appData;
+    uint256 feeAmount;
+    uint256 flags;
+    uint256 executedAmount;
+    bytes signature;
+}
+```
+
+Rather than storing full token addresses, the struct uses an index into the tokens array for sell and buy tokens to reduce gas costs.
+
+## Functions
+
+### extractOrder
+
+Converts trade data into a full order struct while extracting the signing scheme from packed flags.
+
+```solidity
+function extractOrder(
+    Data calldata trade,
+    IERC20[] calldata tokens
+) internal pure returns (
+    GPv2Order.Data memory order,
+    GPv2Signing.Scheme signingScheme
+);
+```
+
+### extractFlags
+
+Unpacks a single `uint256` value into separate order parameters.
+
+```solidity
+function extractFlags(
+    uint256 flags
+) internal pure returns (
+    bytes32 kind,
+    bool partiallyFillable,
+    bytes32 sellTokenBalance,
+    bytes32 buyTokenBalance,
+    GPv2Signing.Scheme signingScheme
+);
+```
+
+## Flag Encoding
+
+The library uses a bitfield approach where individual bits represent different order properties:
+
+| Bit(s) | Field | Values |
+|--------|-------|--------|
+| 0 | Order kind | 0 = sell, 1 = buy |
+| 1 | Fill type | 0 = fill-or-kill, 1 = partially fillable |
+| 2-3 | Sell token balance | 00 = ERC20, 01 = external, 10 = internal |
+| 4 | Buy token balance | 0 = ERC20, 1 = internal |
+| 5-6 | Signing scheme | 00 = EIP-712, 01 = eth_sign, 10 = EIP-1271, 11 = PreSign |
+
+The default `0x00` represents the most common case: a fill-or-kill sell order by an externally owned account using EIP-712 signatures.
+
+## Supported Signing Schemes
+
+| Scheme | Value | Description |
+|--------|-------|-------------|
+| EIP-712 | `0b00` | Standard typed data signing |
+| eth_sign | `0b01` | Legacy message signing |
+| EIP-1271 | `0b10` | Smart contract wallet validation |
+| PreSign | `0b11` | On-chain pre-approval |
+
+## Gas Efficiency
+
+The encoding reduces calldata costs by:
+- Using token indices instead of full addresses
+- Packing multiple values into single storage slots
+- Optimizing for zero bytes in calldata (cheaper on Ethereum)

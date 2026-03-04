@@ -1,0 +1,144 @@
+---
+title: "Installation"
+description: "Learn how to install and set up the CoW Protocol Watch Tower"
+---
+
+# Installation
+
+The CoW Protocol Watch Tower is a standalone application that monitors blockchain events for programmatic orders and submits them to the CoW Protocol OrderBook API.
+
+## Requirements
+
+Before installing the Watch Tower, ensure you have the following:
+
+* Node.js `>= v16.18.0`
+* yarn package manager
+* An RPC node connected to a supported network (Ethereum mainnet, Arbitrum One, Gnosis Chain, Base, Sepolia, etc.)
+* Internet access to the CoW Protocol OrderBook API
+
+## Installation
+
+<Steps>
+  <Step title="Clone the repository">
+    Clone the Watch Tower repository from GitHub:
+
+    ```bash
+    git clone https://github.com/cowprotocol/watch-tower.git
+    cd watch-tower
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    Install the required dependencies using yarn:
+
+    ```bash
+    yarn
+    ```
+
+    This will install all dependencies defined in `package.json`, including:
+
+    * `@cowprotocol/cow-sdk` - CoW Protocol SDK
+    * `ethers` - Ethereum library
+    * `level` - LevelDB database
+    * `express` - API server
+  </Step>
+
+  <Step title="Configure the watch-tower">
+    Copy the example configuration file and customize it for your needs:
+
+    ```bash
+    cp config.json.example config.json
+    ```
+
+    Edit `config.json` to configure your RPC endpoints and network settings. See the [Configuration guide](/getting-started/configuration) for details.
+  </Step>
+
+  <Step title="Verify installation">
+    Test that the installation is working by checking the version:
+
+    ```bash
+    yarn cli --version
+    ```
+
+    Expected output:
+
+    ```
+    2.14.0
+    ```
+  </Step>
+</Steps>
+
+## Building from source
+
+If you need to build the Watch Tower from source:
+
+<Steps>
+  <Step title="Generate type definitions">
+    Generate TypeChain types from contract ABIs:
+
+    ```bash
+    yarn typechain
+    ```
+  </Step>
+
+  <Step title="Build the project">
+    Compile TypeScript to JavaScript:
+
+    ```bash
+    yarn build
+    ```
+
+    This command will:
+
+    * Remove previous build artifacts
+    * Generate TypeChain types
+    * Compile TypeScript files to the `dist/` directory
+    * Copy the configuration schema
+  </Step>
+
+  <Step title="Run the built version">
+    After building, you can run the compiled version:
+
+    ```bash
+    node dist/src/index.js run --config-path ./config.json
+    ```
+  </Step>
+</Steps>
+
+## Docker installation
+
+The Watch Tower is also available as a Docker image, which is the preferred deployment method for production environments.
+
+### Available tags
+
+* `latest` - The latest stable version
+* `vX.Y.Z` - Specific version tags (e.g., `v2.14.0`)
+* `main` - Latest version from the main branch
+* `pr-<PR_NUMBER>` - Pull request builds for testing
+
+### Pull the image
+
+```bash
+docker pull ghcr.io/cowprotocol/watch-tower:latest
+```
+
+### Run with Docker
+
+```bash
+docker run --rm -it \
+  -v "$(pwd)/config.json:/config.json" \
+  ghcr.io/cowprotocol/watch-tower:latest \
+  run \
+  --config-path /config.json
+```
+
+<Note>
+  Make sure your `config.json` file is properly configured before running the Docker container.
+</Note>
+
+## Next steps
+
+After installation, proceed to:
+
+* [Configure your Watch Tower](/getting-started/configuration)
+* [Run the Watch Tower locally](/getting-started/running-locally)

@@ -1,0 +1,106 @@
+---
+title: "Hooks Trampoline"
+description: "A dedicated trampoline contract for executing user-specified hooks in CoW Protocol settlements safely and efficiently"
+---
+
+## Why Hooks Trampoline?
+
+Hooks Trampoline protects CoW Protocol settlements from malicious or poorly configured user hooks.
+
+<CardGroup cols={2}>
+
+<Card title="Security Isolation" icon="shield">
+  Executes hooks from an unprivileged context, preventing malicious hooks from accessing settlement contract funds or state.
+</Card>
+
+<Card title="Gas Protection" icon="bolt">
+  Enforces gas limits on hook execution to prevent INVALID opcodes from consuming excessive gas and making settlements expensive.
+</Card>
+
+<Card title="Revert Tolerance" icon="check">
+  Allows individual hooks to revert without failing the entire settlement, preventing DoS attacks on other orders.
+</Card>
+
+<Card title="Settlement Access Control" icon="file">
+  Only accepts calls from the CoW Protocol settlement contract, allowing hooks to verify they're part of a valid settlement.
+</Card>
+
+</CardGroup>
+
+## Quick Start
+
+Get started with Hooks Trampoline in minutes.
+
+<Steps>
+
+<Step title="Install Foundry dependencies">
+
+Clone the repository and install dependencies:
+
+```bash
+forge install
+```
+
+</Step>
+
+<Step title="Deploy the contract">
+
+Deploy Hooks Trampoline with your settlement contract address:
+
+```solidity
+HooksTrampoline trampoline = new HooksTrampoline(settlementAddress);
+```
+
+</Step>
+
+<Step title="Create and execute hooks">
+
+Define hooks and execute them through the trampoline:
+
+```solidity
+HooksTrampoline.Hook[] memory hooks = new HooksTrampoline.Hook[](1);
+hooks[0] = HooksTrampoline.Hook({
+    target: hookContract,
+    callData: abi.encodeCall(MyHook.execute, ()),
+    gasLimit: 100000
+});
+
+// Called from settlement contract
+trampoline.execute(hooks);
+```
+
+</Step>
+
+</Steps>
+
+## Explore the Documentation
+
+Learn more about Hooks Trampoline's architecture and how to use it effectively.
+
+<CardGroup cols={2}>
+
+<Card title="How It Works" icon="gears" href="/hooks-trampoline/how-it-works">
+  Understand the architecture and design decisions behind Hooks Trampoline.
+</Card>
+
+<Card title="Security Model" icon="shield" href="/hooks-trampoline/architecture/security">
+  Learn about the security guarantees and protection mechanisms.
+</Card>
+
+<Card title="Gas Management" icon="gauge" href="/hooks-trampoline/architecture/gas-management">
+  Discover how gas limits are enforced and why they matter.
+</Card>
+
+<Card title="Testing" icon="flask" href="/hooks-trampoline/development/testing">
+  Run the test suite and write tests for your own hooks.
+</Card>
+
+</CardGroup>
+
+## Ready to integrate Hooks Trampoline?
+
+Follow our installation guide to deploy and integrate Hooks Trampoline into your CoW Protocol settlement workflow.
+
+<Card title="Get Started" icon="arrow-right" href="/hooks-trampoline/installation">
+  Follow the installation guide to deploy Hooks Trampoline.
+</Card>

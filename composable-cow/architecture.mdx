@@ -1,0 +1,46 @@
+---
+title: "Architecture"
+description: "Overview of ComposableCoW's modular architecture with separated authorization, validation, and execution layers."
+---
+
+# Architecture
+
+ComposableCoW is a modular system enabling conditional trading on CoW Protocol through separated authorization, validation, and execution layers.
+
+## Core Components
+
+### ComposableCoW Contract
+
+Serves as the central coordinator, implementing `ISafeSignatureVerifier` to manage order authorization and validation. It tracks orders via two mechanisms:
+
+- **Single orders** stored in a mapping indexed by owner and parameter hash
+- **Merkle roots** for batch authorization of multiple orders
+
+### ExtensibleFallbackHandler
+
+Deployed at `0x2f55e8b20D0B9FEFA187AA7d00B6Cbe563605bF5`, it acts as a Safe fallback handler, delegating EIP-1271 signature verification to ComposableCoW through domain-specific verifiers.
+
+### Order Handlers
+
+Implement conditional logic by extending `IConditionalOrder`. The system includes:
+
+- `IConditionalOrderGenerator` interface for handlers that generate tradeable orders
+- `BaseConditionalOrder` abstract contract providing default verification logic
+- Specialized handlers like TWAP for time-weighted average price orders
+
+## Operational Flow
+
+When a watchtower polls for tradeable orders, ComposableCoW:
+
+1. Verifies authorization (single order or Merkle proof)
+2. Calls the handler's `getTradeableOrder()` to generate an order
+3. Validates against any configured swap guards
+4. Returns the order and encoded signature
+
+During settlement, CoW Protocol's `GPv2Settlement` calls `isValidSignature()` on the Safe, which delegates through `ExtensibleFallbackHandler` to ComposableCoW for final verification.
+
+## Authorization Models
+
+**Single Orders** suit small collections requiring frequent updates, while **Merkle Trees** optimize for larger static sets with O(log n) proof verification.
+
+The system emphasizes stateless validation through view functions, reducing gas costs for unsuccessful order checks while maintaining security through handler validation of all parameters and generated order hashes.

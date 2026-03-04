@@ -1,0 +1,91 @@
+---
+title: "Proxy"
+description: "TypeScript utilities for inspecting and interacting with EIP-1967 and EIP-173 proxy contracts"
+---
+
+# Proxy
+
+The proxy utilities module provides tools for inspecting and interacting with EIP-1967 and EIP-173 proxy contracts used in CoW Protocol deployments.
+
+## Functions
+
+### implementationAddress
+
+Retrieves the implementation contract address from an EIP-1967 proxy.
+
+```typescript
+async function implementationAddress(
+  provider: Provider,
+  proxyAddress: string
+): Promise<string>;
+```
+
+### ownerAddress
+
+Fetches the admin/owner address from an EIP-1967 proxy.
+
+```typescript
+async function ownerAddress(
+  provider: Provider,
+  proxyAddress: string
+): Promise<string>;
+```
+
+### proxyInterface
+
+Generates an ethers.js contract instance configured with the EIP-173 proxy admin interface.
+
+```typescript
+function proxyInterface(
+  proxyAddress: string,
+  signerOrProvider: Signer | Provider
+): Contract;
+```
+
+## Constants
+
+### EIP173_PROXY_ABI
+
+```typescript
+const EIP173_PROXY_ABI = [
+  "function owner() view returns (address)",
+  "function transferOwnership(address newOwner)",
+  "event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)",
+];
+```
+
+## EIP-1967 Storage Slots
+
+EIP-1967 compliance uses standardized storage slots:
+
+| Slot | Purpose | Computation |
+|------|---------|-------------|
+| Implementation | Logic contract address | `keccak256("eip1967.proxy.implementation") - 1` |
+| Admin | Proxy owner address | `keccak256("eip1967.proxy.admin") - 1` |
+
+## Examples
+
+### Proxy Verification
+
+```typescript
+import { implementationAddress, ownerAddress } from "@cowprotocol/contracts";
+import { ethers } from "ethers";
+
+const provider = new ethers.providers.JsonRpcProvider("YOUR_RPC_URL");
+const proxyAddress = "0x2c4c28DDBdAc9C5E7055b4C863b72eA0149D8aFE";
+
+const impl = await implementationAddress(provider, proxyAddress);
+console.log("Implementation:", impl);
+
+const owner = await ownerAddress(provider, proxyAddress);
+console.log("Owner:", owner);
+```
+
+### Ownership Transfer
+
+```typescript
+import { proxyInterface } from "@cowprotocol/contracts";
+
+const proxy = proxyInterface(proxyAddress, signer);
+await proxy.transferOwnership(newOwnerAddress);
+```
