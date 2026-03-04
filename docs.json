@@ -10,8 +10,8 @@
   },
   "favicon": "/images/cow-dao-favicon.png",
   "logo": {
-    "light": "/images/cow-dao-logo-dark.svg",
-    "dark": "/images/cow-dao-logo-light.svg"
+    "light": "/images/cow-logo.svg",
+    "dark": "/images/cow-logo-dark.svg"
   },
   "navbar": {
     "links": [
@@ -35,7 +35,10 @@
       "copy",
       "view",
       "claude",
-      "chatgpt"
+      "chatgpt",
+      "perplexity",
+      "cursor",
+      "mcp"
     ],
     "display": "toc"
   },
@@ -49,7 +52,7 @@
     "drilldown": true
   },
   "search": {
-    "prompt": "Search CoW Protocol docs..."
+    "prompt": "Search docs..."
   },
   "metadata": {
     "timestamp": true
@@ -60,12 +63,17 @@
         {
           "anchor": "Home",
           "icon": "house",
-          "href": "/home"
+          "href": "/"
         },
         {
           "anchor": "CoW Swap",
           "icon": "arrow-right-arrow-left",
           "href": "https://swap.cow.fi"
+        },
+        {
+          "anchor": "Changelog",
+          "icon": "clock-rotate-left",
+          "href": "/changelog"
         }
       ]
     },
@@ -78,6 +86,7 @@
             "group": "Overview",
             "icon": "book-open",
             "pages": [
+              "cow-protocol/overview",
               "cow-protocol/explanation/introduction/intents",
               "cow-protocol/explanation/introduction/solvers",
               "cow-protocol/explanation/introduction/fair-combinatorial-auction",

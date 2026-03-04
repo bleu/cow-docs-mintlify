@@ -13,11 +13,9 @@ This guide covers the basic deployment process for the Flash-Loan Router contrac
 
 ## Deployed Addresses
 
-The Flash-Loan Router contracts are deployed deterministically with CREATE2 and have the same address on all supported networks:
+import FlashLoanRouterAddresses from '/snippets/flash-loan-router-addresses.mdx'
 
-- **FlashLoanRouter**: `0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69`
-- **AaveBorrower**: `0x7d9C4DeE56933151Bc5C909cfe09DEf0d315CB4A`
-- **ERC3156Borrower**: `0x47d71b4B3336AB2729436186C216955F3C27cD04`
+<FlashLoanRouterAddresses />
 
 See [`networks.json`](https://github.com/cowprotocol/flash-loan-router/blob/main/networks.json) for complete deployment details by chain ID.
 
@@ -223,19 +221,13 @@ After deployment, update the `networks.json` file to track your deployment:
 
 ## Network Support
 
-The Flash-Loan Router supports deployment to all networks where:
+The Flash-Loan Router supports deployment to all networks where CoW Protocol is deployed and flash-loan lenders (Aave, Maker, etc.) are available.
 
-- CoW Protocol is deployed
-- Flash-loan lenders (Aave, Maker, etc.) are available
+import SupportedNetworks from '/snippets/supported-networks.mdx'
 
-Common networks include:
+<SupportedNetworks />
 
-- Ethereum Mainnet
-- Gnosis Chain
-- Arbitrum
-- Base
-
-For the complete list of supported networks and deployment addresses, see the [networks.json](https://github.com/cowprotocol/flash-loan-router/blob/main/networks.json) file.
+For the complete list of deployment addresses per network, see the [networks.json](https://github.com/cowprotocol/flash-loan-router/blob/main/networks.json) file.
 
 ## Deployment Checklist
 

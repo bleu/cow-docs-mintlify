@@ -49,13 +49,9 @@ This infrastructure is designed specifically for **CoW Protocol solvers** who ne
 
 ## Deployed contracts
 
-All contracts are deployed deterministically with CREATE2 and share the same addresses across supported networks:
+import FlashLoanRouterAddresses from '/snippets/flash-loan-router-addresses.mdx'
 
-```solidity
-FlashLoanRouter:   0x9da8B48441583a2b93e2eF8213aAD0EC0b392C69
-AaveBorrower:      0x7d9C4DeE56933151Bc5C909cfe09DEf0d315CB4A
-ERC3156Borrower:   0x47d71b4B3336AB2729436186C216955F3C27cD04
-```
+<FlashLoanRouterAddresses />
 
 <Info>
   The Flash Loan Router was introduced as part of CoW Protocol through [CIP 66](https://snapshot.box/#/s:cow.eth/proposal/0x6f3d88347bcc8de87ecded2442c090d8eb1d3ef99eca75a831ee220ff5705f00).
@@ -63,16 +59,9 @@ ERC3156Borrower:   0x47d71b4B3336AB2729436186C216955F3C27cD04
 
 ## Supported networks
 
-Flash Loan Router is deployed on all major CoW Protocol supported networks including:
+import SupportedNetworks from '/snippets/supported-networks.mdx'
 
-- Ethereum Mainnet
-- Arbitrum
-- Base
-- Gnosis Chain
-- Polygon
-- Avalanche
-- Optimism
-- Linea
+<SupportedNetworks />
 
 See the [networks.json](https://github.com/cowprotocol/flash-loan-router/blob/main/networks.json) file for complete deployment details.
 

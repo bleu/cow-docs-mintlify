@@ -5,6 +5,18 @@ description: "This section gives a high level overview of the different componen
 
 ## Architecture[​](#architecture "Direct link to Architecture")
 
+```mermaid
+graph LR
+    U[User] -->|Sign intent| OB[Orderbook]
+    OB -->|Share orders| AP[Autopilot]
+    AP -->|Send auction| D[Driver]
+    D -->|Augmented auction| SE[Solver Engine]
+    SE -->|Raw solutions| D
+    D -->|Score| AP
+    AP -->|Winner| D
+    D -->|Settlement tx| BC[Blockchain]
+```
+
 Three main sub-systems are required to facilitate and drive the auction
 
 ### Order book[​](#order-book "Direct link to Order book")
