@@ -3,39 +3,620 @@ title: "Composable SDK"
 description: "Advanced conditional order types including TWAP orders and custom conditional mechanisms"
 ---
 
-# Composable SDK
+## Overview
 
-## Core Purpose
+The Composable SDK enables advanced order types like TWAP (Time-Weighted Average Price) and custom conditional orders using the ComposableCoW framework. It provides tools for creating, managing, and polling conditional orders.
 
-The Composable SDK enables sophisticated order management through advanced conditional order types, particularly TWAP (Time-Weighted Average Price) orders and custom conditional mechanisms using the ComposableCoW framework.
+## Installation
 
-## Key Components
-
-### ConditionalOrder Base Class
-
-This abstract foundation supports creating, managing, and validating orders. It provides methods like `poll()` to check order tradability, `isAuthorized()` to verify ownership, and calldata generation for on-chain interactions.
-
-### TWAP Implementation
-
-Time-weighted averaging splits large orders into parts executed at intervals. Configuration includes:
-- Token pair specification (sellToken/buyToken)
-- Total amounts across all parts
-- Number of parts and timing between executions
-- Start time options (immediate or scheduled)
-- Duration constraints per part
-
-### Multiplexer System
-
-Manages multiple conditional orders using Merkle tree structures, enabling batch order submission with proof generation for various storage locations (private, emitted, IPFS, Swarm, or Waku).
-
-## Installation & Setup
-
-```bash
+```shellscript
 npm install @cowprotocol/sdk-composable
 ```
 
-Register order types before using the multiplexer, then create instances specifying chain ID and proof location preferences.
+## ConditionalOrder
 
-## Common Workflows
+Abstract base class for all conditional orders.
 
-Users typically create orders with specific parameters, validate them, retrieve creation calldata for on-chain execution, then use polling mechanisms to monitor execution readiness. The system integrates with Safe wallets and watchtowers for automated order management.
+### Creating Orders
+
+```typescript
+import { Twap } from '@cowprotocol/sdk-composable'
+
+const twapOrder = Twap.fromData({
+  sellToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
+  buyToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
+  receiver: userAddress,
+  sellAmount: parseUnits('10000', 6), // 10,000 USDC
+  buyAmount: parseUnits('5', 18), // 5 WETH minimum
+  numberOfParts: 10n,
+  timeBetweenParts: 3600n, // 1 hour
+  durationOfPart: {
+    durationType: DurationType.AUTO,
+  },
+  startTime: {
+    startType: StartTimeValue.AT_MINING_TIME,
+  },
+  appData: '0x...',
+})
+```
+
+### Properties
+
+<ResponseField name="handler" type="string">
+Address of the handler contract for this conditional order
+</ResponseField>
+
+<ResponseField name="salt" type="string">
+32-byte salt for uniqueness (auto-generated if not provided)
+</ResponseField>
+
+<ResponseField name="data" type="D">
+Order-specific data in user-friendly format
+</ResponseField>
+
+<ResponseField name="staticInput" type="S">
+Order data formatted as contract struct
+</ResponseField>
+
+<ResponseField name="hasOffChainInput" type="boolean">
+Whether the order requires off-chain input
+</ResponseField>
+
+<ResponseField name="id" type="string">
+Unique order ID (keccak256 hash of serialized order)
+</ResponseField>
+
+<ResponseField name="orderType" type="string">
+Descriptive name of the order type (e.g., 'twap')
+</ResponseField>
+
+<ResponseField name="isSingleOrder" type="boolean">
+Whether this is a single order (vs part of a merkle tree)
+</ResponseField>
+
+### Methods
+
+#### createCalldata
+
+Get calldata for creating the conditional order on-chain.
+
+```typescript
+const calldata = twapOrder.createCalldata
+// Use with Safe transaction or direct contract call
+```
+
+<ResponseField name="calldata" type="string">
+Encoded function call to create the order (emits ConditionalOrderCreated event)
+</ResponseField>
+
+#### removeCalldata
+
+Get calldata for removing the conditional order.
+
+```typescript
+const calldata = twapOrder.removeCalldata
+```
+
+<ResponseField name="calldata" type="string">
+Encoded function call to remove the order
+</ResponseField>
+
+#### poll()
+
+Poll the conditional order to check if it's tradeable.
+
+```typescript
+const result = await twapOrder.poll({
+  chainId: SupportedChainId.MAINNET,
+  owner: safeAddress,
+  provider: ethersProvider,
+  orderBookApi,
+})
+
+if (result.result === PollResultCode.SUCCESS) {
+  console.log('Order is tradeable:', result.order)
+  console.log('Signature:', result.signature)
+}
+```
+
+<ResponseField name="chainId" type="SupportedChainId" required>
+Chain ID where the order exists
+</ResponseField>
+
+<ResponseField name="owner" type="string" required>
+Owner address (typically a Safe)
+</ResponseField>
+
+<ResponseField name="provider" type="Provider" required>
+Ethereum provider for blockchain calls
+</ResponseField>
+
+<ResponseField name="orderBookApi" type="OrderBookApi" required>
+OrderBook API instance
+</ResponseField>
+
+<ResponseField name="offChainInput" type="string">
+Off-chain input if required by the order type
+</ResponseField>
+
+<ResponseField name="proof" type="string[]">
+Merkle proof if order is part of a tree
+</ResponseField>
+
+<ResponseField name="blockInfo" type="BlockInfo">
+Current block info for validation
+</ResponseField>
+
+<ResponseField name="result" type="PollResult">
+Poll result indicating order status
+  <Expandable>
+    <ResponseField name="result" type="PollResultCode">
+    `SUCCESS` | `TRY_NEXT_BLOCK` | `TRY_ON_BLOCK` | `TRY_AT_EPOCH` | `DONT_TRY_AGAIN` | `UNEXPECTED_ERROR`
+    </ResponseField>
+    <ResponseField name="order" type="GPv2Order">
+    Order data (only present when result is SUCCESS)
+    </ResponseField>
+    <ResponseField name="signature" type="string">
+    Order signature (only present when result is SUCCESS)
+    </ResponseField>
+    <ResponseField name="reason" type="string">
+    Human-readable reason for the result
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### isAuthorized()
+
+Check if the owner authorized this conditional order.
+
+```typescript
+const isAuthorized = await twapOrder.isAuthorized({
+  chainId: SupportedChainId.MAINNET,
+  owner: safeAddress,
+  provider: ethersProvider,
+})
+```
+
+<ResponseField name="authorized" type="boolean">
+True if the owner authorized the order
+</ResponseField>
+
+#### serialize()
+
+Serialize the order into ABI-encoded form.
+
+```typescript
+const serialized = twapOrder.serialize()
+```
+
+<ResponseField name="serialized" type="string">
+ABI-encoded order params
+</ResponseField>
+
+## Twap
+
+Time-Weighted Average Price order implementation.
+
+### Creating TWAP Orders
+
+```typescript
+import { Twap, StartTimeValue, DurationType } from '@cowprotocol/sdk-composable'
+
+const twap = Twap.fromData({
+  sellToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+  buyToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+  receiver: userAddress,
+  sellAmount: parseUnits('10000', 6),
+  buyAmount: parseUnits('5', 18),
+  numberOfParts: 10n,
+  timeBetweenParts: 3600n, // 1 hour between parts
+  startTime: {
+    startType: StartTimeValue.AT_EPOCH,
+    epoch: BigInt(Math.floor(Date.now() / 1000) + 3600), // Start in 1 hour
+  },
+  durationOfPart: {
+    durationType: DurationType.LIMIT_DURATION,
+    duration: 1800n, // Each part valid for 30 minutes
+  },
+  appData: keccak256(JSON.stringify(appData)),
+})
+```
+
+### TwapData Parameters
+
+<ResponseField name="sellToken" type="string" required>
+Sell token contract address
+</ResponseField>
+
+<ResponseField name="buyToken" type="string" required>
+Buy token contract address
+</ResponseField>
+
+<ResponseField name="receiver" type="string" required>
+Address to receive the bought tokens
+</ResponseField>
+
+<ResponseField name="sellAmount" type="bigint" required>
+Total amount to sell across all parts (in token atoms)
+</ResponseField>
+
+<ResponseField name="buyAmount" type="bigint" required>
+Minimum total amount to buy across all parts (in token atoms)
+</ResponseField>
+
+<ResponseField name="numberOfParts" type="bigint" required>
+Number of parts to split the order into (must be > 1)
+</ResponseField>
+
+<ResponseField name="timeBetweenParts" type="bigint" required>
+Duration between each part in seconds (max 1 year)
+</ResponseField>
+
+<ResponseField name="startTime" type="StartTime" required>
+When the TWAP should start
+  <Expandable>
+    <ResponseField name="startType" type="StartTimeValue" required>
+    `AT_MINING_TIME` | `AT_EPOCH`
+    </ResponseField>
+    <ResponseField name="epoch" type="bigint">
+    Unix timestamp for start (required if startType is AT_EPOCH)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="durationOfPart" type="DurationOfPart" required>
+How long each part remains valid
+  <Expandable>
+    <ResponseField name="durationType" type="DurationType" required>
+    `AUTO` | `LIMIT_DURATION`
+    </ResponseField>
+    <ResponseField name="duration" type="bigint">
+    Duration in seconds (required if durationType is LIMIT_DURATION)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="appData" type="string" required>
+keccak256 hash of app data document
+</ResponseField>
+
+### TWAP Methods
+
+#### fromParams()
+
+Create TWAP from ConditionalOrderParams.
+
+```typescript
+const params: ConditionalOrderParams = {
+  handler: TWAP_ADDRESS,
+  salt: '0x...',
+  staticInput: '0x...',
+}
+
+const twap = Twap.fromParams(params)
+```
+
+#### deserialize()
+
+Deserialize a TWAP from ABI-encoded form.
+
+```typescript
+const twap = Twap.deserialize(serializedData)
+```
+
+### TWAP Constants
+
+```typescript
+import { TWAP_ADDRESS, CURRENT_BLOCK_TIMESTAMP_FACTORY_ADDRESS } from '@cowprotocol/sdk-composable'
+
+// TWAP handler contract address
+const handler = TWAP_ADDRESS // 0x6cF1e9cA41f7611dEf408122793c358a3d11E5a5
+
+// Factory for dynamic start times
+const factory = CURRENT_BLOCK_TIMESTAMP_FACTORY_ADDRESS // 0x52eD56Da04309Aca4c3FECC595298d80C2f16BAc
+```
+
+## Multiplexer
+
+Manages multiple conditional orders using a Merkle tree.
+
+### Creating a Multiplexer
+
+```typescript
+import { Multiplexer, Twap } from '@cowprotocol/sdk-composable'
+
+// Register order types before using multiplexer
+Multiplexer.registerOrderType('twap', Twap)
+
+const multiplexer = new Multiplexer(
+  SupportedChainId.MAINNET,
+  undefined, // orders (optional)
+  undefined, // root (optional)
+  ProofLocation.EMITTED,
+)
+```
+
+<ResponseField name="chainId" type="SupportedChainId" required>
+Chain ID for ComposableCoW
+</ResponseField>
+
+<ResponseField name="orders" type="Record<string, ConditionalOrder>">
+Optional initial orders (Record of string keys to ConditionalOrder values)
+</ResponseField>
+
+<ResponseField name="root" type="string">
+Optional Merkle root to verify against
+</ResponseField>
+
+<ResponseField name="proofLocation" type="ProofLocation">
+`PRIVATE` | `EMITTED` | `SWARM` | `WAKU` | `IPFS`
+</ResponseField>
+
+### Adding Orders
+
+```typescript
+const twap1 = Twap.fromData({ /* ... */ })
+const twap2 = Twap.fromData({ /* ... */ })
+
+multiplexer.add(twap1)
+multiplexer.add(twap2)
+
+console.log('Merkle root:', multiplexer.root)
+```
+
+### Removing Orders
+
+```typescript
+multiplexer.remove(twap1.id)
+```
+
+### Updating Orders
+
+```typescript
+multiplexer.update(twap1.id, (existingOrder) => {
+  // Create a new order based on existing one
+  const twapData = (existingOrder as Twap).data
+  return Twap.fromData({
+    ...twapData,
+    buyAmount: twapData.buyAmount * 2n, // Double the buy amount
+  })
+})
+```
+
+### Accessing Orders
+
+```typescript
+// Get by ID
+const order = multiplexer.getById(twap1.id)
+
+// Get by index
+const firstOrder = multiplexer.getByIndex(0)
+
+// Get all order IDs
+const orderIds = multiplexer.orderIds
+```
+
+### Preparing Proofs
+
+Generate proofs for setting the Merkle root on-chain.
+
+```typescript
+const proofStruct = await multiplexer.prepareProofStruct(
+  ProofLocation.EMITTED,
+  undefined, // optional filter function
+  undefined, // optional uploader function for IPFS/Swarm
+)
+
+// Use with setRoot or setRootWithContext on ComposableCoW contract
+```
+
+<ResponseField name="proofStruct" type="ComposableCoW.ProofStruct">
+  <Expandable>
+    <ResponseField name="location" type="ProofLocation">
+    Proof location enum value
+    </ResponseField>
+    <ResponseField name="data" type="string">
+    Proof data (ABI-encoded for EMITTED, IPFS hash for IPFS, etc.)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Serialization
+
+```typescript
+// Serialize to JSON
+const json = multiplexer.toJSON()
+
+// Deserialize from JSON
+const restored = Multiplexer.fromJSON(json)
+
+// Dump proofs for watchtowers
+const proofs = multiplexer.dumpProofs()
+```
+
+## ConditionalOrderFactory
+
+Factory for creating and deploying conditional orders.
+
+```typescript
+import { ConditionalOrderFactory } from '@cowprotocol/sdk-composable'
+
+const factory = new ConditionalOrderFactory({
+  chainId: SupportedChainId.MAINNET,
+  provider: ethersProvider,
+  signer: ethersSigner,
+})
+```
+
+## Types
+
+### PollResultCode
+
+Enum for poll result status.
+
+```typescript
+enum PollResultCode {
+  SUCCESS = 'SUCCESS',
+  UNEXPECTED_ERROR = 'UNEXPECTED_ERROR',
+  TRY_NEXT_BLOCK = 'TRY_NEXT_BLOCK',
+  TRY_ON_BLOCK = 'TRY_ON_BLOCK',
+  TRY_AT_EPOCH = 'TRY_AT_EPOCH',
+  DONT_TRY_AGAIN = 'DONT_TRY_AGAIN',
+}
+```
+
+### ProofLocation
+
+Enum for proof storage location.
+
+```typescript
+enum ProofLocation {
+  PRIVATE = 0,
+  EMITTED = 1,
+  SWARM = 2,
+  WAKU = 3,
+  RESERVED = 4,
+  IPFS = 5,
+}
+```
+
+### ConditionalOrderParams
+
+Parameters for a conditional order.
+
+```typescript
+interface ConditionalOrderParams {
+  handler: string
+  salt: string
+  staticInput: string
+}
+```
+
+## Examples
+
+### Create and Deploy TWAP
+
+```typescript
+import { Twap, StartTimeValue, DurationType } from '@cowprotocol/sdk-composable'
+import { SupportedChainId } from '@cowprotocol/sdk-config'
+
+// Create TWAP order
+const twap = Twap.fromData({
+  sellToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
+  buyToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
+  receiver: '0x...', // Your address
+  sellAmount: parseUnits('10000', 6), // 10k USDC total
+  buyAmount: parseUnits('5', 18), // Min 5 WETH total
+  numberOfParts: 24n, // 24 parts
+  timeBetweenParts: 3600n, // 1 hour between each
+  startTime: {
+    startType: StartTimeValue.AT_MINING_TIME,
+  },
+  durationOfPart: {
+    durationType: DurationType.AUTO,
+  },
+  appData: '0x0000000000000000000000000000000000000000000000000000000000000000',
+})
+
+// Validate
+const isValid = twap.isValid()
+if (!isValid.isValid) {
+  console.error('Invalid TWAP:', isValid.reason)
+  throw new Error(isValid.reason)
+}
+
+// Get creation calldata
+const calldata = twap.createCalldata
+
+// Execute via Safe or direct contract call
+// This will emit ConditionalOrderCreated event
+```
+
+### Multiple Conditional Orders
+
+```typescript
+import { Multiplexer, Twap, ProofLocation } from '@cowprotocol/sdk-composable'
+
+// Register order type
+Multiplexer.registerOrderType('twap', Twap)
+
+// Create multiplexer
+const multiplexer = new Multiplexer(
+  SupportedChainId.MAINNET,
+  undefined,
+  undefined,
+  ProofLocation.EMITTED,
+)
+
+// Add multiple TWAP orders
+const twap1 = Twap.fromData({ /* USDC -> WETH */ })
+const twap2 = Twap.fromData({ /* DAI -> WETH */ })
+const twap3 = Twap.fromData({ /* USDT -> WETH */ })
+
+multiplexer.add(twap1)
+multiplexer.add(twap2)
+multiplexer.add(twap3)
+
+// Prepare proof struct for on-chain submission
+const proofStruct = await multiplexer.prepareProofStruct()
+
+// Save the multiplexer state
+const savedState = multiplexer.toJSON()
+localStorage.setItem('my-twaps', savedState)
+
+// Later: restore state
+const restored = Multiplexer.fromJSON(savedState)
+console.log('Restored orders:', restored.orderIds.length)
+```
+
+### Watch Tower Integration
+
+```typescript
+import { Multiplexer, Twap } from '@cowprotocol/sdk-composable'
+
+Multiplexer.registerOrderType('twap', Twap)
+
+// Load multiplexer
+const multiplexer = Multiplexer.fromJSON(savedState)
+
+// Poll each order
+for (const orderId of multiplexer.orderIds) {
+  const order = multiplexer.getById(orderId)
+
+  const result = await order.poll({
+    chainId: SupportedChainId.MAINNET,
+    owner: safeAddress,
+    provider: ethersProvider,
+    orderBookApi,
+  })
+
+  if (result.result === PollResultCode.SUCCESS) {
+    console.log('Order ready to execute:', orderId)
+    console.log('Order data:', result.order)
+    console.log('Signature:', result.signature)
+
+    // Submit to orderbook
+    await orderBookApi.sendOrder({
+      ...result.order,
+      signature: result.signature,
+      signingScheme: 'eip1271',
+    })
+  } else if (result.result === PollResultCode.TRY_AT_EPOCH) {
+    console.log(`Order ${orderId} not ready until`, new Date(result.epoch * 1000))
+  } else if (result.result === PollResultCode.DONT_TRY_AGAIN) {
+    console.log(`Order ${orderId} expired or cancelled:`, result.reason)
+  }
+}
+```
+
+### Custom Conditional Order
+
+```typescript
+import { ConditionalOrder } from '@cowprotocol/sdk-composable'
+
+interface MyOrderData {
+  token: string
+  amount: bigint
+  condition: string
+}
+```

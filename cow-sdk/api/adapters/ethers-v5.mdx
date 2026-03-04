@@ -5,39 +5,314 @@ description: "Integration between the CoW Protocol SDK and ethers.js v5"
 
 # Ethers v5 Adapter
 
-The Ethers v5 Adapter enables integration between the CoW Protocol SDK and ethers.js v5, allowing developers to leverage both libraries together.
+The Ethers v5 Adapter provides integration with [ethers.js v5](https://docs.ethers.org/v5/), enabling you to use all CoW Protocol SDK packages with ethers providers and signers.
 
 ## Installation
 
-```bash
+```shellscript
 npm install @cowprotocol/sdk-ethers-v5-adapter
 ```
 
-## Setup
+## Constructor
 
-The adapter constructor accepts either ethers Provider instances or RPC URL strings, plus optional Signer objects or private keys. A `JsonRpcProvider` will be created automatically if you supply just an RPC URL string.
+```typescript
+import { EthersV5Adapter } from '@cowprotocol/sdk-ethers-v5-adapter'
+import { ethers } from 'ethers'
 
-## Core Capabilities
+const provider = new ethers.providers.JsonRpcProvider('YOUR_RPC_URL')
+const wallet = new ethers.Wallet('YOUR_PRIVATE_KEY', provider)
 
-The adapter exposes several essential methods for blockchain interaction:
+const adapter = new EthersV5Adapter({ provider, signer: wallet })
+```
 
-- **Read operations**: `call()`, `readContract()`, `getBlock()`, `getCode()`, `getStorageAt()`
-- **Transaction handling**: `getTransactionReceipt()`
-- **Chain information**: `getChainId()`
-- **Contract interaction**: `getContract()` for creating contract instances
+### Parameters
 
-## Advanced Features
+<ResponseField name="provider" type="Provider | string" required>
+An ethers v5 `Provider` instance or an RPC URL string. If a string is provided, a `JsonRpcProvider` will be created automatically.
+</ResponseField>
 
-The adapter includes specialized EIP-712 signing classes:
+<ResponseField name="signer" type="Signer | string">
+An ethers v5 `Signer` instance (e.g., `Wallet`) or a private key string.
+</ResponseField>
 
-- **TypedDataVersionedSigner** (general-purpose)
-- **TypedDataV3Signer** (legacy protocol support)
-- **IntChainIdTypedDataV4Signer** (MetaMask compatibility fixes)
+## Properties
 
-## Integration Examples
+### signer
 
-The documentation demonstrates three primary usage patterns:
+Returns the EthersV5SignerAdapter instance. Throws an error if no signer was provided.
 
-1. **Standalone adapter usage** - Direct initialization with provider and signer
-2. **Integration with CowSdk** - Passing adapter to the main SDK class
-3. **Pairing with individual SDK packages** - Using with TradingSdk for order posting and trading operations
+```typescript
+const signerAdapter = adapter.signer
+```
+
+### utils
+
+Utility methods for working with ethers v5 types and contracts.
+
+```typescript
+const iface = adapter.utils.createInterface(abi)
+```
+
+### TypedDataVersionedSigner
+
+Signer class for EIP-712 typed data with version support.
+
+### TypedDataV3Signer
+
+Signer class for EIP-712 typed data version 3 (legacy). Useful for compatibility with older protocols.
+
+### IntChainIdTypedDataV4Signer
+
+Signer class for EIP-712 typed data version 4 with integer chain ID handling to fix MetaMask compatibility issues.
+
+## Methods
+
+### getChainId
+
+Returns the chain ID from the connected provider.
+
+```typescript
+const chainId = await adapter.getChainId()
+```
+
+Returns: `Promise<number>`
+
+### getCode
+
+Returns the bytecode at a given address.
+
+```typescript
+const code = await adapter.getCode('0x...')
+```
+
+- `address` (`string`) - Contract address
+
+Returns: `Promise<string>`
+
+### getTransactionReceipt
+
+Returns the transaction receipt for a given transaction hash.
+
+```typescript
+const receipt = await adapter.getTransactionReceipt('0x...')
+```
+
+- `transactionHash` (`string`) - Transaction hash
+
+Returns: `Promise<TransactionReceipt>`
+
+### getStorageAt
+
+Returns the value from a storage position at a given address.
+
+```typescript
+const value = await adapter.getStorageAt('0x...', '0x0')
+```
+
+- `address` (`string`) - Contract address
+- `slot` (`string`) - Storage slot
+
+Returns: `Promise<BytesLike>`
+
+### call
+
+Executes a read-only call to a contract.
+
+```typescript
+const result = await adapter.call({
+  to: '0x...',
+  data: '0x...'
+})
+```
+
+- `txParams` (`CallParameters`) - Transaction parameters
+- `provider` (`Provider`) - Optional provider override
+
+Returns: `Promise<string>`
+
+### readContract
+
+Reads from a contract function using callStatic.
+
+```typescript
+const result = await adapter.readContract({
+  address: '0x...',
+  abi: contractAbi,
+  functionName: 'balanceOf',
+  args: ['0x...']
+})
+```
+
+- `address` (`string`) - Contract address
+- `abi` (`ContractInterface`) - Contract ABI
+- `functionName` (`string`) - Function to call
+- `args` (`unknown[]`) - Function arguments
+- `provider` (`Provider`) - Optional provider override
+
+Returns: `Promise<unknown>`
+
+### getBlock
+
+Returns block information for a given block tag.
+
+```typescript
+const block = await adapter.getBlock('latest')
+```
+
+- `blockTag` (`BlockTag`) - Block identifier
+- `provider` (`Provider`) - Optional provider override
+
+Returns: `Promise<Block>`
+
+### getContract
+
+Creates a contract instance.
+
+```typescript
+const contract = adapter.getContract('0x...', contractAbi)
+const result = await contract.callStatic.functionName()
+```
+
+- `address` (`string`) - Contract address
+- `abi` (`ContractInterface`) - Contract ABI
+
+Returns: `GenericContract`
+
+### setSigner
+
+Sets or updates the signer for the adapter.
+
+```typescript
+const newWallet = new ethers.Wallet('0x...', provider)
+adapter.setSigner(newWallet)
+```
+
+- `signer` (`Signer | string`) - New signer or private key
+
+### setProvider
+
+Sets or updates the provider for the adapter.
+
+```typescript
+const newProvider = new ethers.providers.JsonRpcProvider('https://eth.llamarpc.com')
+adapter.setProvider(newProvider)
+```
+
+- `provider` (`Provider | string`) - New provider or RPC URL
+
+### signerOrNull
+
+Returns the signer adapter or null if not set.
+
+```typescript
+const signer = adapter.signerOrNull()
+if (signer) {
+  // Use signer
+}
+```
+
+Returns: `EthersV5SignerAdapter | null`
+
+### createSigner
+
+Creates a new signer adapter from a Signer instance or private key.
+
+```typescript
+const signerAdapter = adapter.createSigner(wallet)
+```
+
+- `signerOrPrivateKey` (`Signer | string`) - Signer or private key
+
+Returns: `EthersV5SignerAdapter`
+
+## Usage Examples
+
+### With Provider and Wallet
+
+```typescript
+import { EthersV5Adapter } from '@cowprotocol/sdk-ethers-v5-adapter'
+import { ethers } from 'ethers'
+
+const provider = new ethers.providers.JsonRpcProvider('YOUR_RPC_URL')
+const wallet = new ethers.Wallet('YOUR_PRIVATE_KEY', provider)
+
+const adapter = new EthersV5Adapter({ provider, signer: wallet })
+```
+
+### With RPC URL String
+
+```typescript
+import { EthersV5Adapter } from '@cowprotocol/sdk-ethers-v5-adapter'
+
+const adapter = new EthersV5Adapter({
+  provider: 'https://eth.llamarpc.com',
+  signer: '0x...'
+})
+```
+
+### With CoW SDK
+
+```typescript
+import { CowSdk, SupportedChainId } from '@cowprotocol/cow-sdk'
+import { EthersV5Adapter } from '@cowprotocol/sdk-ethers-v5-adapter'
+import { ethers } from 'ethers'
+
+const provider = new ethers.providers.JsonRpcProvider('YOUR_RPC_URL')
+const wallet = new ethers.Wallet('YOUR_PRIVATE_KEY', provider)
+const adapter = new EthersV5Adapter({ provider, signer: wallet })
+
+const sdk = new CowSdk({
+  chainId: SupportedChainId.SEPOLIA,
+  adapter,
+  tradingOptions: {
+    traderParams: {
+      appCode: 'YOUR_APP_CODE',
+    },
+    options: {
+      chainId: SupportedChainId.SEPOLIA,
+    },
+  },
+})
+
+const orderId = await sdk.trading.postSwapOrder(/* ... */)
+```
+
+### Using Individual SDK Packages
+
+```typescript
+import { TradingSdk } from '@cowprotocol/sdk-trading'
+import { EthersV5Adapter } from '@cowprotocol/sdk-ethers-v5-adapter'
+import { ethers } from 'ethers'
+
+const provider = new ethers.providers.JsonRpcProvider('YOUR_RPC_URL')
+const wallet = new ethers.Wallet('YOUR_PRIVATE_KEY', provider)
+const adapter = new EthersV5Adapter({ provider, signer: wallet })
+
+const trading = new TradingSdk(
+  { appCode: 'YOUR_APP_CODE' },
+  { chainId: SupportedChainId.SEPOLIA },
+  adapter
+)
+
+const orderId = await trading.postSwapOrder(parameters)
+```
+
+### Using TypedDataV3Signer
+
+```typescript
+import { EthersV5Adapter } from '@cowprotocol/sdk-ethers-v5-adapter'
+import { ethers } from 'ethers'
+
+const provider = new ethers.providers.JsonRpcProvider('YOUR_RPC_URL')
+const wallet = new ethers.Wallet('YOUR_PRIVATE_KEY', provider)
+
+const adapter = new EthersV5Adapter({ provider, signer: wallet })
+
+// Create a TypedDataV3Signer for legacy protocol compatibility
+const v3Signer = new adapter.TypedDataV3Signer(wallet)
+```
+
+## See Also
+
+- [Viem Adapter](/api/adapters/viem)
+- [TradingSdk](/api/trading-sdk)

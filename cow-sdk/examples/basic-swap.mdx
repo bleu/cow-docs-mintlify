@@ -5,15 +5,13 @@ description: "Complete guide for creating and posting a swap order to trade WETH
 
 # Basic Swap Example
 
-## Overview
+This example demonstrates how to create a basic swap order using the CoW Protocol SDK. We'll swap WETH for USDC on Sepolia testnet.
 
-This page provides a complete guide for creating and posting a swap order using the CoW Protocol SDK, specifically demonstrating how to swap WETH for USDC on Sepolia testnet.
+## Prerequisites
 
-## Key Requirements
-
-- Node.js
-- Testnet ETH in a wallet
-- An Ethereum RPC endpoint
+- Node.js installed
+- A wallet with some testnet ETH
+- An Ethereum provider (RPC endpoint)
 
 ## Installation
 
@@ -21,33 +19,314 @@ This page provides a complete guide for creating and posting a swap order using 
 npm install @cowprotocol/cow-sdk ethers
 ```
 
-## Implementation Approaches
+## Complete Example
 
-The guide offers three code examples supporting different Ethereum libraries:
+<CodeGroup>
+  ```typescript Ethers v6
+  import { JsonRpcProvider, Wallet } from 'ethers'
+  import {
+    setGlobalAdapter,
+    SupportedChainId,
+    TradingSdk,
+    OrderKind,
+    WRAPPED_NATIVE_CURRENCIES,
+  } from '@cowprotocol/cow-sdk'
+  import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter'
 
-1. **Ethers v6** - Using the latest ethers version with EthersV6Adapter
-2. **Ethers v5** - For projects still using the previous ethers major version
-3. **Viem** - An alternative library for Ethereum interactions
+  // Configuration
+  const RPC_URL = 'https://sepolia.gateway.tenderly.co'
+  const PRIVATE_KEY = '0x...' // Your private key
+  const DEFAULT_SELL_AMOUNT = '0.1' // WETH amount
 
-## Core Process Steps
+  async function main() {
+    const chainId = SupportedChainId.SEPOLIA
 
-The workflow involves four main stages:
+    // Setup provider and wallet
+    const provider = new JsonRpcProvider(RPC_URL, chainId)
+    const wallet = new Wallet(PRIVATE_KEY, provider)
 
-1. **Adapter Setup** - Connecting the SDK to your provider through an adapter pattern
-2. **SDK Initialization** - Creating a TradingSdk instance with chain and app identifiers
-3. **Quote Request** - Obtaining pricing information including slippage tolerance
-4. **Order Submission** - Broadcasting the swap order and receiving a confirmation ID
+    // Setup CoW Protocol adapter
+    const adapter = new EthersV6Adapter({ provider, signer: wallet })
+    setGlobalAdapter(adapter)
 
-## Important Data Points
+    // Initialize Trading SDK
+    const sdk = new TradingSdk({
+      chainId,
+      appCode: 'MyApp',
+      signer: wallet,
+    })
 
-Quote results include the final buy amount after network fees, network cost breakdowns, and the order data requiring signature. The quote contains important information including amounts and costs.
+    // Define tokens
+    const WETH = WRAPPED_NATIVE_CURRENCIES[chainId]
+    const USDC = {
+      address: '0xbe72E441BF55620febc26715db68d3494213D8Cb',
+      decimals: 18,
+    }
 
-## Best Practices
+    const owner = (await wallet.getAddress()) as `0x${string}`
+    const amount = Math.round(
+      Number(DEFAULT_SELL_AMOUNT) * 10 ** WETH.decimals
+    ).toString()
+    const slippageBps = 50 // 0.5% slippage
 
-Wrap SDK calls in try-catch blocks and handle specific error conditions like insufficient token balances.
+    console.log('Owner:', owner)
+    console.log('Getting quote...')
 
-## Related Resources
+    // Get quote
+    const quoteAndPost = await sdk.getQuote({
+      chainId,
+      kind: OrderKind.SELL,
+      owner,
+      amount,
+      sellToken: WETH.address,
+      sellTokenDecimals: WETH.decimals,
+      buyToken: USDC.address,
+      buyTokenDecimals: USDC.decimals,
+      slippageBps,
+    })
 
-- [Limit Orders](/cow-sdk/examples/limit-orders)
-- [React Integration](/cow-sdk/examples/react-integration)
-- [Creating Swap Orders](/cow-sdk/guides/creating-swap-orders)
+    console.log('Quote received:', quoteAndPost.quoteResults)
+
+    // Post the order
+    console.log('Posting order...')
+    const result = await quoteAndPost.postSwapOrderFromQuote({})
+    console.log('Order posted successfully!')
+    console.log('Order ID:', result.orderId)
+  }
+
+  main().catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  ```
+
+  ```typescript Ethers v5
+  import { ethers } from 'ethers'
+  import {
+    setGlobalAdapter,
+    SupportedChainId,
+    TradingSdk,
+    OrderKind,
+    WRAPPED_NATIVE_CURRENCIES,
+  } from '@cowprotocol/cow-sdk'
+  import { EthersV5Adapter } from '@cowprotocol/sdk-ethers-v5-adapter'
+
+  const RPC_URL = 'https://sepolia.gateway.tenderly.co'
+  const PRIVATE_KEY = '0x...' // Your private key
+  const DEFAULT_SELL_AMOUNT = '0.1'
+
+  async function main() {
+    const chainId = SupportedChainId.SEPOLIA
+
+    const provider = new ethers.providers.JsonRpcProvider(RPC_URL, chainId)
+    const wallet = new ethers.Wallet(PRIVATE_KEY, provider)
+
+    const adapter = new EthersV5Adapter({ provider, signer: wallet })
+    setGlobalAdapter(adapter)
+
+    const sdk = new TradingSdk({
+      chainId,
+      appCode: 'MyApp',
+      signer: wallet,
+    })
+
+    const WETH = WRAPPED_NATIVE_CURRENCIES[chainId]
+    const USDC = {
+      address: '0xbe72E441BF55620febc26715db68d3494213D8Cb',
+      decimals: 18,
+    }
+
+    const owner = (await wallet.getAddress()) as `0x${string}`
+    const amount = Math.round(
+      Number(DEFAULT_SELL_AMOUNT) * 10 ** WETH.decimals
+    ).toString()
+    const slippageBps = 50
+
+    console.log('Owner:', owner)
+    console.log('Getting quote...')
+
+    const quoteAndPost = await sdk.getQuote({
+      chainId,
+      kind: OrderKind.SELL,
+      owner,
+      amount,
+      sellToken: WETH.address,
+      sellTokenDecimals: WETH.decimals,
+      buyToken: USDC.address,
+      buyTokenDecimals: USDC.decimals,
+      slippageBps,
+    })
+
+    console.log('Posting order...')
+    const result = await quoteAndPost.postSwapOrderFromQuote({})
+    console.log('Posted:', result)
+  }
+
+  main().catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  ```
+
+  ```typescript Viem
+  import { createPublicClient, http } from 'viem'
+  import { privateKeyToAccount } from 'viem/accounts'
+  import { sepolia } from 'viem/chains'
+  import {
+    setGlobalAdapter,
+    SupportedChainId,
+    TradingSdk,
+    OrderKind,
+    WRAPPED_NATIVE_CURRENCIES,
+  } from '@cowprotocol/cow-sdk'
+  import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+
+  const RPC_URL = 'https://sepolia.gateway.tenderly.co'
+  const PRIVATE_KEY = '0x...' // Your private key
+  const DEFAULT_SELL_AMOUNT = 0.1
+
+  async function main() {
+    const chainId = SupportedChainId.SEPOLIA
+
+    // Create public client
+    const publicClient = createPublicClient({
+      chain: sepolia,
+      transport: http(RPC_URL),
+    })
+
+    // Create account from private key
+    const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`)
+
+    // Setup adapter
+    const adapter = new ViemAdapter({ provider: publicClient, signer: account })
+    setGlobalAdapter(adapter)
+
+    // Initialize SDK
+    const sdk = new TradingSdk({
+      chainId,
+      appCode: 'MyApp',
+      signer: account,
+    })
+
+    const WETH = WRAPPED_NATIVE_CURRENCIES[chainId]
+    const USDC = {
+      address: '0xbe72E441BF55620febc26715db68d3494213D8Cb',
+      decimals: 18,
+    }
+
+    const owner = account.address
+    const amount = BigInt(Math.floor(DEFAULT_SELL_AMOUNT * 10 ** WETH.decimals))
+    const slippageBps = 50
+
+    console.log('Owner:', owner)
+    console.log('Getting quote...')
+
+    const quoteAndPost = await sdk.getQuote({
+      chainId,
+      kind: OrderKind.SELL,
+      owner,
+      amount: amount.toString(),
+      sellToken: WETH.address,
+      sellTokenDecimals: WETH.decimals,
+      buyToken: USDC.address,
+      buyTokenDecimals: USDC.decimals,
+      slippageBps,
+    })
+
+    console.log('Posting order...')
+    const result = await quoteAndPost.postSwapOrderFromQuote({})
+    console.log('Posted:', result)
+  }
+
+  main().catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  ```
+</CodeGroup>
+
+## Understanding the Code
+
+### 1. Setup the Adapter
+
+The adapter connects the SDK to your Ethereum provider:
+
+```typescript
+const adapter = new EthersV6Adapter({ provider, signer: wallet })
+setGlobalAdapter(adapter)
+```
+
+### 2. Initialize the Trading SDK
+
+```typescript
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.SEPOLIA,
+  appCode: 'MyApp', // Your app identifier
+  signer: wallet,
+})
+```
+
+### 3. Get a Quote
+
+Request a quote for the swap:
+
+```typescript
+const quoteAndPost = await sdk.getQuote({
+  chainId,
+  kind: OrderKind.SELL, // Selling exact amount
+  owner,
+  amount,
+  sellToken: WETH.address,
+  sellTokenDecimals: WETH.decimals,
+  buyToken: USDC.address,
+  buyTokenDecimals: USDC.decimals,
+  slippageBps: 50, // 0.5% slippage tolerance
+})
+```
+
+### 4. Post the Order
+
+```typescript
+const result = await quoteAndPost.postSwapOrderFromQuote({})
+console.log('Order ID:', result.orderId)
+```
+
+## Quote Results
+
+The quote contains important information:
+
+```typescript
+const { quoteResults } = quoteAndPost
+
+// Get buy amount after fees
+const buyAmount = quoteResults.amountsAndCosts.afterNetworkCosts.buyAmount
+
+// Check network costs
+const networkCosts = quoteResults.amountsAndCosts.networkCosts
+
+// View order data
+const orderData = quoteResults.orderToSign
+```
+
+## Error Handling
+
+Always wrap SDK calls in try-catch blocks:
+
+```typescript
+try {
+  const quoteAndPost = await sdk.getQuote(params)
+  const result = await quoteAndPost.postSwapOrderFromQuote({})
+} catch (error) {
+  console.error('Swap failed:', error)
+  // Handle specific error types
+  if (error.message.includes('insufficient balance')) {
+    console.error('Insufficient token balance')
+  }
+}
+```
+
+## Next Steps
+
+- Learn about [limit orders](/examples/limit-orders)
+- Integrate with [React](/examples/react-integration)
+- Explore [swap order guide](/guides/creating-swap-orders)

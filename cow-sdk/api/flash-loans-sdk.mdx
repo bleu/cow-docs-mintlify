@@ -3,63 +3,463 @@ title: "Flash Loans SDK"
 description: "Capital-efficient collateral swaps combining Aave V3 flash loans with CoW Protocol trading"
 ---
 
-# Flash Loans SDK
-
-## Overview
-
-The Flash Loans SDK enables capital-efficient collateral swaps by combining Aave V3 flash loans with CoW Protocol's intent-based trading system. This allows users to swap collateral without upfront capital through a single atomic transaction.
-
-## Key Features
-
-The system provides capital efficiency and atomic execution by borrowing assets via Aave, executing swaps through CoW Protocol's batch auction system, and automatically repaying loans within one transaction.
+The Flash Loans SDK enables capital-efficient collateral swaps using Aave V3 flash loans integrated with CoW Protocol's intent-based trading for optimal execution.
 
 ## Installation
 
-```bash
+```shellscript
 npm install @cowprotocol/sdk-flash-loans @cowprotocol/sdk-trading
+# or
+pnpm add @cowprotocol/sdk-flash-loans @cowprotocol/sdk-trading
+# or
+yarn add @cowprotocol/sdk-flash-loans @cowprotocol/sdk-trading
 ```
 
 ## How It Works
 
-The process involves four steps:
+1. The SDK initiates a flash loan from Aave Protocol V3 to borrow the required assets
+2. The borrowed assets are swapped to the desired collateral using CoW Protocol's batch auction system
+3. Pre and post-execution hooks deploy adapter contracts and manage the entire swap flow
+4. The flash loan is automatically repaid with fees, completing the atomic transaction
 
-1. Borrowing from Aave V3
-2. Swapping borrowed assets through CoW Protocol's batch auction system
-3. Managing the flow with pre/post-execution hooks
-4. Automatic loan repayment with fees
+### Why Use Flash Loans?
 
-## Core Methods
+- **Capital Efficiency** - No upfront capital needed for collateral swaps
+- **Atomic Execution** - Borrow, swap, and repay in a single transaction
+- **Gas Optimization** - Optimized hook architecture minimizes gas costs
+- **Aave Integration** - Leverages Aave V3's deep liquidity pools
+- **CoW Protocol Benefits** - MEV protection through batch auctions
+
+## Constructor
+
+```typescript
+import { AaveCollateralSwapSdk } from '@cowprotocol/sdk-flash-loans'
+
+// Default configuration
+const flashLoanSdk = new AaveCollateralSwapSdk()
+
+// Custom gas limits
+const flashLoanSdk = new AaveCollateralSwapSdk({
+  hooksGasLimit: {
+    pre: 500000n,
+    post: 800000n,
+  },
+})
+```
+
+<ResponseField name="options" type="AaveCollateralSwapSdkOptions">
+Optional SDK configuration
+  <Expandable>
+    <ResponseField name="hooksGasLimit" type="HooksGasLimit">
+    Custom default gas limits for hooks
+      <Expandable>
+        <ResponseField name="pre" type="bigint" default="300000n">
+        Pre-hook gas limit (default: 300,000)
+        </ResponseField>
+        <ResponseField name="post" type="bigint" default="600000n">
+        Post-hook gas limit (default: 600,000)
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Methods
 
 ### collateralSwap
 
-Executes complete flash loan-based swaps with automatic approval handling. Requires chain ID, trading parameters (sell/buy tokens, amounts, slippage), collateral token address, and a TradingSdk instance.
+Execute a complete flash loan-based collateral swap with automatic approval handling.
+
+<ResponseField name="params" type="CollateralSwapParams" required>
+Swap parameters
+  <Expandable>
+    <ResponseField name="chainId" type="SupportedChainId" required>
+    Chain ID where the swap will execute
+    </ResponseField>
+    <ResponseField name="tradeParameters" type="TradeParameters" required>
+    Standard trading parameters
+      <Expandable>
+        <ResponseField name="sellToken" type="string" required>
+        Token to sell (underlying asset address)
+        </ResponseField>
+        <ResponseField name="sellTokenDecimals" type="number" required>
+        Decimals of sell token
+        </ResponseField>
+        <ResponseField name="buyToken" type="string" required>
+        Token to buy
+        </ResponseField>
+        <ResponseField name="buyTokenDecimals" type="number" required>
+        Decimals of buy token
+        </ResponseField>
+        <ResponseField name="amount" type="string" required>
+        Amount to sell in wei
+        </ResponseField>
+        <ResponseField name="kind" type="OrderKind" required>
+        Order kind (SELL or BUY)
+        </ResponseField>
+        <ResponseField name="validFor" type="number">
+        Order validity in seconds
+        </ResponseField>
+        <ResponseField name="slippageBps" type="number">
+        Slippage tolerance in basis points
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="collateralToken" type="string" required>
+    Aave aToken address used as collateral
+    </ResponseField>
+    <ResponseField name="flashLoanFeePercent" type="number" default="0.05">
+    Flash loan fee percentage (default: 0.05 for 0.05%)
+    </ResponseField>
+    <ResponseField name="settings" type="CollateralSwapSettings">
+    Advanced settings
+      <Expandable>
+        <ResponseField name="preventApproval" type="boolean" default="false">
+        Skip automatic approval check (default: false)
+        </ResponseField>
+        <ResponseField name="permit" type="EIP2612Permit">
+        EIP-2612 permit for gasless approval
+        </ResponseField>
+        <ResponseField name="hooksGasLimit" type="HooksGasLimit">
+        Per-operation gas limits override
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="tradingSdk" type="TradingSdk" required>
+Initialized TradingSdk instance
+</ResponseField>
+
+```typescript
+import { AaveCollateralSwapSdk } from '@cowprotocol/sdk-flash-loans'
+import { TradingSdk } from '@cowprotocol/sdk-trading'
+import { SupportedChainId, OrderKind } from '@cowprotocol/sdk-config'
+
+const flashLoanSdk = new AaveCollateralSwapSdk()
+
+const result = await flashLoanSdk.collateralSwap(
+  {
+    chainId: SupportedChainId.GNOSIS_CHAIN,
+    tradeParameters: {
+      sellToken: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d', // WXDAI
+      sellTokenDecimals: 18,
+      buyToken: '0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0', // USDC.e
+      buyTokenDecimals: 6,
+      amount: '20000000000000000000', // 20 WXDAI
+      kind: OrderKind.SELL,
+      validFor: 600,
+      slippageBps: 50,
+    },
+    collateralToken: '0xd0Dd6cEF72143E22cCED4867eb0d5F2328715533', // aGnoWXDAI
+    flashLoanFeePercent: 0.05,
+  },
+  tradingSdk
+)
+
+console.log('Order created:', result.orderId)
+```
+
+<ResponseField name="orderId" type="string">
+Unique identifier for the created order
+</ResponseField>
 
 ### getSwapQuoteParams
 
-Prepares parameters for manual quote fetching.
+Prepare quote parameters for manual quote fetching.
+
+<ResponseField name="params" type="CollateralSwapParams" required>
+Same parameters as collateralSwap
+</ResponseField>
+
+```typescript
+const quoteParams = await flashLoanSdk.getSwapQuoteParams(params)
+const { quoteResults } = await tradingSdk.getQuote(quoteParams)
+
+console.log('Buy amount:', quoteResults.amountsAndCosts.afterSlippage.buyAmount)
+```
 
 ### getOrderPostingSettings
 
-Generates order settings and returns the adapter contract address.
+Generate order settings and get the flash loan adapter instance address.
+
+<ResponseField name="params" type="CollateralSwapParams" required>
+Swap parameters
+</ResponseField>
+
+<ResponseField name="quoteParams" type="TradeParameters" required>
+Parameters used for quote
+</ResponseField>
+
+<ResponseField name="quoteResults" type="QuoteResults" required>
+Results from getQuote
+</ResponseField>
+
+```typescript
+const { swapSettings, instanceAddress } = await flashLoanSdk.getOrderPostingSettings(
+  params,
+  quoteParams,
+  quoteResults
+)
+
+console.log('Adapter address:', instanceAddress)
+```
 
 ### getCollateralAllowance
 
-Checks current allowances for the flash loan adapter.
+Check the current collateral token allowance for the flash loan adapter.
+
+<ResponseField name="trader" type="string" required>
+Trader address
+</ResponseField>
+
+<ResponseField name="collateralToken" type="string" required>
+Aave aToken address
+</ResponseField>
+
+<ResponseField name="amount" type="bigint" required>
+Required amount
+</ResponseField>
+
+<ResponseField name="instanceAddress" type="string" required>
+Flash loan adapter address
+</ResponseField>
+
+```typescript
+const allowance = await flashLoanSdk.getCollateralAllowance({
+  trader: ownerAddress,
+  collateralToken: '0xd0Dd6cEF72143E22cCED4867eb0d5F2328715533',
+  amount: BigInt('20000000000000000000'),
+  instanceAddress,
+})
+
+console.log('Current allowance:', allowance.toString())
+```
 
 ### approveCollateral
 
-Enables the adapter to spend collateral tokens.
+Approve the flash loan adapter to spend collateral tokens.
 
-## Important Details
+<ResponseField name="params" type="CollateralAllowanceParams" required>
+Same structure as getCollateralAllowance params
+</ResponseField>
 
-- Supports Aave aTokens (interest-bearing tokens) like aGnoWXDAI
-- Flash loans incur fees, typically 0.05%, automatically deducted before quote calculation
-- Customizable gas limits for pre-hooks (default 300,000) and post-hooks (default 600,000)
-- Works on Gnosis Chain and other supported networks
+```typescript
+if (allowance < requiredAmount) {
+  const txResponse = await flashLoanSdk.approveCollateral({
+    trader: ownerAddress,
+    collateralToken: '0xd0Dd6cEF72143E22cCED4867eb0d5F2328715533',
+    amount: BigInt('20000000000000000000'),
+    instanceAddress,
+  })
 
-## Security Notes
+  console.log('Approval transaction:', txResponse.hash)
+}
+```
 
-- Review quotes before execution
-- Test with small amounts first
-- Verify token addresses and decimals
+## Complete Examples
+
+### Basic Collateral Swap
+
+```typescript
+import { AaveCollateralSwapSdk } from '@cowprotocol/sdk-flash-loans'
+import { TradingSdk, OrderKind, SupportedChainId } from '@cowprotocol/sdk-trading'
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+import { createPublicClient, http, privateKeyToAccount } from 'viem'
+import { gnosis } from 'viem/chains'
+
+// Set up adapter
+const adapter = new ViemAdapter({
+  provider: createPublicClient({
+    chain: gnosis,
+    transport: http('YOUR_RPC_URL')
+  }),
+  signer: privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`)
+})
+
+// Initialize Trading SDK
+const tradingSdk = new TradingSdk(
+  {
+    chainId: SupportedChainId.GNOSIS_CHAIN,
+    appCode: 'aave-flash-loan-app',
+  },
+  {},
+  adapter
+)
+
+// Initialize Flash Loan SDK
+const flashLoanSdk = new AaveCollateralSwapSdk()
+
+// Execute swap
+const result = await flashLoanSdk.collateralSwap(
+  {
+    chainId: SupportedChainId.GNOSIS_CHAIN,
+    tradeParameters: {
+      sellToken: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d', // WXDAI
+      sellTokenDecimals: 18,
+      buyToken: '0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0', // USDC.e
+      buyTokenDecimals: 6,
+      amount: '20000000000000000000', // 20 WXDAI
+      kind: OrderKind.SELL,
+      validFor: 600,
+      slippageBps: 50,
+    },
+    collateralToken: '0xd0Dd6cEF72143E22cCED4867eb0d5F2328715533', // aGnoWXDAI
+    flashLoanFeePercent: 0.05,
+  },
+  tradingSdk
+)
+
+console.log('Flash loan order created:', result.orderId)
+```
+
+### Advanced with Manual Approval
+
+```typescript
+const params = {
+  chainId: SupportedChainId.GNOSIS_CHAIN,
+  tradeParameters: {
+    sellToken: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d',
+    sellTokenDecimals: 18,
+    buyToken: '0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0',
+    buyTokenDecimals: 6,
+    amount: '20000000000000000000',
+    kind: OrderKind.SELL,
+  },
+  collateralToken: '0xd0Dd6cEF72143E22cCED4867eb0d5F2328715533',
+  flashLoanFeePercent: 0.05,
+}
+
+// Step 1: Get quote parameters
+const quoteParams = await flashLoanSdk.getSwapQuoteParams(params)
+
+// Step 2: Get quote
+const { quoteResults, postSwapOrderFromQuote } = await tradingSdk.getQuote(quoteParams)
+
+// Step 3: Review quote
+const buyAmount = quoteResults.amountsAndCosts.afterSlippage.buyAmount
+console.log(`Will receive at least: ${buyAmount} tokens`)
+
+// Step 4: Get order settings
+const { swapSettings, instanceAddress } = await flashLoanSdk.getOrderPostingSettings(
+  params,
+  quoteParams,
+  quoteResults
+)
+
+// Step 5: Check and approve collateral
+const sellAmount = BigInt(params.tradeParameters.amount)
+const allowance = await flashLoanSdk.getCollateralAllowance({
+  trader: quoteParams.owner,
+  collateralToken: params.collateralToken,
+  amount: sellAmount,
+  instanceAddress,
+})
+
+if (allowance < sellAmount) {
+  const txResponse = await flashLoanSdk.approveCollateral({
+    trader: quoteParams.owner,
+    collateralToken: params.collateralToken,
+    amount: sellAmount,
+    instanceAddress,
+  })
+  console.log('Approval tx:', txResponse.hash)
+}
+
+// Step 6: Post order with manual approval
+const result = await flashLoanSdk.collateralSwap(
+  {
+    ...params,
+    settings: {
+      preventApproval: true, // Skip auto-approval
+    },
+  },
+  tradingSdk
+)
+
+console.log('Order created:', result.orderId)
+```
+
+## Understanding Collateral Tokens
+
+### What are aTokens?
+
+When you deposit assets into Aave, you receive aTokens (interest-bearing tokens):
+
+- Accrue interest automatically
+- Can be used for flash loan collateral swaps
+- Examples: `aGnoWXDAI`, `aGnoUSDC`
+
+### Common aTokens on Gnosis Chain
+
+```typescript
+const AAVE_TOKENS = {
+  aGnoWXDAI: '0xd0Dd6cEF72143E22cCED4867eb0d5F2328715533',
+  aGnoUSDC: '0xc6B7AcA6DE8a6044E0e32d0c841a89244A10D284',
+}
+```
+
+## Flash Loan Fees
+
+Aave flash loans charge a fee (typically 0.05%):
+
+```typescript
+// With 0.05% fee on 20 WXDAI:
+// - Flash loan: 20 WXDAI
+// - Fee: 0.01 WXDAI
+// - Actual swap: 19.99 WXDAI
+
+{
+  amount: '20000000000000000000',
+  flashLoanFeePercent: 0.05, // 0.05%
+}
+```
+
+The fee is automatically deducted before getting the quote to ensure proceeds cover both output and repayment.
+
+## Hook Architecture
+
+The SDK uses CoW Protocol hooks to orchestrate the flash loan:
+
+### Pre-Hook (300,000 gas default)
+
+- Deploys the Aave adapter contract deterministically
+- Transfers the flash loan to the adapter
+- Sets up swap parameters
+
+### Post-Hook (600,000 gas default)
+
+- Executes collateral swap via the adapter
+- Repays Aave flash loan with fees
+- Transfers remaining tokens to owner
+
+<Info>
+Gas limits can be customized per operation or set as SDK defaults.
+</Info>
+
+## Limitations
+
+- Only supports Aave V3 flash loans
+- Requires sufficient liquidity in Aave pools
+- Flash loan fees apply (typically 0.05%)
+- Subject to CoW Protocol order limits
+- Network-specific contract deployments required
+
+## Security Considerations
+
+<Warning>
+Always review quotes before execution and test with small amounts first.
+</Warning>
+
 - Set appropriate slippage tolerances
+- Verify token addresses and decimals
+- Monitor transaction execution
+- Be aware of flash loan fees and costs
+- Ensure sufficient collateral balance
+
+## Related APIs
+
+- [TradingSdk](/api/trading-sdk)
+- [OrderBookApi](/api/order-book-api)
+- [Hooks](/advanced/hooks)

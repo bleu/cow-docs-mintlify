@@ -96,3 +96,43 @@ From the "Manager" page, you can perform two actions:
 
 For further assistance or questions, join the [CoW Protocol Discord](https://discord.com/invite/cowprotocol) and ask in the `#tech-talk` channel.
 
+## Programmatic Deployment (Without UI)
+
+**You may also deploy a CoW AMM through the Balancer UI using [this guide.](https://cow.fi/learn/how-to-create-a-lvr-protected-liquidity-pool-on-cowamm)**
+
+The proposed transactions and interactions can be executed through any smart contract or EOA transaction builder, Etherscan "Write Contract," from other UI mechanisms, or directly from the console.
+
+### Factory Contract Addresses
+
+* Ethereum Mainnet: [`0xf76c421bAb7df8548604E60deCCcE50477C10462`](https://etherscan.io/address/0xf76c421bAb7df8548604E60deCCcE50477C10462#code)
+* Gnosis Chain: [`0x703Bd8115E6F21a37BB5Df97f78614ca72Ad7624`](https://gnosisscan.io/address/0x703Bd8115E6F21a37BB5Df97f78614ca72Ad7624#code)
+* Arbitrum One: [`0xE0e2Ba143EE5268DA87D529949a2521115987302`](https://arbiscan.io/address/0xe0e2ba143ee5268da87d529949a2521115987302#code)
+* Base: [`0x03362f847B4fAbC12e1Ce98b6b59F94401E4588e`](https://basescan.org/address/0x03362f847b4fabc12e1ce98b6b59f94401e4588e#code)
+* Sepolia Testnet: [`0x1E3D76AC2BB67a2D7e8395d3A624b30AA9056DF9`](https://sepolia.etherscan.io/address/0x1E3D76AC2BB67a2D7e8395d3A624b30AA9056DF9#code)
+
+These contracts can be verified through [this](https://github.com/balancer/cow-amm) repository.
+
+### Steps
+
+1. Call the `newBPool` function of the factory contract. An example transaction can be found [here](https://etherscan.io/tx/0x7543a97853827e267ecd3c1309509ac7704e4f85a53fbfacd6060f461d85bad8#eventlog). The `LOG_NEW_POOL` log reveals the address of the newly created pool.
+
+<Note>
+  In case ABI of the factory contract is not fetched, the ABI from the Sepolia network can be used.
+</Note>
+
+2. Approve the tokens by calling `approve()` on the relevant ERC-20 token contract, with the "spender" set to the newly created BPool address.
+
+<Warning>
+  Take the token's decimals into account when setting the correct approval amount.
+</Warning>
+
+3. Bind the approved tokens to the pool using the `bind()` function of the pool contract. One bind per token. The `denorm` parameter should always be set to `1000000000000000000` (10^18).
+
+4. Set the swap fee by calling `setSwapFee()` on the pool contract. The fee is specified in wei (10^17 = 10%).
+
+<Note>
+  To guarantee full LVR protection, set the fee to 100% (technically up to 99.99%).
+</Note>
+
+5. Finalize the pool by calling `finalize()` on the pool contract.
+

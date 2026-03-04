@@ -1,5 +1,28 @@
 ---
 title: "Driver API"
-description: "Edit this page"
+description: "API specification for the CoW Protocol driver component that orchestrates solver competition"
 ---
 
+The Driver is the component that orchestrates the solver competition for each batch auction. It acts as an intermediary between the Autopilot and individual Solvers.
+
+## Role in the Architecture
+
+1. **Receives auctions** from the Autopilot
+2. **Distributes auction instances** to registered solvers via the [Solver API](/cow-protocol/reference/apis/solver)
+3. **Collects and ranks solutions** based on the objective function
+4. **Executes the winning settlement** on-chain
+
+## Configuration
+
+The driver accepts configuration for:
+
+- Registered solver endpoints
+- Solution ranking parameters
+- Gas estimation settings
+- Settlement simulation parameters
+
+## Related
+
+- [Architecture Overview](/cow-protocol/explanation/architecture/overview) — How the driver fits in the system
+- [Driver Architecture](/cow-protocol/explanation/architecture/driver) — Detailed driver design
+- [Competition Rules](/cow-protocol/reference/core/auctions/competition-rules) — How solutions are ranked

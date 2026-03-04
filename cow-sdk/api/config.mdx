@@ -5,35 +5,329 @@ description: "Chain configuration, contract addresses, and network utilities for
 
 # @cowprotocol/sdk-config
 
-## Overview
+## Installation
 
-The `@cowprotocol/sdk-config` package provides chain configuration, contract addresses, and network utilities for all blockchains supported by CoW Protocol.
-
-## Key Features
-
-### Supported Networks
-
-The package supports 12 EVM chains where trading is fully enabled, including Ethereum, Arbitrum, Base, Polygon, and others. It additionally supports bridge-only targets like Optimism, Bitcoin, and Solana.
-
-### Chain Information
-
-Developers can access comprehensive metadata for each chain, including native currency details, RPC endpoints, block explorers, and contract addresses through the `ChainInfo` interface.
-
-### Contract Addresses
-
-Pre-configured addresses are provided for critical CoW Protocol contracts:
-- Settlement contract (default: `0x9008D19f58AAbD9eD0D60971565AA8510560ab41`)
-- Vault relayer and ETH flow contracts
-- ComposableCow and fallback handler contracts
-
-### Utility Functions
-
-Helper functions like `mapSupportedNetworks()` enable developers to map a value or function across all supported networks efficiently.
-
-## Installation & Usage
-
-```bash
+```shellscript
 npm install @cowprotocol/sdk-config
 ```
 
-Import chain IDs, chain info maps, or individual chain configurations as needed. The package exports both enum types for type safety and constant objects for runtime reference.
+## Supported Chains
+
+### SupportedChainId
+
+Enum of all EVM chains where CoW Protocol is fully supported (you can sell tokens).
+
+```typescript
+enum SupportedChainId {
+  MAINNET = 1,
+  BNB = 56,
+  GNOSIS_CHAIN = 100,
+  POLYGON = 137,
+  LENS = 232,
+  BASE = 8453,
+  PLASMA = 9745,
+  ARBITRUM_ONE = 42161,
+  AVALANCHE = 43114,
+  INK = 57073,
+  LINEA = 59144,
+  SEPOLIA = 11155111
+}
+```
+
+```typescript
+import { SupportedChainId } from '@cowprotocol/sdk-config'
+
+const chainId = SupportedChainId.MAINNET // 1
+```
+
+### AdditionalTargetChainId
+
+Chains where you can bridge to, but cannot sell tokens from (not directly supported by CoW Protocol).
+
+```typescript
+enum AdditionalTargetChainId {
+  OPTIMISM = 10,
+  BITCOIN = 1000000000,
+  SOLANA = 1000000001
+}
+```
+
+### EvmChains
+
+All EVM chains (both fully supported and bridge targets).
+
+```typescript
+enum EvmChains {
+  MAINNET = 1,
+  BNB = 56,
+  GNOSIS_CHAIN = 100,
+  POLYGON = 137,
+  LENS = 232,
+  BASE = 8453,
+  PLASMA = 9745,
+  ARBITRUM_ONE = 42161,
+  AVALANCHE = 43114,
+  INK = 57073,
+  LINEA = 59144,
+  SEPOLIA = 11155111,
+  OPTIMISM = 10
+}
+```
+
+### NonEvmChains
+
+Non-EVM chains available for bridging.
+
+```typescript
+enum NonEvmChains {
+  BITCOIN = 1000000000,
+  SOLANA = 1000000001
+}
+```
+
+## Chain Information
+
+### ChainInfo
+
+Comprehensive chain metadata.
+
+```typescript
+interface EvmChainInfo {
+  readonly id: ChainId
+  readonly label: string
+  readonly eip155Label: string
+  readonly addressPrefix: string
+  readonly nativeCurrency: TokenInfo
+  readonly isTestnet: boolean
+  readonly color: string
+  readonly logo: ThemedImage
+  readonly docs: WebUrl
+  readonly website: WebUrl
+  readonly blockExplorer: WebUrl
+  readonly bridges?: WebUrl[]
+  readonly isUnderDevelopment?: boolean
+  readonly isDeprecated?: boolean
+  readonly contracts: ChainContracts
+  readonly rpcUrls: {
+    [key: string]: ChainRpcUrls
+    default: ChainRpcUrls
+  }
+  readonly isZkSync?: boolean
+}
+
+interface NonEvmChainInfo {
+  readonly id: ChainId
+  readonly label: string
+  readonly addressPrefix: string
+  readonly nativeCurrency: TokenInfo
+  readonly isTestnet: boolean
+  readonly color: string
+  readonly logo: ThemedImage
+  readonly docs: WebUrl
+  readonly website: WebUrl
+  readonly blockExplorer: WebUrl
+  readonly bridges?: WebUrl[]
+}
+
+type ChainInfo = EvmChainInfo | NonEvmChainInfo
+```
+
+### Chain Constants
+
+```typescript
+// Map of all supported chains
+const ALL_SUPPORTED_CHAINS_MAP: Record<SupportedChainId, ChainInfo>
+
+// Array of all supported chains
+const ALL_SUPPORTED_CHAINS: ChainInfo[]
+
+// Array of all supported chain IDs
+const ALL_SUPPORTED_CHAIN_IDS: SupportedChainId[]
+
+// Chains where trading is allowed (excludes deprecated)
+const TRADABLE_SUPPORTED_CHAINS: ChainInfo[]
+const TRADABLE_SUPPORTED_CHAIN_IDS: SupportedChainId[]
+
+// Additional bridge-only chains
+const ADDITIONAL_TARGET_CHAINS_MAP: Record<AdditionalTargetChainId, ChainInfo>
+const ALL_ADDITIONAL_TARGET_CHAINS: ChainInfo[]
+const ALL_ADDITIONAL_TARGET_CHAIN_IDS: AdditionalTargetChainId[]
+
+// All chains (supported + bridge targets)
+const ALL_CHAINS: ChainInfo[]
+const ALL_CHAINS_IDS: TargetChainId[]
+```
+
+```typescript
+import {
+  ALL_SUPPORTED_CHAINS_MAP,
+  SupportedChainId,
+  TRADABLE_SUPPORTED_CHAIN_IDS
+} from '@cowprotocol/sdk-config'
+
+// Get Ethereum mainnet info
+const mainnet = ALL_SUPPORTED_CHAINS_MAP[SupportedChainId.MAINNET]
+console.log(mainnet.label) // 'Ethereum'
+console.log(mainnet.nativeCurrency.symbol) // 'ETH'
+
+// Get all tradable chains
+console.log(TRADABLE_SUPPORTED_CHAIN_IDS)
+// [1, 56, 100, 137, ...]
+```
+
+## Contract Addresses
+
+### Settlement Contract
+
+```typescript
+const COW_PROTOCOL_SETTLEMENT_CONTRACT_ADDRESS: Record<SupportedChainId, string>
+```
+
+CoW Protocol settlement contract addresses for each supported chain.
+
+Default address: `0x9008D19f58AAbD9eD0D60971565AA8510560ab41`
+
+### Vault Relayer
+
+```typescript
+const COW_PROTOCOL_VAULT_RELAYER_ADDRESS: Record<SupportedChainId, string>
+```
+
+Vault relayer contract addresses.
+
+Default address: `0xC92E8bdf79f0507f65a392b0ab4667716BFE0110`
+
+### Extensible Fallback Handler
+
+```typescript
+const EXTENSIBLE_FALLBACK_HANDLER_CONTRACT_ADDRESS: Record<SupportedChainId, string>
+```
+
+Default address: `0x2f55e8b20D0B9FEFA187AA7d00B6Cbe563605bF5`
+
+### Composable CoW
+
+```typescript
+const COMPOSABLE_COW_CONTRACT_ADDRESS: Record<SupportedChainId, string>
+```
+
+Default address: `0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74`
+
+### ETH Flow Contracts
+
+```typescript
+const ETH_FLOW_ADDRESSES: Record<SupportedChainId, string>
+const BARN_ETH_FLOW_ADDRESSES: Record<SupportedChainId, string>
+```
+
+ETH flow contract addresses for production and barn (staging) environments.
+
+```typescript
+import {
+  COW_PROTOCOL_SETTLEMENT_CONTRACT_ADDRESS,
+  SupportedChainId
+} from '@cowprotocol/sdk-config'
+
+const settlementAddress = COW_PROTOCOL_SETTLEMENT_CONTRACT_ADDRESS[
+  SupportedChainId.MAINNET
+]
+console.log(settlementAddress)
+// '0x9008D19f58AAbD9eD0D60971565AA8510560ab41'
+```
+
+## Special Addresses
+
+```typescript
+// Native ETH marker address
+const ETH_ADDRESS = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'
+
+// Maximum valid timestamp for orders
+const MAX_VALID_TO_EPOCH = 4294967295 // Feb 07 2106 07:28:15 GMT+0100
+```
+
+## Utility Functions
+
+### mapSupportedNetworks
+
+Maps a value or function across all supported networks.
+
+```typescript
+function mapSupportedNetworks<T>(
+  value: T | ((chainId: SupportedChainId) => T)
+): Record<SupportedChainId, T>
+```
+
+```typescript
+import { mapSupportedNetworks, SupportedChainId } from '@cowprotocol/sdk-config'
+
+// Map same value to all chains
+const sameValue = mapSupportedNetworks('0x123...')
+
+// Map different values based on chain
+const customValues = mapSupportedNetworks((chainId) => {
+  return chainId === SupportedChainId.MAINNET ? '0xabc...' : '0xdef...'
+})
+```
+
+### mapAllNetworks
+
+Maps a value across all networks (including bridge targets).
+
+```typescript
+function mapAllNetworks<T>(
+  value: T | ((chainId: TargetChainId) => T)
+): Record<TargetChainId, T>
+```
+
+### mapAddressToSupportedNetworks
+
+Maps a contract address to all supported networks.
+
+```typescript
+function mapAddressToSupportedNetworks(
+  address: string
+): Record<SupportedChainId, string>
+```
+
+## Chain Details
+
+Individual chain configurations are exported:
+
+```typescript
+import {
+  mainnet,
+  gnosisChain,
+  arbitrumOne,
+  base,
+  avalanche,
+  polygon,
+  lens,
+  bnb,
+  optimism,
+  linea,
+  plasma,
+  ink,
+  bitcoin,
+  solana,
+  sepolia
+} from '@cowprotocol/sdk-config'
+```
+
+Each export follows the `ChainInfo` interface:
+
+```typescript
+import { mainnet } from '@cowprotocol/sdk-config'
+
+console.log(mainnet.label) // 'Ethereum'
+console.log(mainnet.rpcUrls.default.http) // ['https://eth.merkle.io']
+console.log(mainnet.blockExplorer.url)
+```
+
+## Types
+
+```typescript
+type ChainId = number
+type TargetChainId = SupportedChainId | AdditionalTargetChainId
+type HttpsString = `https://${string}`
+type WssString = `wss://${string}`
+```

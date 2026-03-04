@@ -1,5 +1,28 @@
 ---
 title: "Solver API"
-description: "Edit this page"
+description: "API specification for solvers competing in CoW Protocol batch auctions"
 ---
 
+The Solver API defines the interface that solvers must implement to participate in CoW Protocol batch auctions. The driver communicates with solvers through this API.
+
+## Endpoints
+
+### Solve
+
+- `POST /solve` — Receive an auction instance and return proposed solutions
+
+The driver sends the current auction (orders, tokens, liquidity sources) and the solver returns one or more settlement solutions ranked by objective value.
+
+### Notify
+
+- `POST /notify` — Receive notification about auction results
+
+After a batch is settled, the driver notifies participating solvers about which solution won and why.
+
+## Integration
+
+Solvers implement this API as an HTTP server. The driver connects to each registered solver's endpoint during each auction cycle.
+
+For a complete guide on building a solver, see the [Solver Tutorials](/cow-protocol/tutorials/solvers/create).
+
+For the auction schema and competition rules, see [Auctions](/cow-protocol/reference/core/auctions).

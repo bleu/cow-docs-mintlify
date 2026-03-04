@@ -1,6 +1,4 @@
 ---
-sidebar_position: 1
-draft: true
 ---
 
 # Create a solver
@@ -22,19 +20,15 @@ For the example below, we will use:
 
 Let us consider the case of [Yearn](https://yearn.fi) tokens. A user has `USDC` and wants to buy `yvUSDC`. If no solver understands how to deposit into a Yearn vault, all solutions from solvers will require an LP `USDC/yvUSDC` to settle the order. But we know how to deposit into a Yearn vault, so we can create a solver that understands how to do that.
 
-:::tip Get the big picture
-
+<Tip title="Get the big picture">
 CoW Protocol infrastructure is a lot of services running together in herd harmony, which is a bit intimidating at the beginning. Before proceeding, it would be advisable to read the architectural overview to get a better understanding of how CoW Protocol works and its entities.
-
-:::
+</Tip>
 
 ### Setup
 
-:::caution
-
-it is assumed you have rust setup correctly with `rustup`.
-
-:::
+<Warning>
+It is assumed you have Rust setup correctly with `rustup`.
+</Warning>
 
 
 Let's start simple. Let's first run a solver which solves a json we send by hand with curl.

@@ -3,52 +3,290 @@ title: "Subgraph SDK"
 description: "TypeScript client for querying CoW Protocol's historical trading data and metrics from TheGraph"
 ---
 
-# SubgraphApi
-
-## Overview
-
-The SubgraphApi is a TypeScript client enabling queries of CoW Protocol's historical trading data and metrics from TheGraph subgraphs across multiple blockchain networks.
+The SubgraphApi provides a TypeScript client for querying historical trading data, volume statistics, and protocol metrics from CoW Protocol subgraphs across multiple chains.
 
 ## Installation
 
-```bash
+```shellscript
 npm install @cowprotocol/sdk-subgraph
+# or
+pnpm add @cowprotocol/sdk-subgraph
+# or
+yarn add @cowprotocol/sdk-subgraph
 ```
 
-## Core Capabilities
+## Features
 
-- **Main Client Access** - Provides a dedicated client for subgraph querying
-- **Ready-to-Use Query Templates** - Includes common queries for protocol statistics
-- **Cross-Chain Functionality** - Works with Ethereum, Gnosis Chain, Arbitrum, Base, and Sepolia
-- **Type-Safe Results** - All GraphQL responses are fully typed
-- **Flexible Querying** - Supports custom GraphQL queries with type safety
+- **SubgraphApi Client** - Dedicated client for subgraph querying
+- **Pre-built Queries** - Common queries for protocol statistics
+- **Multi-chain Support** - Works with Ethereum, Gnosis Chain, Arbitrum, Base, and Sepolia
+- **Type-safe Responses** - All GraphQL responses are fully typed
+- **Custom Query Support** - Execute custom GraphQL queries with type safety
 
-## Essential Methods
+## Constructor
 
-### getTotals()
+```typescript
+new SubgraphApi(apiKey: string, options?: SubgraphApiOptions)
+```
 
-Retrieves comprehensive protocol statistics including token counts, order volumes, trader numbers, settlement data, USD-denominated volume, and fee information.
+<ResponseField name="apiKey" type="string" required>
+API key from [TheGraph Studio](https://thegraph.com/studio/)
+</ResponseField>
 
-### getLastDaysVolume(days)
+<ResponseField name="options" type="SubgraphApiOptions">
+Optional configuration
+  <Expandable>
+    <ResponseField name="chainId" type="SupportedChainId">
+    Chain ID for queries (defaults to Mainnet)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
-Fetches temporal volume breakdowns returning arrays with timestamp, volume in USD, and trade counts.
+## Methods
 
-### getLastHoursVolume(hours)
+### getTotals
 
-Similar to daily volume but with hourly granularity.
+Get overall protocol statistics including tokens, orders, traders, settlements, volume, and fees.
 
-### runQuery()
+```typescript
+const subgraphApi = new SubgraphApi('YOUR_GRAPH_API_KEY')
 
-Executes custom GraphQL queries with optional variables for advanced use cases.
+const totals = await subgraphApi.getTotals()
+console.log('Total tokens:', totals.tokens)
+console.log('Total orders:', totals.orders)
+console.log('Total volume USD:', totals.volumeUsd)
+console.log('Total fees USD:', totals.feesUsd)
+```
 
-## Setup Requirements
+<ResponseField name="tokens" type="string">
+Total number of unique tokens traded
+</ResponseField>
 
-Users must obtain an API key from TheGraph Studio before initializing the client.
+<ResponseField name="orders" type="string">
+Total number of orders placed
+</ResponseField>
+
+<ResponseField name="traders" type="string">
+Total number of unique traders
+</ResponseField>
+
+<ResponseField name="settlements" type="string">
+Total number of settlements
+</ResponseField>
+
+<ResponseField name="volumeUsd" type="string">
+Total trading volume in USD
+</ResponseField>
+
+<ResponseField name="feesUsd" type="string">
+Total fees collected in USD
+</ResponseField>
+
+### getLastDaysVolume
+
+Get historical volume data for a specified number of days.
+
+<ResponseField name="days" type="number" required>
+Number of days to query (e.g., 7, 30)
+</ResponseField>
+
+```typescript
+const last7DaysVolume = await subgraphApi.getLastDaysVolume(7)
+console.log('Daily volumes:', last7DaysVolume.dailyTotals)
+```
+
+<ResponseField name="dailyTotals" type="DailyTotal[]">
+Array of daily volume totals
+  <Expandable>
+    <ResponseField name="timestamp" type="string">
+    Day timestamp
+    </ResponseField>
+    <ResponseField name="volumeUsd" type="string">
+    Volume in USD for the day
+    </ResponseField>
+    <ResponseField name="trades" type="string">
+    Number of trades
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### getLastHoursVolume
+
+Get historical volume data for a specified number of hours.
+
+<ResponseField name="hours" type="number" required>
+Number of hours to query (e.g., 24, 48)
+</ResponseField>
+
+```typescript
+const last24HoursVolume = await subgraphApi.getLastHoursVolume(24)
+console.log('Hourly volumes:', last24HoursVolume.hourlyTotals)
+```
+
+<ResponseField name="hourlyTotals" type="HourlyTotal[]">
+Array of hourly volume totals
+  <Expandable>
+    <ResponseField name="timestamp" type="string">
+    Hour timestamp
+    </ResponseField>
+    <ResponseField name="volumeUsd" type="string">
+    Volume in USD for the hour
+    </ResponseField>
+    <ResponseField name="trades" type="string">
+    Number of trades
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### runQuery
+
+Execute a custom GraphQL query with full type safety.
+
+<ResponseField name="query" type="string | DocumentNode" required>
+GraphQL query string or parsed DocumentNode
+</ResponseField>
+
+<ResponseField name="variables" type="object">
+Optional query variables
+</ResponseField>
+
+```typescript
+import { gql } from 'graphql-request'
+
+const query = gql`
+  query TokensByVolume {
+    tokens(first: 5, orderBy: totalVolumeUsd, orderDirection: desc) {
+      address
+      symbol
+      totalVolumeUsd
+      priceUsd
+    }
+  }
+`
+
+const result = await subgraphApi.runQuery(query)
+console.log('Top tokens:', result.tokens)
+```
+
+## Usage Examples
+
+### Basic Setup
+
+```typescript
+import { SubgraphApi } from '@cowprotocol/sdk-subgraph'
+import { SupportedChainId } from '@cowprotocol/sdk-config'
+
+// Initialize with your API key
+const subgraphApi = new SubgraphApi('YOUR_GRAPH_API_KEY')
+
+// Configure for specific chain
+const mainnetApi = new SubgraphApi('YOUR_GRAPH_API_KEY', {
+  chainId: SupportedChainId.MAINNET,
+})
+```
+
+### Query Protocol Metrics
+
+```typescript
+// Get overall protocol stats
+const totals = await subgraphApi.getTotals()
+
+console.log(`Total Trading Volume: $${totals.volumeUsd}`)
+console.log(`Total Orders: ${totals.orders}`)
+console.log(`Unique Traders: ${totals.traders}`)
+console.log(`Total Settlements: ${totals.settlements}`)
+```
+
+### Query Historical Data
+
+```typescript
+// Last 7 days volume
+const weeklyData = await subgraphApi.getLastDaysVolume(7)
+
+weeklyData.dailyTotals.forEach(day => {
+  console.log(`${day.timestamp}: $${day.volumeUsd} (${day.trades} trades)`)
+})
+
+// Last 24 hours volume
+const dailyData = await subgraphApi.getLastHoursVolume(24)
+
+dailyData.hourlyTotals.forEach(hour => {
+  console.log(`${hour.timestamp}: $${hour.volumeUsd}`)
+})
+```
+
+### Custom Queries
+
+```typescript
+import { gql } from 'graphql-request'
+
+// Query top traders by volume
+const topTradersQuery = gql`
+  query TopTraders($first: Int!) {
+    users(first: $first, orderBy: volumeUsd, orderDirection: desc) {
+      address
+      volumeUsd
+      numberOfTrades
+      solvedAmountUsd
+    }
+  }
+`
+
+const result = await subgraphApi.runQuery(topTradersQuery, { first: 10 })
+
+result.users.forEach(user => {
+  console.log(`${user.address}: $${user.volumeUsd} volume`)
+})
+```
+
+### Multi-Chain Queries
+
+```typescript
+import { SubgraphApi } from '@cowprotocol/sdk-subgraph'
+import { SupportedChainId } from '@cowprotocol/sdk-config'
+
+const chains = [
+  SupportedChainId.MAINNET,
+  SupportedChainId.GNOSIS_CHAIN,
+  SupportedChainId.ARBITRUM_ONE,
+]
+
+const apiKey = 'YOUR_GRAPH_API_KEY'
+
+// Query multiple chains
+const results = await Promise.all(
+  chains.map(async chainId => {
+    const api = new SubgraphApi(apiKey, { chainId })
+    const totals = await api.getTotals()
+    return { chainId, totals }
+  })
+)
+
+results.forEach(({ chainId, totals }) => {
+  console.log(`Chain ${chainId}: $${totals.volumeUsd} volume`)
+})
+```
+
+## Supported Chains
+
+The SubgraphApi supports the following networks:
+
+- Ethereum Mainnet
+- Gnosis Chain
+- Arbitrum One
+- Base
+- Sepolia Testnet
+
+## API Key Requirements
+
+To use this package, you need a Graph API key from [TheGraph Studio](https://thegraph.com/studio/).
 
 <Warning>
-Keep your API key secure and never expose it in client-side code.
+Keep your API key secure and never expose it in client-side code. Consider using environment variables.
 </Warning>
 
-## Practical Usage Patterns
+## Related APIs
 
-Examples demonstrate protocol metric retrieval, historical data analysis spanning weeks and hours, querying top traders by volume, and executing queries across multiple chains simultaneously.
+- [TradingSdk](/api/trading-sdk)
+- [OrderBookApi](/api/order-book-api)
+- [Config](/api/config)

@@ -3,58 +3,561 @@ title: "Bridging SDK"
 description: "Cross-chain token swaps by integrating CoW Protocol with bridge providers like Across and Bungee"
 ---
 
-# Bridging SDK
-
 ## Overview
 
-The Bridging SDK facilitates cross-chain token swaps by integrating CoW Protocol with bridge providers like Across and Bungee. It automatically routes trades through optimal paths and manages the bridging process.
+The Bridging SDK enables cross-chain token swaps by combining CoW Protocol swaps with bridge providers like Across and Bungee. It automatically routes trades through optimal paths and manages the bridging process.
 
 ## Installation
 
-```bash
+```shellscript
 npm install @cowprotocol/sdk-bridging
 ```
 
-## Core Components
+## BridgingSdk
 
-### BridgingSdk Class
+Main SDK class for bridging tokens between different chains.
 
-The main SDK class accepts configuration options including bridge providers, optional trading and order book APIs, logging preferences, and cache settings with configurable TTLs for intermediate tokens (default 5 minutes) and buy tokens (default 2 minutes).
+### Constructor
 
-### Primary Methods
+```typescript
+import { BridgingSdk } from '@cowprotocol/sdk-bridging'
+import { AcrossBridgeProvider } from '@cowprotocol/sdk-bridging'
 
-**getQuote()** - Retrieves cross-chain quotes with order posting capability. Requires quote parameters including order kind, amounts, source/destination chain IDs, token addresses, decimals, and a signer.
+const bridgingSdk = new BridgingSdk({
+  providers: [new AcrossBridgeProvider()],
+  enableLogging: true,
+  cacheConfig: {
+    enabled: true,
+    intermediateTokensTtl: 5 * 60 * 1000,
+    buyTokensTtl: 2 * 60 * 1000,
+  },
+})
+```
 
-**getMultiQuotes()** - Get quotes from multiple bridge providers in parallel with progressive results. Supports callbacks for handling individual provider responses and configurable timeout settings.
+<ResponseField name="options" type="BridgingSdkOptions" required>
+Configuration options for the SDK
+  <Expandable>
+    <ResponseField name="options.providers" type="BridgeProvider[]" required>
+    Array of bridge providers (e.g., AcrossBridgeProvider, BungeeBridgeProvider)
+    </ResponseField>
+    <ResponseField name="options.tradingSdk" type="TradingSdk">
+    Optional TradingSdk instance. Creates a new one if not provided.
+    </ResponseField>
+    <ResponseField name="options.orderBookApi" type="OrderBookApi">
+    Optional OrderBookApi instance
+    </ResponseField>
+    <ResponseField name="options.enableLogging" type="boolean">
+    Enable debug logging
+    </ResponseField>
+    <ResponseField name="options.cacheConfig" type="BridgingSdkCacheConfig">
+    Cache configuration settings
+      <Expandable>
+        <ResponseField name="options.cacheConfig.enabled" type="boolean" default="true">
+        Enable caching for networks and tokens
+        </ResponseField>
+        <ResponseField name="options.cacheConfig.intermediateTokensTtl" type="number" default="300000">
+        TTL in milliseconds for intermediate tokens cache (default: 5 minutes)
+        </ResponseField>
+        <ResponseField name="options.cacheConfig.buyTokensTtl" type="number" default="120000">
+        TTL in milliseconds for buy tokens cache (default: 2 minutes)
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="adapter" type="AbstractProviderAdapter">
+    Optional provider adapter (ethers v5, ethers v6, or viem)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
-**getBestQuote()** - Returns the highest-value quote across multiple providers based on post-slippage buy amounts.
+### getQuote()
 
-### Network & Token Discovery
+Get a cross-chain quote with a callback to post the order.
 
-- `getSourceNetworks()` - Lists supported CoW Protocol chains
-- `getTargetNetworks()` - Lists destination chains across all providers
-- `getBuyTokens()` - Retrieves available tokens for destination chains with optional filtering
+```typescript
+const quote = await bridgingSdk.getQuote({
+  kind: OrderKind.SELL,
+  amount: parseUnits('100', 6), // 100 USDC
+  sellTokenChainId: SupportedChainId.MAINNET,
+  sellTokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+  sellTokenDecimals: 6,
+  buyTokenChainId: TargetChainId.BASE,
+  buyTokenAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+  buyTokenDecimals: 6,
+  signer: userSigner,
+})
 
-**getOrder()** - Retrieves cross-chain order details including bridge status.
+// Post the order
+const result = await quote.postSwapOrderFromQuote()
+```
+
+<ResponseField name="quoteBridgeRequest" type="QuoteBridgeRequest" required>
+Quote parameters
+  <Expandable>
+    <ResponseField name="quoteBridgeRequest.kind" type="OrderKind" required>
+    Order type: `OrderKind.SELL` or `OrderKind.BUY`
+    </ResponseField>
+    <ResponseField name="quoteBridgeRequest.amount" type="bigint" required>
+    Amount to sell or buy (in token atoms)
+    </ResponseField>
+    <ResponseField name="quoteBridgeRequest.sellTokenChainId" type="SupportedChainId" required>
+    Source chain ID
+    </ResponseField>
+    <ResponseField name="quoteBridgeRequest.sellTokenAddress" type="string" required>
+    Sell token contract address
+    </ResponseField>
+    <ResponseField name="quoteBridgeRequest.sellTokenDecimals" type="number" required>
+    Sell token decimals
+    </ResponseField>
+    <ResponseField name="quoteBridgeRequest.buyTokenChainId" type="TargetChainId" required>
+    Destination chain ID
+    </ResponseField>
+    <ResponseField name="quoteBridgeRequest.buyTokenAddress" type="string" required>
+    Buy token contract address
+    </ResponseField>
+    <ResponseField name="quoteBridgeRequest.buyTokenDecimals" type="number" required>
+    Buy token decimals
+    </ResponseField>
+    <ResponseField name="quoteBridgeRequest.signer" type="SignerLike" required>
+    Wallet signer
+    </ResponseField>
+    <ResponseField name="quoteBridgeRequest.owner" type="string">
+    Order owner address (defaults to signer address)
+    </ResponseField>
+    <ResponseField name="quoteBridgeRequest.swapSlippageBps" type="number">
+    Slippage tolerance for the swap in basis points
+    </ResponseField>
+    <ResponseField name="quoteBridgeRequest.bridgeSlippageBps" type="number">
+    Slippage tolerance for the bridge in basis points
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="advancedSettings" type="SwapAdvancedSettings">
+Optional advanced settings for the swap
+</ResponseField>
+
+Returns either `QuoteAndPost` for same-chain swaps or `BridgeQuoteAndPost` for cross-chain swaps:
+
+<ResponseField name="swap" type="QuoteResults">
+CoW Protocol swap quote details
+</ResponseField>
+
+<ResponseField name="bridge" type="BridgeQuoteResults">
+Bridge quote details (only for cross-chain swaps)
+  <Expandable>
+    <ResponseField name="amountsAndCosts" type="BridgeQuoteAmountsAndCosts">
+    Bridging amounts and costs breakdown
+    </ResponseField>
+    <ResponseField name="fees" type="object">
+    Bridge fees
+      <Expandable>
+        <ResponseField name="bridgeFee" type="bigint">
+        Relayer capital cost fee (in token atoms)
+        </ResponseField>
+        <ResponseField name="destinationGasFee" type="bigint">
+        Destination gas fee (in token atoms)
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="expectedFillTimeSeconds" type="number">
+    Estimated time to complete the bridge
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="postSwapOrderFromQuote" type="function">
+Callback function to post the order on-chain
+</ResponseField>
+
+### getMultiQuotes()
+
+Get quotes from multiple bridge providers in parallel with progressive results.
+
+```typescript
+const results = await bridgingSdk.getMultiQuotes({
+  quoteBridgeRequest: {
+    kind: OrderKind.SELL,
+    amount: parseUnits('100', 6),
+    sellTokenChainId: SupportedChainId.MAINNET,
+    sellTokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+    sellTokenDecimals: 6,
+    buyTokenChainId: TargetChainId.BASE,
+    buyTokenAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+    buyTokenDecimals: 6,
+    signer: userSigner,
+  },
+  providerDappIds: ['across', 'bungee'],
+  options: {
+    onQuoteResult: (result) => {
+      console.log(`Quote from ${result.providerDappId}:`, result.quote)
+    },
+    totalTimeout: 40000,
+    providerTimeout: 20000,
+  },
+})
+```
+
+<ResponseField name="request" type="MultiQuoteRequest" required>
+Multi-quote request parameters
+  <Expandable>
+    <ResponseField name="request.quoteBridgeRequest" type="QuoteBridgeRequest" required>
+    Base quote parameters
+    </ResponseField>
+    <ResponseField name="request.providerDappIds" type="string[]">
+    Optional array of provider IDs to query. If not provided, queries all available providers.
+    </ResponseField>
+    <ResponseField name="request.options" type="MultiQuoteOptions">
+    Optional behavior configuration
+      <Expandable>
+        <ResponseField name="request.options.onQuoteResult" type="function">
+        Callback invoked as soon as each provider returns a result
+        </ResponseField>
+        <ResponseField name="request.options.totalTimeout" type="number" default="40000">
+        Maximum time to wait for all providers (milliseconds)
+        </ResponseField>
+        <ResponseField name="request.options.providerTimeout" type="number" default="20000">
+        Maximum time to wait for each provider (milliseconds)
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="results" type="MultiQuoteResult[]">
+Array of results from each provider
+  <Expandable>
+    <ResponseField name="providerDappId" type="string">
+    Provider identifier
+    </ResponseField>
+    <ResponseField name="quote" type="BridgeQuoteAndPost | null">
+    Quote result, or null if the provider failed
+    </ResponseField>
+    <ResponseField name="error" type="Error">
+    Error if the provider failed
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### getBestQuote()
+
+Get the best quote from multiple providers based on buyAmount after slippage.
+
+```typescript
+const bestQuote = await bridgingSdk.getBestQuote({
+  quoteBridgeRequest: quoteParams,
+  providerDappIds: ['across', 'bungee'],
+  options: {
+    onQuoteResult: (result) => {
+      console.log('New best quote found:', result)
+    },
+  },
+})
+
+if (bestQuote) {
+  await bestQuote.quote.postSwapOrderFromQuote()
+}
+```
+
+Same parameters as `getMultiQuotes()`
+
+<ResponseField name="bestQuote" type="MultiQuoteResult | null">
+The best quote result found, or null if no successful quotes
+</ResponseField>
+
+### getSourceNetworks()
+
+Get available source networks for bridging.
+
+```typescript
+const sourceNetworks = await bridgingSdk.getSourceNetworks()
+// Returns all supported CoW Protocol chains
+```
+
+<ResponseField name="networks" type="ChainInfo[]">
+Array of supported source chain information
+</ResponseField>
+
+### getTargetNetworks()
+
+Get available target networks for bridging.
+
+```typescript
+const targetNetworks = await bridgingSdk.getTargetNetworks()
+```
+
+<ResponseField name="networks" type="ChainInfo[]">
+Array of supported destination chains across all providers
+</ResponseField>
+
+### getBuyTokens()
+
+Get available buy tokens for a specific target chain.
+
+```typescript
+const { tokens, isRouteAvailable } = await bridgingSdk.getBuyTokens({
+  buyChainId: TargetChainId.BASE,
+  sellChainId: SupportedChainId.MAINNET,
+  sellTokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+})
+```
+
+<ResponseField name="params" type="GetBuyTokensParams" required>
+Token query parameters
+  <Expandable>
+    <ResponseField name="params.buyChainId" type="TargetChainId" required>
+    Destination chain ID
+    </ResponseField>
+    <ResponseField name="params.sellChainId" type="SupportedChainId">
+    Source chain ID (for filtering)
+    </ResponseField>
+    <ResponseField name="params.sellTokenAddress" type="string">
+    Sell token address (for filtering)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="result" type="GetProviderBuyTokens">
+  <Expandable>
+    <ResponseField name="tokens" type="TokenInfo[]">
+    Array of available buy tokens
+    </ResponseField>
+    <ResponseField name="isRouteAvailable" type="boolean">
+    Whether any route is available
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### getOrder()
+
+Get details about a cross-chain order.
+
+```typescript
+const order = await bridgingSdk.getOrder({
+  chainId: SupportedChainId.MAINNET,
+  orderId: '0x...',
+  env: 'prod',
+})
+```
+
+<ResponseField name="params" type="GetOrderParams" required>
+  <Expandable>
+    <ResponseField name="params.chainId" type="SupportedChainId" required>
+    Chain where order was settled
+    </ResponseField>
+    <ResponseField name="params.orderId" type="string" required>
+    Order unique identifier
+    </ResponseField>
+    <ResponseField name="params.env" type="CowEnv">
+    Environment ('prod' or 'staging')
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="order" type="CrossChainOrder | null">
+Order details including bridge status, or null if not found
+</ResponseField>
 
 ### Cache Management
 
-The SDK provides `clearCache()`, `cleanupExpiredCache()`, and `getCacheStats()` methods for managing internal caches.
+The SDK provides methods to manage the internal cache.
+
+```typescript
+// Clear all caches
+bridgingSdk.clearCache()
+
+// Clean up expired entries
+bridgingSdk.cleanupExpiredCache()
+
+// Get cache statistics
+const stats = bridgingSdk.getCacheStats()
+console.log('Cache stats:', stats)
+// { intermediateTokens: 5, buyTokens: 12 }
+```
 
 ## Bridge Providers
 
-Three provider implementations are available:
+### AcrossBridgeProvider
 
-- **AcrossBridgeProvider** - Uses Across Protocol
-- **BungeeBridgeProvider** - Uses Bungee/Socket with API key requirement
-- **NearIntentsBridgeProvider** - NEAR Protocol integration
+Bridge provider using the Across Protocol.
 
-## Key Types
+```typescript
+import { AcrossBridgeProvider } from '@cowprotocol/sdk-bridging'
 
-**QuoteBridgeRequest** contains order parameters, chain and token information, signer, and optional slippage tolerances.
+const acrossProvider = new AcrossBridgeProvider({
+  bridgeUrl: 'https://across.to/api',
+})
+```
 
-**BridgeQuoteAndPost** combines swap results with bridge quote details and includes a `postSwapOrderFromQuote()` method for execution.
+### BungeeBridgeProvider
 
-## Usage Examples
+Bridge provider using Bungee (Socket).
 
-Basic implementation involves instantiating BridgingSdk with providers, calling `getQuote()` with swap parameters, then posting via the returned quote object. Multi-provider comparison uses `getMultiQuotes()` with provider filtering and callbacks for real-time result handling.
+```typescript
+import { BungeeBridgeProvider } from '@cowprotocol/sdk-bridging'
+
+const bungeeProvider = new BungeeBridgeProvider({
+  bridgeUrl: 'https://api.socket.tech',
+  apiKey: 'your-api-key',
+})
+```
+
+### NearIntentsBridgeProvider
+
+Bridge provider for NEAR Protocol intents.
+
+```typescript
+import { NearIntentsBridgeProvider } from '@cowprotocol/sdk-bridging'
+
+const nearProvider = new NearIntentsBridgeProvider()
+```
+
+## Types
+
+### QuoteBridgeRequest
+
+Parameters for requesting a bridge quote.
+
+```typescript
+interface QuoteBridgeRequest {
+  kind: OrderKind
+  amount: bigint
+  sellTokenChainId: SupportedChainId
+  sellTokenAddress: string
+  sellTokenDecimals: number
+  buyTokenChainId: TargetChainId
+  buyTokenAddress: string
+  buyTokenDecimals: number
+  signer: SignerLike
+  owner?: string
+  swapSlippageBps?: number
+  bridgeSlippageBps?: number
+}
+```
+
+### BridgeQuoteResult
+
+Result of a bridge quote request.
+
+```typescript
+interface BridgeQuoteResult {
+  id?: string
+  isSell: boolean
+  amountsAndCosts: BridgeQuoteAmountsAndCosts
+  expectedFillTimeSeconds?: number
+  quoteTimestamp: number
+  fees: {
+    bridgeFee: bigint
+    destinationGasFee: bigint
+  }
+  limits: {
+    minDeposit: bigint
+    maxDeposit: bigint
+  }
+}
+```
+
+### BridgeQuoteAndPost
+
+Combined quote result for cross-chain swaps.
+
+```typescript
+interface BridgeQuoteAndPost {
+  swap: QuoteResults
+  bridge: BridgeQuoteResults
+  postSwapOrderFromQuote(
+    advancedSettings?: SwapAdvancedSettings,
+    signingStepManager?: SigningStepManager
+  ): Promise<OrderPostingResult>
+}
+```
+
+## Examples
+
+### Basic Cross-Chain Swap
+
+```typescript
+import { BridgingSdk, AcrossBridgeProvider } from '@cowprotocol/sdk-bridging'
+import { OrderKind } from '@cowprotocol/sdk-order-book'
+import { SupportedChainId, TargetChainId } from '@cowprotocol/sdk-config'
+
+const sdk = new BridgingSdk({
+  providers: [new AcrossBridgeProvider()],
+})
+
+// Get a quote for swapping USDC from Mainnet to Base
+const quote = await sdk.getQuote({
+  kind: OrderKind.SELL,
+  amount: parseUnits('100', 6),
+  sellTokenChainId: SupportedChainId.MAINNET,
+  sellTokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+  sellTokenDecimals: 6,
+  buyTokenChainId: TargetChainId.BASE,
+  buyTokenAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+  buyTokenDecimals: 6,
+  signer: userSigner,
+  swapSlippageBps: 50, // 0.5%
+  bridgeSlippageBps: 50, // 0.5%
+})
+
+// Post the order
+const result = await quote.postSwapOrderFromQuote()
+console.log('Order posted:', result.orderUid)
+```
+
+### Compare Multiple Providers
+
+```typescript
+const results = await sdk.getMultiQuotes({
+  quoteBridgeRequest: {
+    kind: OrderKind.SELL,
+    amount: parseUnits('1000', 6),
+    sellTokenChainId: SupportedChainId.MAINNET,
+    sellTokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+    sellTokenDecimals: 6,
+    buyTokenChainId: TargetChainId.BASE,
+    buyTokenAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+    buyTokenDecimals: 6,
+    signer: userSigner,
+  },
+  providerDappIds: ['across', 'bungee'],
+  options: {
+    onQuoteResult: (result) => {
+      if (result.quote) {
+        console.log(`${result.providerDappId}: ${result.quote.bridge.amountsAndCosts.afterFee.buyAmount} tokens`)
+      }
+    },
+  },
+})
+
+// Find the best quote manually
+const bestQuote = results
+  .filter((r) => r.quote !== null)
+  .reduce((best, current) => {
+    const currentAmount = current.quote!.bridge.amountsAndCosts.afterSlippage.buyAmount
+    const bestAmount = best.quote!.bridge.amountsAndCosts.afterSlippage.buyAmount
+    return currentAmount > bestAmount ? current : best
+  })
+
+console.log('Best provider:', bestQuote.providerDappId)
+```
+
+### Get Available Tokens
+
+```typescript
+// Get all available buy tokens on Base
+const { tokens, isRouteAvailable } = await sdk.getBuyTokens({
+  buyChainId: TargetChainId.BASE,
+})
+
+console.log('Available tokens:', tokens.length)
+tokens.forEach((token) => {
+  console.log(`${token.symbol}: ${token.address}`)
+})
+
+// Filter by sell token
+const usdcTargets = await sdk.getBuyTokens({
+  buyChainId: TargetChainId.BASE,
+  sellChainId: SupportedChainId.MAINNET,
+  sellTokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+})
+```

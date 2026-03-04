@@ -1,5 +1,47 @@
 ---
-title: "Order book API"
-description: "Edit this page"
+title: "Orderbook API"
+description: "REST API for interacting with the CoW Protocol orderbook — quotes, order submission, retrieval, and cancellation"
 ---
 
+The Orderbook API is the primary interface for interacting with CoW Protocol's order management system.
+
+## Base URLs
+
+| Environment | URL |
+|---|---|
+| **Production** | `https://api.cow.fi/mainnet` |
+| **Staging** | `https://barn.api.cow.fi/mainnet` |
+| **Gnosis Chain** | `https://api.cow.fi/xdai` |
+| **Arbitrum** | `https://api.cow.fi/arbitrum_one` |
+| **Base** | `https://api.cow.fi/base` |
+| **Sepolia** | `https://api.cow.fi/sepolia` |
+
+## Key Endpoints
+
+### Quotes
+
+- `POST /api/v1/quote` — Get a price quote for a trade
+
+### Orders
+
+- `POST /api/v1/orders` — Submit a signed order
+- `GET /api/v1/orders/{UID}` — Get order by UID
+- `DELETE /api/v1/orders/{UID}` — Cancel an order
+- `GET /api/v1/account/{owner}/orders` — Get orders for an account
+
+### Trades
+
+- `GET /api/v1/trades` — Get trades (filter by `owner` or `orderUid`)
+
+### Auction
+
+- `GET /api/v1/auction` — Get the current batch auction
+- `GET /api/v1/solver_competition/{auction_id}` — Get solver competition results
+
+## Interactive Documentation
+
+Explore the full API specification at [api.cow.fi/docs](https://api.cow.fi/docs).
+
+## SDK Access
+
+For programmatic access via TypeScript, use the [OrderBookApi](/cow-sdk/api/order-book-api) from the CoW SDK.

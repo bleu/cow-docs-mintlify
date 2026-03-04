@@ -5,37 +5,299 @@ description: "Integration between the CoW Protocol SDK and the Viem library"
 
 # Viem Adapter
 
-The Viem Adapter enables integration between the CoW Protocol SDK and the Viem library.
+The Viem Adapter provides integration with the [viem](https://viem.sh) library, enabling you to use all CoW Protocol SDK packages with viem clients and accounts.
 
-## Installation & Setup
+## Installation
 
-```bash
+```shellscript
 npm install @cowprotocol/sdk-viem-adapter
 ```
 
-The adapter requires a Viem PublicClient instance and optionally accepts a signer (Account, PrivateKey, or WalletClient).
+## Constructor
 
-## Core Functionality
+```typescript
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+import { http, createPublicClient, privateKeyToAccount } from 'viem'
+import { sepolia } from 'viem/chains'
 
-The adapter provides methods for blockchain interaction including:
+const account = privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`)
+const transport = http('YOUR_RPC_URL')
+const provider = createPublicClient({ chain: sepolia, transport })
 
-- **Chain operations**: `getChainId()`, `getBlock()`
-- **Contract interactions**: `readContract()`, `call()`, `getContract()`
-- **State queries**: `getCode()`, `getStorageAt()`, `getTransactionReceipt()`
-- **Signer management**: `setSigner()`, `signerOrNull()`, `createSigner()`
+const adapter = new ViemAdapter({ provider, signer: account })
+```
 
-## Key Properties
+### Parameters
 
-- `signer` - Returns the ViemSignerAdapter instance
-- `utils` - Provides utility methods for Viem types
-- Multiple typed data signers for EIP-712 support (V3, V4, and versioned)
+<ResponseField name="provider" type="PublicClient" required>
+A viem `createPublicClient` instance
+</ResponseField>
 
-## Integration Patterns
+<ResponseField name="signer" type="Account | `0x${string}`">
+A viem account from `privateKeyToAccount` or similar
+</ResponseField>
 
-The documentation demonstrates three primary use cases:
+<ResponseField name="walletClient" type="WalletClient">
+A viem WalletClient, useful with wagmi's `useWalletClient` hook
+</ResponseField>
 
-1. **Wagmi integration** - Using `useWalletClient` hook
-2. **Direct private key usage** - Standalone Viem clients
-3. **CoW SDK integration** - Executing swap orders
+## Properties
 
-The adapter supports both wagmi's useWalletClient hook and standalone Viem clients for flexible wallet integration.
+### signer
+
+Returns the ViemSignerAdapter instance. Throws an error if no signer was provided.
+
+```typescript
+const signerAdapter = adapter.signer
+```
+
+### utils
+
+Utility methods for working with viem types and contracts.
+
+```typescript
+const iface = adapter.utils.createInterface(abi)
+```
+
+### TypedDataVersionedSigner
+
+Signer class for EIP-712 typed data with version support.
+
+### TypedDataV3Signer
+
+Signer class for EIP-712 typed data version 3 (legacy).
+
+### IntChainIdTypedDataV4Signer
+
+Signer class for EIP-712 typed data version 4 with integer chain ID handling.
+
+## Methods
+
+### getChainId
+
+Returns the chain ID from the connected provider.
+
+```typescript
+const chainId = await adapter.getChainId()
+```
+
+Returns: `Promise<number>`
+
+### getCode
+
+Returns the bytecode at a given address.
+
+```typescript
+const code = await adapter.getCode('0x...')
+```
+
+- `address` (`string`) - Contract address
+
+Returns: `Promise<string | undefined>`
+
+### getTransactionReceipt
+
+Returns the transaction receipt for a given transaction hash.
+
+```typescript
+const receipt = await adapter.getTransactionReceipt('0x...')
+```
+
+- `hash` (`string`) - Transaction hash
+
+Returns: `Promise<TransactionReceipt | null>`
+
+### getStorageAt
+
+Returns the value from a storage position at a given address.
+
+```typescript
+const value = await adapter.getStorageAt('0x...', '0x0')
+```
+
+- `address` (`string`) - Contract address
+- `slot` (`` `0x${string}` ``) - Storage slot
+
+Returns: `` Promise<`0x${string}`> ``
+
+### call
+
+Executes a read-only call to a contract.
+
+```typescript
+const result = await adapter.call({
+  to: '0x...',
+  data: '0x...'
+})
+```
+
+- `txParams` (`CallParameters`) - Transaction parameters
+- `provider` (`PublicClient`) - Optional provider override
+
+Returns: `Promise<string>`
+
+### readContract
+
+Reads from a contract function.
+
+```typescript
+const result = await adapter.readContract({
+  address: '0x...',
+  abi: contractAbi,
+  functionName: 'balanceOf',
+  args: ['0x...']
+})
+```
+
+- `address` (`string`) - Contract address
+- `abi` (`Abi`) - Contract ABI
+- `functionName` (`string`) - Function to call
+- `args` (`unknown[]`) - Function arguments
+- `provider` (`PublicClient`) - Optional provider override
+
+Returns: `Promise<unknown>`
+
+### getBlock
+
+Returns block information for a given block tag.
+
+```typescript
+const block = await adapter.getBlock('latest')
+```
+
+- `blockTag` (`BlockTag`) - Block identifier
+- `provider` (`PublicClient`) - Optional provider override
+
+Returns: `Promise<Block>`
+
+### getContract
+
+Creates a contract instance with a compatible interface.
+
+```typescript
+const contract = adapter.getContract('0x...', contractAbi)
+const result = await contract.read.functionName()
+```
+
+- `address` (`string`) - Contract address
+- `abi` (`Abi`) - Contract ABI
+
+Returns: `GenericContract`
+
+### setSigner
+
+Sets or updates the signer for the adapter.
+
+```typescript
+const newAccount = privateKeyToAccount('0x...')
+adapter.setSigner(newAccount)
+```
+
+- `signer` (`Account | PrivateKey | WalletClient`) - New signer
+
+### setProvider
+
+Sets or updates the provider for the adapter.
+
+```typescript
+const newProvider = createPublicClient({ chain: mainnet, transport: http() })
+adapter.setProvider(newProvider)
+```
+
+- `provider` (`PublicClient`) - New provider
+
+### signerOrNull
+
+Returns the signer adapter or null if not set.
+
+```typescript
+const signer = adapter.signerOrNull()
+if (signer) {
+  // Use signer
+}
+```
+
+Returns: `ViemSignerAdapter | null`
+
+### createSigner
+
+Creates a new signer adapter from an account or private key.
+
+```typescript
+const signerAdapter = adapter.createSigner(account)
+```
+
+- `signer` (`Account | PrivateKey | WalletClient`) - Signer source
+
+Returns: `ViemSignerAdapter`
+
+## Usage Examples
+
+### With Wagmi
+
+```typescript
+import { useWalletClient, usePublicClient } from 'wagmi'
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+
+function MyComponent() {
+  const publicClient = usePublicClient()
+  const { data: walletClient } = useWalletClient()
+
+  const adapter = new ViemAdapter({
+    provider: publicClient,
+    walletClient: walletClient
+  })
+
+  // Use adapter with SDK
+}
+```
+
+### With Private Key
+
+```typescript
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+import { http, createPublicClient, privateKeyToAccount } from 'viem'
+import { mainnet } from 'viem/chains'
+
+const account = privateKeyToAccount('0x...')
+const provider = createPublicClient({
+  chain: mainnet,
+  transport: http('https://eth.llamarpc.com')
+})
+
+const adapter = new ViemAdapter({ provider, signer: account })
+```
+
+### With CoW SDK
+
+```typescript
+import { CowSdk, SupportedChainId } from '@cowprotocol/cow-sdk'
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+import { http, createPublicClient, privateKeyToAccount } from 'viem'
+import { sepolia } from 'viem/chains'
+
+const account = privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`)
+const transport = http('YOUR_RPC_URL')
+const provider = createPublicClient({ chain: sepolia, transport })
+const adapter = new ViemAdapter({ provider, signer: account })
+
+const sdk = new CowSdk({
+  chainId: SupportedChainId.SEPOLIA,
+  adapter,
+  tradingOptions: {
+    traderParams: {
+      appCode: 'YOUR_APP_CODE',
+    },
+    options: {
+      chainId: SupportedChainId.SEPOLIA,
+    },
+  },
+})
+
+const orderId = await sdk.trading.postSwapOrder(/* ... */)
+```
+
+## See Also
+
+- [Ethers v5 Adapter](/api/adapters/ethers-v5)
+- [TradingSdk](/api/trading-sdk)

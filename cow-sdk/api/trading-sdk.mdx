@@ -3,51 +3,661 @@ title: "Trading SDK"
 description: "Comprehensive interface for interacting with CoW Protocol's trading functionality"
 ---
 
-# TradingSdk
-
 ## Overview
 
-The `TradingSdk` class serves as a comprehensive interface for interacting with CoW Protocol's trading functionality, streamlining order management and token approvals.
+The `TradingSdk` class provides a comprehensive interface for interacting with CoW Protocol's trading functionality. It simplifies order creation, quote fetching, order management, and token approvals.
 
 ## Installation
 
-```bash
+```shellscript
 npm install @cowprotocol/sdk-trading
+# or
+pnpm add @cowprotocol/sdk-trading
+# or
+yarn add @cowprotocol/sdk-trading
 ```
 
-## Core Methods
+## Constructor
+
+```typescript
+new TradingSdk(
+  traderParams?: Partial<TraderParameters>,
+  options?: Partial<TradingSdkOptions>,
+  adapter?: AbstractProviderAdapter
+)
+```
+
+<ResponseField name="traderParams" type="Partial<TraderParameters>">
+Default trader parameters to use for all operations
+  <Expandable>
+    <ResponseField name="chainId" type="SupportedChainId">
+    Chain ID for the network (e.g., 1 for Mainnet, 100 for Gnosis Chain)
+    </ResponseField>
+    <ResponseField name="appCode" type="string">
+    Unique application identifier for order tracking
+    </ResponseField>
+    <ResponseField name="signer" type="SignerLike">
+    Wallet signer (can be provided per-operation instead)
+    </ResponseField>
+    <ResponseField name="env" type="CowEnv">
+    Environment to use
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="options" type="Partial<TradingSdkOptions>">
+SDK configuration options
+  <Expandable>
+    <ResponseField name="enableLogging" type="boolean">
+    Enable detailed logging of trading steps
+    </ResponseField>
+    <ResponseField name="orderBookApi" type="OrderBookApi">
+    Custom OrderBookApi instance (useful for Partner API)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="adapter" type="AbstractProviderAdapter">
+Provider adapter (ViemAdapter, EthersV5Adapter, or EthersV6Adapter)
+</ResponseField>
+
+## Basic Setup
+
+```typescript
+import { TradingSdk, SupportedChainId } from '@cowprotocol/sdk-trading'
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+import { createPublicClient, http, privateKeyToAccount } from 'viem'
+import { sepolia } from 'viem/chains'
+
+const adapter = new ViemAdapter({
+  provider: createPublicClient({
+    chain: sepolia,
+    transport: http('YOUR_RPC_URL')
+  }),
+  signer: privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`)
+})
+
+const sdk = new TradingSdk(
+  {
+    chainId: SupportedChainId.SEPOLIA,
+    appCode: 'YOUR_APP_CODE',
+  },
+  {
+    enableLogging: true,
+  },
+  adapter
+)
+```
+
+## Methods
 
 ### postSwapOrder
 
-Creates market orders by fetching quotes and posting simultaneously. Accepts trade parameters including order type (SELL/BUY), token addresses, amounts, and slippage tolerance.
+Create a market order by fetching a quote and posting it in a single call.
+
+```typescript
+async postSwapOrder(
+  params: TradeParameters,
+  advancedSettings?: SwapAdvancedSettings
+): Promise<OrderPostingResult>
+```
+
+<ResponseField name="params" type="TradeParameters" required>
+Trade parameters
+  <Expandable>
+    <ResponseField name="kind" type="OrderKind" required>
+    Order type: SELL (sell exact amount) or BUY (buy exact amount)
+    </ResponseField>
+    <ResponseField name="sellToken" type="string" required>
+    Sell token address
+    </ResponseField>
+    <ResponseField name="sellTokenDecimals" type="number" required>
+    Decimals of sell token
+    </ResponseField>
+    <ResponseField name="buyToken" type="string" required>
+    Buy token address
+    </ResponseField>
+    <ResponseField name="buyTokenDecimals" type="number" required>
+    Decimals of buy token
+    </ResponseField>
+    <ResponseField name="amount" type="string" required>
+    Amount in atoms (smallest unit of token)
+    </ResponseField>
+    <ResponseField name="slippageBps" type="number">
+    Slippage tolerance in basis points (50 = 0.5%)
+    </ResponseField>
+    <ResponseField name="validFor" type="number">
+    Order validity duration in seconds (default 30 minutes)
+    </ResponseField>
+    <ResponseField name="receiver" type="string">
+    Address to receive bought tokens (defaults to order creator)
+    </ResponseField>
+    <ResponseField name="partiallyFillable" type="boolean">
+    Whether order can be partially filled
+    </ResponseField>
+    <ResponseField name="partnerFee" type="PartnerFee">
+    Partner fee configuration
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="advancedSettings" type="SwapAdvancedSettings">
+Advanced trading settings
+  <Expandable>
+    <ResponseField name="quoteRequest" type="Partial<OrderQuoteRequest>">
+    Override quote request parameters (signingScheme, priceQuality, etc.)
+    </ResponseField>
+    <ResponseField name="appData" type="AppDataParams">
+    Order metadata (hooks, referrer, etc.)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="orderId" type="string">
+Unique order identifier (UID)
+</ResponseField>
+
+#### Example
+
+```typescript
+import { OrderKind } from '@cowprotocol/sdk-trading'
+
+const params = {
+  kind: OrderKind.SELL,
+  sellToken: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+  sellTokenDecimals: 18,
+  buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+  buyTokenDecimals: 18,
+  amount: '1000000000000000000', // 1 token
+  slippageBps: 200, // 2%
+  validFor: 1200, // 20 minutes
+}
+
+const { orderId } = await sdk.postSwapOrder(params)
+console.log('Order created:', orderId)
+```
+
+---
 
 ### getQuote
 
-Retrieves pricing information with optional deferred posting capability. Returns detailed breakdowns of amounts, network costs, and slippage impacts before execution.
+Get a quote for a trade and optionally post it later.
+
+```typescript
+async getQuote(
+  params: TradeParameters,
+  advancedSettings?: SwapAdvancedSettings
+): Promise<QuoteAndPost>
+```
+
+<ResponseField name="quoteResults" type="QuoteResults">
+Quote information including amounts, costs, and order data
+  <Expandable>
+    <ResponseField name="tradeParameters" type="TradeParameters">
+    Original trade parameters
+    </ResponseField>
+    <ResponseField name="suggestedSlippage" type="number">
+    Suggested slippage based on market conditions
+    </ResponseField>
+    <ResponseField name="amountsAndCosts" type="AmountsAndCosts">
+    Detailed breakdown of amounts, fees, and costs
+      <Expandable>
+        <ResponseField name="beforeNetworkCosts" type="Amounts">
+        Amounts before network costs
+        </ResponseField>
+        <ResponseField name="afterNetworkCosts" type="Amounts">
+        Amounts after network costs
+        </ResponseField>
+        <ResponseField name="afterSlippage" type="Amounts">
+        Final amounts after slippage tolerance
+        </ResponseField>
+        <ResponseField name="networkCosts" type="NetworkCosts">
+        Network fee costs
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="orderParams" type="OrderParams">
+    Order parameters ready for signing
+    </ResponseField>
+    <ResponseField name="quoteResponse" type="OrderQuoteResponse">
+    Raw quote response from API
+    </ResponseField>
+    <ResponseField name="appDataInfo" type="AppDataInfo">
+    Order metadata information
+    </ResponseField>
+    <ResponseField name="orderTypedData" type="TypedDataDomain">
+    EIP-712 typed data for signing
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="postSwapOrderFromQuote" type="() => Promise<OrderPostingResult>">
+Function to post the order using the fetched quote
+</ResponseField>
+
+#### Example
+
+```typescript
+const { quoteResults, postSwapOrderFromQuote } = await sdk.getQuote(params)
+
+const buyAmount = quoteResults.amountsAndCosts.afterSlippage.buyAmount
+console.log('You will receive at least:', buyAmount)
+
+if (confirm('Accept this quote?')) {
+  const { orderId } = await postSwapOrderFromQuote()
+  console.log('Order created:', orderId)
+}
+```
+
+---
 
 ### getQuoteOnly
 
-Enables quote retrieval without requiring a wallet connection, useful for displaying pricing before user wallet integration.
+Get a quote without requiring a wallet connection. Useful for displaying quotes before users connect.
+
+```typescript
+async getQuoteOnly(
+  params: TradeParameters & { owner: string },
+  advancedSettings?: SwapAdvancedSettings
+): Promise<QuoteResults>
+```
+
+<ResponseField name="owner" type="string" required>
+Address to quote for (doesn't need to be connected)
+</ResponseField>
+
+#### Example
+
+```typescript
+const quoteResults = await sdk.getQuoteOnly({
+  owner: '0x1234...', // Any valid address
+  kind: OrderKind.SELL,
+  sellToken: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+  sellTokenDecimals: 18,
+  buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+  buyTokenDecimals: 18,
+  amount: '1000000000000000000',
+})
+
+console.log('Quote:', quoteResults.amountsAndCosts)
+```
+
+---
 
 ### postLimitOrder
 
-Creates orders with specific buy/sell amounts at predetermined rates.
+Create a limit order with specific buy and sell amounts.
+
+```typescript
+async postLimitOrder(
+  params: LimitTradeParameters,
+  advancedSettings?: LimitOrderAdvancedSettings
+): Promise<OrderPostingResult>
+```
+
+<ResponseField name="params" type="LimitTradeParameters" required>
+Limit order parameters
+  <Expandable>
+    <ResponseField name="sellToken" type="string" required>
+    Sell token address
+    </ResponseField>
+    <ResponseField name="sellTokenDecimals" type="number" required>
+    Decimals of sell token
+    </ResponseField>
+    <ResponseField name="buyToken" type="string" required>
+    Buy token address
+    </ResponseField>
+    <ResponseField name="buyTokenDecimals" type="number" required>
+    Decimals of buy token
+    </ResponseField>
+    <ResponseField name="sellAmount" type="string" required>
+    Exact sell amount in atoms
+    </ResponseField>
+    <ResponseField name="buyAmount" type="string" required>
+    Desired buy amount in atoms
+    </ResponseField>
+    <ResponseField name="quoteId" type="number">
+    ID of quote to use for the limit order
+    </ResponseField>
+    <ResponseField name="validTo" type="number">
+    Exact expiration timestamp (Unix seconds)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Example
+
+```typescript
+const params = {
+  kind: OrderKind.BUY,
+  sellToken: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+  sellTokenDecimals: 18,
+  buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+  buyTokenDecimals: 18,
+  sellAmount: '1000000000000000000', // 1 token
+  buyAmount: '500000000000000000', // 0.5 token
+}
+
+const { orderId } = await sdk.postLimitOrder(params)
+console.log('Limit order created:', orderId)
+```
+
+---
 
 ### postSellNativeCurrencyOrder
 
-Manages native currency trades (ETH, xDAI) via EthFlow using the special address `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`.
+Create an order to sell native currency (ETH, xDAI, etc.) using EthFlow.
 
-## Order Management
+```typescript
+async postSellNativeCurrencyOrder(
+  params: TradeParameters,
+  advancedSettings?: SwapAdvancedSettings
+): Promise<OrderPostingResult>
+```
 
-- **getOrder**: Retrieves existing order details and status
-- **offChainCancelOrder**: Fast cancellation without gas costs
-- **onChainCancelOrder**: Guaranteed cancellation via blockchain transaction
+<Note>
+Use the special native currency address `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE` as the `sellToken`.
+</Note>
 
-## Token Approvals
+#### Example
 
-- **getCowProtocolAllowance**: Checks current spending permissions
-- **approveCowProtocol**: Grants token spending authorization
+```typescript
+const params = {
+  kind: OrderKind.SELL,
+  sellToken: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE', // Native ETH
+  sellTokenDecimals: 18,
+  buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+  buyTokenDecimals: 18,
+  amount: '100000000000000000', // 0.1 ETH
+}
 
-## Advanced Features
+const { orderId, txHash } = await sdk.postSellNativeCurrencyOrder(params)
+console.log('Native currency order:', orderId, txHash)
+```
 
-Supports smart contract wallets via `PRESIGN` signing schemes and includes Partner API integration for enhanced rate limits through custom `OrderBookApi` instances.
+---
+
+### getOrder
+
+Retrieve details of an existing order.
+
+```typescript
+async getOrder(params: { orderUid: string }): Promise<EnrichedOrder>
+```
+
+<ResponseField name="orderUid" type="string" required>
+Unique order identifier
+</ResponseField>
+
+<ResponseField name="order" type="EnrichedOrder">
+Complete order information including status, amounts, and execution details
+</ResponseField>
+
+#### Example
+
+```typescript
+const order = await sdk.getOrder({ orderUid: '0xd64389...' })
+console.log('Order status:', order.status)
+console.log('Sell amount:', order.sellAmount)
+console.log('Buy amount:', order.buyAmount)
+```
+
+---
+
+### offChainCancelOrder
+
+Cancel an order off-chain (soft cancel - fast and free).
+
+```typescript
+async offChainCancelOrder(params: { orderUid: string }): Promise<boolean>
+```
+
+<ResponseField name="orderUid" type="string" required>
+Order UID to cancel
+</ResponseField>
+
+<ResponseField name="success" type="boolean">
+True if cancellation was successful
+</ResponseField>
+
+<Warning>
+Off-chain cancellation may not work if the order is already being executed.
+</Warning>
+
+#### Example
+
+```typescript
+const success = await sdk.offChainCancelOrder({ orderUid: '0xd64389...' })
+if (success) {
+  console.log('Order cancelled successfully')
+}
+```
+
+---
+
+### onChainCancelOrder
+
+Cancel an order on-chain (hard cancel - requires gas but guaranteed).
+
+```typescript
+async onChainCancelOrder(params: { orderUid: string }): Promise<string>
+```
+
+<ResponseField name="orderUid" type="string" required>
+Order UID to cancel
+</ResponseField>
+
+<ResponseField name="txHash" type="string">
+Transaction hash of the cancellation
+</ResponseField>
+
+#### Example
+
+```typescript
+const txHash = await sdk.onChainCancelOrder({ orderUid: '0xd64389...' })
+console.log('Cancellation transaction:', txHash)
+```
+
+---
+
+### getCowProtocolAllowance
+
+Check current token allowance for CoW Protocol.
+
+```typescript
+async getCowProtocolAllowance(params: {
+  tokenAddress: string
+  owner: string
+}): Promise<bigint>
+```
+
+<ResponseField name="tokenAddress" type="string" required>
+ERC-20 token contract address
+</ResponseField>
+
+<ResponseField name="owner" type="string" required>
+Token owner address
+</ResponseField>
+
+<ResponseField name="allowance" type="bigint">
+Current allowance amount
+</ResponseField>
+
+#### Example
+
+```typescript
+const allowance = await sdk.getCowProtocolAllowance({
+  tokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
+  owner: '0x123...',
+})
+
+console.log('Current allowance:', allowance.toString())
+```
+
+---
+
+### approveCowProtocol
+
+Approve CoW Protocol to spend tokens.
+
+```typescript
+async approveCowProtocol(params: {
+  tokenAddress: string
+  amount: bigint
+}): Promise<string>
+```
+
+<ResponseField name="tokenAddress" type="string" required>
+ERC-20 token contract address
+</ResponseField>
+
+<ResponseField name="amount" type="bigint" required>
+Amount to approve
+</ResponseField>
+
+<ResponseField name="txHash" type="string">
+Transaction hash of approval
+</ResponseField>
+
+#### Example
+
+```typescript
+import { parseUnits } from 'viem'
+
+const txHash = await sdk.approveCowProtocol({
+  tokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
+  amount: parseUnits('1000', 6), // 1000 USDC
+})
+
+console.log('Approval transaction:', txHash)
+```
+
+---
+
+### getPreSignTransaction
+
+Get pre-sign transaction for smart contract wallets.
+
+```typescript
+async getPreSignTransaction(params: {
+  orderUid: string
+  account: string
+}): Promise<{ to: string; data: string }>
+```
+
+<ResponseField name="orderUid" type="string" required>
+Order UID to pre-sign
+</ResponseField>
+
+<ResponseField name="account" type="string" required>
+Smart contract wallet address
+</ResponseField>
+
+<ResponseField name="transaction" type="{ to: string, data: string }">
+Transaction to execute for pre-signing
+</ResponseField>
+
+#### Example
+
+```typescript
+const preSignTx = await sdk.getPreSignTransaction({
+  orderUid: '0xd64389...',
+  account: '0xSmartContractWallet...',
+})
+
+console.log('Execute this transaction:', preSignTx)
+```
+
+---
+
+### setTraderParams
+
+Update default trader parameters.
+
+```typescript
+setTraderParams(params: Partial<TraderParameters>): TradingSdk
+```
+
+<ResponseField name="params" type="Partial<TraderParameters>" required>
+New trader parameters to merge with existing ones
+</ResponseField>
+
+#### Example
+
+```typescript
+sdk.setTraderParams({
+  chainId: SupportedChainId.MAINNET,
+  env: 'prod',
+})
+```
+
+## Smart Contract Wallet Support
+
+For smart contract wallets (like Safe), use the `PRESIGN` signing scheme:
+
+```typescript
+import { SigningScheme } from '@cowprotocol/sdk-trading'
+
+const params = {
+  // ... trade parameters
+}
+
+const advancedSettings = {
+  quoteRequest: {
+    signingScheme: SigningScheme.PRESIGN,
+  },
+}
+
+const { orderId } = await sdk.postSwapOrder(params, advancedSettings)
+
+const preSignTx = await sdk.getPreSignTransaction({
+  orderUid: orderId,
+  account: '0xSmartContractWallet...',
+})
+
+// Execute preSignTx with your smart contract wallet
+```
+
+## Partner API Integration
+
+To use the Partner API with higher rate limits:
+
+```typescript
+import { OrderBookApi } from '@cowprotocol/sdk-order-book'
+
+const orderBookApi = new OrderBookApi({
+  chainId: SupportedChainId.MAINNET,
+  apiKey: 'your-partner-api-key',
+})
+
+const sdk = new TradingSdk(
+  { chainId: SupportedChainId.MAINNET, appCode: 'YOUR_APP' },
+  { orderBookApi },
+  adapter
+)
+```
+
+## Error Handling
+
+```typescript
+try {
+  const { orderId } = await sdk.postSwapOrder(params)
+  console.log('Order created:', orderId)
+} catch (error) {
+  if (error.message.includes('insufficient allowance')) {
+    // Handle allowance error
+    await sdk.approveCowProtocol({ tokenAddress, amount })
+  } else if (error.message.includes('slippage')) {
+    // Handle slippage error
+    console.error('Price moved too much')
+  } else {
+    console.error('Order creation failed:', error)
+  }
+}
+```
+
+## See Also
+
+- [OrderBookApi](/api/order-book-api)
+- [OrderSigningUtils](/api/order-signing-utils)
+- [MetadataApi](/api/metadata-api)

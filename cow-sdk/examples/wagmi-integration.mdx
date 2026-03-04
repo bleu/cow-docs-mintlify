@@ -5,61 +5,461 @@ description: "Integrate the CoW Protocol SDK with Wagmi and Viem in React applic
 
 # Wagmi Integration
 
-## Overview
+This guide demonstrates how to integrate the CoW Protocol SDK with [Wagmi](https://wagmi.sh/) and [Viem](https://viem.sh/) for a production-ready React application with proper wallet management.
 
-This documentation provides a complete guide for integrating the CoW Protocol SDK with Wagmi and Viem in React applications. The guide demonstrates how to set up wallet management, create swap functionality, and handle token approvals.
+## Why Wagmi?
 
-## Core Setup Steps
+Wagmi provides:
 
-### Installation
+- Easy wallet connection with multiple providers
+- Automatic account and network management
+- React hooks for blockchain interactions
+- TypeScript support
+- Better developer experience
+
+## Installation
 
 ```bash
 npm install @cowprotocol/cow-sdk @cowprotocol/sdk-viem-adapter wagmi viem @tanstack/react-query
 ```
 
-### Key Configuration
+## Setup Wagmi
 
-1. Configure Wagmi with supported chains (mainnet, sepolia) and wallet connectors
-2. Create a TradingSdk instance with default chain ID
-3. Build a custom hook to synchronize the SDK with Wagmi's wallet state
+Configure Wagmi with your app settings:
 
-## Main Components
+```typescript
+import { http, createConfig } from 'wagmi'
+import { mainnet, sepolia } from 'wagmi/chains'
+import { injected, metaMask, safe, walletConnect } from 'wagmi/connectors'
 
-### useBindCoWSdkToWagmi Hook
+const projectId = 'YOUR_WALLETCONNECT_PROJECT_ID'
 
-Syncs the SDK by:
-- Monitoring wallet client, public client, and chain ID changes
-- Setting a ViemAdapter with provider and wallet clients
-- Updating the SDK's trader parameters when chain or account changes
+export const config = createConfig({
+  chains: [mainnet, sepolia],
+  connectors: [
+    injected(),
+    walletConnect({ projectId }),
+    metaMask(),
+    safe(),
+  ],
+  transports: {
+    [mainnet.id]: http(),
+    [sepolia.id]: http(),
+  },
+})
 
-### SwapForm Component
+declare module 'wagmi' {
+  interface Register {
+    config: typeof config
+  }
+}
+```
 
-Handles:
-- Token selection (WETH for selling, USDC for buying)
-- Quote retrieval based on sell amount and slippage settings
-- Order posting through the quote response
-- Error handling and loading states
+## Setup CoW SDK
 
-### App Structure
+Create a Trading SDK instance:
 
-Follows this hierarchy:
-- WagmiProvider wraps the application
-- QueryClientProvider enables efficient data caching
-- SwapApp component manages SDK readiness and account connection
+```typescript
+import { SupportedChainId, TradingSdk } from '@cowprotocol/cow-sdk'
 
-## Key Advantages
+export const tradingSdk = new TradingSdk({
+  chainId: SupportedChainId.MAINNET,
+  appCode: 'MyWagmiApp',
+})
+```
 
-The Wagmi integration provides:
-- Automatic network switching
-- Multi-wallet support
-- TypeScript safety
-- Efficient data handling
-- Improved user experience
+## Bind SDK to Wagmi Hook
 
-Supporting features include wallet connection buttons with multiple provider options and network switching utilities.
+Create a custom hook to sync the SDK with Wagmi's wallet state:
 
-## Additional Resources
+```typescript
+import { useAccount, usePublicClient, useWalletClient } from 'wagmi'
+import { useEffect, useState } from 'react'
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+import { tradingSdk } from './cowSdk'
+import { setGlobalAdapter } from '@cowprotocol/cow-sdk'
 
-- [Node.js Usage](/cow-sdk/examples/nodejs-usage)
-- [Limit Orders](/cow-sdk/examples/limit-orders)
-- [Trading SDK](/cow-sdk/api/trading-sdk)
+export function useBindCoWSdkToWagmi(): boolean {
+  const account = useAccount()
+  const { chainId } = account
+  const { data: walletClient } = useWalletClient()
+  const publicClient = usePublicClient()
+
+  const [isSdkReady, setIsSdkReady] = useState(false)
+
+  useEffect(() => {
+    if (!walletClient || !chainId) {
+      setIsSdkReady(false)
+      return
+    }
+
+    setGlobalAdapter(
+      new ViemAdapter({
+        provider: publicClient,
+        walletClient,
+      })
+    )
+
+    tradingSdk.setTraderParams({ chainId })
+
+    setIsSdkReady(true)
+
+    return () => {
+      setIsSdkReady(false)
+    }
+  }, [publicClient, walletClient, chainId])
+
+  return isSdkReady
+}
+```
+
+## Swap Component
+
+Create a swap form that uses Wagmi hooks:
+
+```tsx
+import {
+  isSupportedChain,
+  EVM_NATIVE_CURRENCY_ADDRESS,
+  OrderKind,
+  type QuoteAndPost,
+  WRAPPED_NATIVE_CURRENCIES,
+} from '@cowprotocol/cow-sdk'
+import { useEffect, useState } from 'react'
+import { tradingSdk } from './cowSdk'
+import { useAccount } from 'wagmi'
+import { formatUnits, parseUnits } from 'viem'
+
+export function SwapForm({ isSdkReady }: { isSdkReady: boolean }) {
+  const { address: account, chainId, status } = useAccount()
+
+  const [sellAmount, setSellAmount] = useState('0.1')
+  const [quoteAndPost, setQuoteAndPost] = useState<QuoteAndPost | null>(null)
+  const [swapError, setSwapError] = useState<Error | null>(null)
+  const [postedOrderHash, setPostedOrderHash] = useState<string | null>(null)
+  const [isOrderPostingInProgress, setIsOrderPostingInProgress] = useState(false)
+  const [slippagePercent, setSlippagePercent] = useState(0.5)
+
+  const slippageBps = slippagePercent * 100
+  const isLoading =
+    isOrderPostingInProgress ||
+    Boolean(account && sellAmount && !quoteAndPost)
+
+  const WETH = chainId && isSupportedChain(chainId)
+    ? WRAPPED_NATIVE_CURRENCIES[chainId]
+    : null
+  const USDC =
+    chainId === 1
+      ? {
+          address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+          decimals: 6,
+          symbol: 'USDC',
+        }
+      : chainId === 11155111
+      ? {
+          address: '0xbe72E441BF55620febc26715db68d3494213D8Cb',
+          decimals: 18,
+          symbol: 'USDC',
+        }
+      : null
+
+  const postOrder = () => {
+    if (!quoteAndPost) return
+
+    setIsOrderPostingInProgress(true)
+
+    quoteAndPost
+      .postSwapOrderFromQuote({
+        appData: {
+          metadata: {
+            quote: {
+              slippageBips: slippageBps,
+            },
+          },
+        },
+      })
+      .then((response) => {
+        if (!response) {
+          setSwapError(new Error('No response from order posting'))
+          return
+        }
+        setPostedOrderHash(response.orderId)
+      })
+      .catch(setSwapError)
+      .finally(() => {
+        setIsOrderPostingInProgress(false)
+      })
+  }
+
+  useEffect(() => {
+    const sellAmountNum = Number(sellAmount)
+
+    if (!isSdkReady) return
+    if (!chainId || !account || Number.isNaN(sellAmountNum) || sellAmountNum <= 0) return
+    if (!WETH || !USDC) return
+
+    setQuoteAndPost(null)
+
+    tradingSdk
+      .getQuote({
+        chainId,
+        kind: OrderKind.SELL,
+        owner: account,
+        amount: parseUnits(sellAmount, WETH.decimals).toString(),
+        sellToken: WETH.address,
+        sellTokenDecimals: WETH.decimals,
+        buyToken: USDC.address,
+        buyTokenDecimals: USDC.decimals,
+        slippageBps,
+      })
+      .then((quote) => {
+        setQuoteAndPost(quote)
+        setSwapError(null)
+      })
+      .catch(setSwapError)
+  }, [slippageBps, sellAmount, chainId, account, isSdkReady])
+
+  const buyAmountRaw = quoteAndPost?.quoteResults.amountsAndCosts.afterNetworkCosts.buyAmount
+  const buyAmountView =
+    buyAmountRaw && USDC
+      ? Number(formatUnits(buyAmountRaw, USDC.decimals)).toFixed(6)
+      : undefined
+
+  if (status !== 'connected') {
+    return (
+      <div>
+        <h3>Please connect your wallet</h3>
+        <p>Wallet status: {status}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {postedOrderHash && (
+        <div className="box success">
+          <h4>Order has been posted!</h4>
+          <p>
+            <strong>Order UID:</strong>
+            <br />
+            <code>{postedOrderHash}</code>
+          </p>
+          <p>
+            <a
+              href={`https://explorer.cow.fi/orders/${postedOrderHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View in CoW Explorer
+            </a>
+          </p>
+        </div>
+      )}
+
+      <div className="box">
+        <strong>Sell</strong>
+        <input
+          type="number"
+          value={sellAmount}
+          onChange={(e) => setSellAmount(e.target.value)}
+        />
+        <span>{WETH?.symbol}</span>
+      </div>
+
+      <div className="box">
+        <strong>Buy</strong>
+        <input type="number" value={buyAmountView ?? 'Loading...'} disabled />
+        <span>{USDC?.symbol}</span>
+      </div>
+
+      <div className="box">
+        <label>Slippage:</label>
+        <input
+          type="number"
+          value={slippagePercent}
+          min={0}
+          max={10}
+          step={0.5}
+          onChange={(e) => setSlippagePercent(+e.target.value)}
+        />
+        <span>%</span>
+      </div>
+
+      {swapError && (
+        <div className="box error">
+          {swapError.message || JSON.stringify(swapError)}
+        </div>
+      )}
+
+      <button disabled={isLoading} onClick={postOrder}>
+        {isOrderPostingInProgress ? 'Posting...' : 'Post order'}
+      </button>
+    </div>
+  )
+}
+```
+
+## Main App Component
+
+```tsx
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { WagmiProvider, useAccount } from 'wagmi'
+import { config } from './wagmi'
+import { SwapForm } from './components/SwapForm'
+import { useBindCoWSdkToWagmi } from './hooks/useBindCoWSdkToWagmi'
+
+const queryClient = new QueryClient()
+
+function SwapApp() {
+  const { address } = useAccount()
+  const isSdkReady = useBindCoWSdkToWagmi()
+
+  return (
+    <div className="App">
+      <h1>CoW Protocol Swap</h1>
+
+      {address && (
+        <div className="account">
+          Connected: {address}
+        </div>
+      )}
+
+      <SwapForm isSdkReady={isSdkReady} />
+    </div>
+  )
+}
+
+export default function App() {
+  return (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <SwapApp />
+      </QueryClientProvider>
+    </WagmiProvider>
+  )
+}
+```
+
+## Main Entry Point
+
+```tsx
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import App from './App'
+import './index.css'
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+```
+
+## Token Approval with Wagmi
+
+Handle token approvals using the SDK:
+
+```typescript
+import { tradingSdk } from './cowSdk'
+import { parseUnits } from 'viem'
+
+const [approvalTxHash, setApprovalTxHash] = useState<string | null>(null)
+
+const approveToken = async () => {
+  if (!sellToken || !chainId) return
+
+  try {
+    const amount = parseUnits(sellAmount, sellToken.decimals)
+    const txHash = await tradingSdk.approveCowProtocol({
+      tokenAddress: sellToken.address,
+      amount,
+      chainId,
+    })
+
+    setApprovalTxHash(txHash)
+  } catch (err) {
+    console.error('Approval failed:', err)
+  }
+}
+```
+
+## Key Benefits
+
+1. **Automatic Network Switching**: Wagmi handles network changes automatically
+2. **Multi-Wallet Support**: Users can connect with various wallets
+3. **TypeScript Safety**: Full type safety with Viem
+4. **React Query Integration**: Efficient data fetching and caching
+5. **Better UX**: Professional wallet connection UI
+
+## Connect Wallet Button
+
+Add a proper wallet connection button:
+
+```tsx
+import { useConnect, useDisconnect, useAccount } from 'wagmi'
+
+function ConnectButton() {
+  const { connect, connectors } = useConnect()
+  const { disconnect } = useDisconnect()
+  const { address, isConnected } = useAccount()
+
+  if (isConnected) {
+    return (
+      <div>
+        <span>{address}</span>
+        <button onClick={() => disconnect()}>Disconnect</button>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {connectors.map((connector) => (
+        <button
+          key={connector.id}
+          onClick={() => connect({ connector })}
+        >
+          Connect {connector.name}
+        </button>
+      ))}
+    </div>
+  )
+}
+```
+
+## Network Switching
+
+Handle network switching gracefully:
+
+```tsx
+import { useSwitchChain, useAccount } from 'wagmi'
+import { SupportedChainId } from '@cowprotocol/cow-sdk'
+
+function NetworkSwitcher() {
+  const { chainId } = useAccount()
+  const { switchChain } = useSwitchChain()
+
+  const isSupportedNetwork =
+    chainId === SupportedChainId.MAINNET ||
+    chainId === SupportedChainId.SEPOLIA
+
+  if (!isSupportedNetwork) {
+    return (
+      <div className="warning">
+        <p>Please switch to a supported network</p>
+        <button onClick={() => switchChain({ chainId: SupportedChainId.MAINNET })}>
+          Switch to Mainnet
+        </button>
+      </div>
+    )
+  }
+
+  return null
+}
+```
+
+## Next Steps
+
+- Learn about [Node.js usage](/examples/nodejs-usage)
+- Explore [limit orders](/examples/limit-orders)
+- Read the [Trading SDK documentation](/sdk/trading/overview)

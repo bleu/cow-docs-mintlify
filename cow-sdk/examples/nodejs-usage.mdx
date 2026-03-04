@@ -5,63 +5,468 @@ description: "Integrate decentralized trading functionality into Node.js applica
 
 # Node.js Usage
 
-## Overview
-
-The CoW Protocol SDK enables developers to integrate decentralized trading functionality into Node.js applications, backend services, and automation tools.
+This guide shows you how to use the CoW Protocol SDK in Node.js environments, including backend services, scripts, and automation tools.
 
 ## Installation
 
-Three Ethereum library options are available:
+Choose your preferred Ethereum library:
 
-```bash
-# Ethers v6
-npm install @cowprotocol/cow-sdk @cowprotocol/sdk-ethers-v6-adapter ethers dotenv
+<CodeGroup>
+  ```bash Ethers v6
+  npm install @cowprotocol/cow-sdk @cowprotocol/sdk-ethers-v6-adapter ethers dotenv
+  ```
 
-# Ethers v5
-npm install @cowprotocol/cow-sdk @cowprotocol/sdk-ethers-v5-adapter ethers@5 dotenv
+  ```bash Ethers v5
+  npm install @cowprotocol/cow-sdk @cowprotocol/sdk-ethers-v5-adapter ethers@5 dotenv
+  ```
 
-# Viem
-npm install @cowprotocol/cow-sdk @cowprotocol/sdk-viem-adapter viem dotenv
+  ```bash Viem
+  npm install @cowprotocol/cow-sdk @cowprotocol/sdk-viem-adapter viem dotenv
+  ```
+</CodeGroup>
+
+## Environment Setup
+
+Create a `.env` file to store your configuration:
+
+```bash .env
+RPC_URL=https://sepolia.gateway.tenderly.co
+PRIVATE_KEY=0x...
+CHAIN_ID=11155111
 ```
 
-## Setup Requirements
+## Basic Script
 
-Store configuration in a `.env` file containing `RPC_URL`, `PRIVATE_KEY`, and `CHAIN_ID` values.
+<CodeGroup>
+  ```typescript Ethers v6
+  import 'dotenv/config'
+  import { JsonRpcProvider, Wallet } from 'ethers'
+  import {
+    setGlobalAdapter,
+    SupportedChainId,
+    TradingSdk,
+    OrderKind,
+    WRAPPED_NATIVE_CURRENCIES,
+  } from '@cowprotocol/cow-sdk'
+  import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter'
 
-## Implementation Patterns
+  const RPC_URL = process.env.RPC_URL || 'https://sepolia.gateway.tenderly.co'
+  const PRIVATE_KEY = process.env.PRIVATE_KEY
+  const DEFAULT_SELL_AMOUNT = '0.1'
 
-### Basic Trading Script
+  async function main() {
+    if (!PRIVATE_KEY) {
+      throw new Error('PRIVATE_KEY environment variable is required')
+    }
 
-The documentation provides working examples for both Ethers v6 and Viem implementations. Both follow this workflow: initialize provider/wallet, establish adapter, create SDK instance, fetch quotes, and post orders to the network.
+    const chainId = SupportedChainId.SEPOLIA
 
-### Advanced Use Cases
+    // Setup provider and wallet
+    const provider = new JsonRpcProvider(RPC_URL, chainId)
+    const wallet = new Wallet(PRIVATE_KEY, provider)
 
-**Automated Trading Bot**: Monitor market conditions at regular intervals and execute trades when specified price thresholds are met.
+    // Setup CoW Protocol adapter
+    const adapter = new EthersV6Adapter({ provider, signer: wallet })
+    setGlobalAdapter(adapter)
 
-**Batch Processing**: Execute multiple orders concurrently using `Promise.allSettled()` to handle both successful and failed order submissions.
+    // Initialize SDK
+    const sdk = new TradingSdk({
+      chainId,
+      appCode: 'NodeScript',
+      signer: wallet,
+    })
 
-**Order Monitoring**: Poll order status until fulfillment or timeout using the OrderBookApi, checking results every 10 seconds.
+    // Define tokens
+    const WETH = WRAPPED_NATIVE_CURRENCIES[chainId]
+    const USDC = {
+      address: '0xbe72E441BF55620febc26715db68d3494213D8Cb',
+      decimals: 18,
+    }
 
-**Error Handling**: Implement exponential backoff retry logic with configurable attempt limits.
+    const owner = (await wallet.getAddress()) as `0x${string}`
+    const amount = Math.round(
+      Number(DEFAULT_SELL_AMOUNT) * 10 ** WETH.decimals
+    ).toString()
+    const slippageBps = 50
 
-**Logging**: Enable SDK logging through configuration options and create custom logging functions for order details.
+    console.log('Owner:', owner)
+    console.log('Getting quote...')
 
-## Production Best Practices
+    // Get quote
+    const quoteAndPost = await sdk.getQuote({
+      chainId,
+      kind: OrderKind.SELL,
+      owner,
+      amount,
+      sellToken: WETH.address,
+      sellTokenDecimals: WETH.decimals,
+      buyToken: USDC.address,
+      buyTokenDecimals: USDC.decimals,
+      slippageBps,
+    })
 
-- Use environment variables for sensitive data
-- Implement rate limiting
-- Monitor bot health status
-- Maintain comprehensive logs
-- Handle errors with retry mechanisms
-- Optimize for gas prices
-- Employ secure key management systems
+    console.log('Quote received')
+    console.log('Buy amount:', quoteAndPost.quoteResults.amountsAndCosts.afterNetworkCosts.buyAmount)
+
+    // Post order
+    console.log('Posting order...')
+    const result = await quoteAndPost.postSwapOrderFromQuote({})
+    console.log('Order posted successfully!')
+    console.log('Order ID:', result.orderId)
+    console.log('Explorer:', `https://explorer.cow.fi/sepolia/orders/${result.orderId}`)
+  }
+
+  main().catch((error) => {
+    console.error('Error:', error)
+    process.exit(1)
+  })
+  ```
+
+  ```typescript Viem
+  import 'dotenv/config'
+  import { createPublicClient, http } from 'viem'
+  import { privateKeyToAccount } from 'viem/accounts'
+  import { sepolia } from 'viem/chains'
+  import {
+    setGlobalAdapter,
+    SupportedChainId,
+    TradingSdk,
+    OrderKind,
+    WRAPPED_NATIVE_CURRENCIES,
+  } from '@cowprotocol/cow-sdk'
+  import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+
+  const RPC_URL = process.env.RPC_URL || 'https://sepolia.gateway.tenderly.co'
+  const PRIVATE_KEY = process.env.PRIVATE_KEY
+  const DEFAULT_SELL_AMOUNT = 0.1
+
+  async function main() {
+    if (!PRIVATE_KEY) {
+      throw new Error('PRIVATE_KEY environment variable is required')
+    }
+
+    const chainId = SupportedChainId.SEPOLIA
+
+    // Create public client
+    const publicClient = createPublicClient({
+      chain: sepolia,
+      transport: http(RPC_URL),
+    })
+
+    // Create account from private key
+    const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`)
+
+    // Setup adapter
+    const adapter = new ViemAdapter({ provider: publicClient, signer: account })
+    setGlobalAdapter(adapter)
+
+    // Initialize SDK
+    const sdk = new TradingSdk({
+      chainId,
+      appCode: 'NodeScript',
+      signer: account,
+    })
+
+    const WETH = WRAPPED_NATIVE_CURRENCIES[chainId]
+    const USDC = {
+      address: '0xbe72E441BF55620febc26715db68d3494213D8Cb',
+      decimals: 18,
+    }
+
+    const owner = account.address
+    const amount = BigInt(Math.floor(DEFAULT_SELL_AMOUNT * 10 ** WETH.decimals))
+    const slippageBps = 50
+
+    console.log('Owner:', owner)
+    console.log('Getting quote...')
+
+    const quoteAndPost = await sdk.getQuote({
+      chainId,
+      kind: OrderKind.SELL,
+      owner,
+      amount: amount.toString(),
+      sellToken: WETH.address,
+      sellTokenDecimals: WETH.decimals,
+      buyToken: USDC.address,
+      buyTokenDecimals: USDC.decimals,
+      slippageBps,
+    })
+
+    console.log('Posting order...')
+    const result = await quoteAndPost.postSwapOrderFromQuote({})
+    console.log('Posted:', result)
+  }
+
+  main().catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })
+  ```
+</CodeGroup>
+
+## Run the Script
+
+```bash
+ts-node index.ts
+# or with tsx
+npx tsx index.ts
+```
+
+## Advanced Patterns
+
+### Automated Trading Bot
+
+Create a simple trading bot that monitors prices:
+
+```typescript bot.ts
+import { TradingSdk, OrderKind } from '@cowprotocol/cow-sdk'
+
+class TradingBot {
+  constructor(private sdk: TradingSdk) {}
+
+  async monitorAndTrade() {
+    setInterval(async () => {
+      try {
+        const quote = await this.getQuote()
+        const price = this.calculatePrice(quote)
+
+        if (this.shouldTrade(price)) {
+          await this.executeTrade(quote)
+        }
+      } catch (error) {
+        console.error('Error in trading loop:', error)
+      }
+    }, 60000) // Check every minute
+  }
+
+  private async getQuote() {
+    return this.sdk.getQuote({
+      // ... quote parameters
+    })
+  }
+
+  private calculatePrice(quote: any): number {
+    const buyAmount = Number(quote.quoteResults.amountsAndCosts.afterNetworkCosts.buyAmount)
+    const sellAmount = Number(quote.quoteResults.orderToSign.sellAmount)
+    return buyAmount / sellAmount
+  }
+
+  private shouldTrade(price: number): boolean {
+    // Implement your trading logic
+    const targetPrice = 2000 // Example: WETH to USDC price
+    return price >= targetPrice
+  }
+
+  private async executeTrade(quote: any) {
+    const result = await quote.postSwapOrderFromQuote({})
+    console.log('Trade executed:', result.orderId)
+  }
+}
+
+// Usage
+const bot = new TradingBot(sdk)
+bot.monitorAndTrade()
+```
+
+### Batch Order Processing
+
+Process multiple orders efficiently:
+
+```typescript batch.ts
+import { TradingSdk, OrderKind } from '@cowprotocol/cow-sdk'
+
+interface OrderRequest {
+  sellToken: string
+  buyToken: string
+  sellAmount: string
+  slippageBps: number
+}
+
+async function processBatchOrders(
+  sdk: TradingSdk,
+  orders: OrderRequest[],
+  chainId: number,
+  owner: string
+) {
+  const results = await Promise.allSettled(
+    orders.map(async (order) => {
+      const quote = await sdk.getQuote({
+        chainId,
+        kind: OrderKind.SELL,
+        owner,
+        amount: order.sellAmount,
+        sellToken: order.sellToken,
+        sellTokenDecimals: 18,
+        buyToken: order.buyToken,
+        buyTokenDecimals: 18,
+        slippageBps: order.slippageBps,
+      })
+
+      return quote.postSwapOrderFromQuote({})
+    })
+  )
+
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      console.log(`Order ${index} posted:`, result.value.orderId)
+    } else {
+      console.error(`Order ${index} failed:`, result.reason)
+    }
+  })
+}
+```
+
+### Order Monitoring
+
+Monitor order status until fulfillment:
+
+```typescript monitor.ts
+import { OrderBookApi } from '@cowprotocol/sdk-order-book'
+
+async function waitForOrderFulfillment(
+  orderUid: string,
+  chainId: number,
+  maxWaitTime = 300000 // 5 minutes
+) {
+  const orderBookApi = new OrderBookApi({ chainId })
+  const startTime = Date.now()
+
+  while (Date.now() - startTime < maxWaitTime) {
+    const order = await orderBookApi.getOrder(orderUid)
+
+    console.log(`Order status: ${order.status}`)
+
+    if (order.status === 'fulfilled') {
+      console.log('Order fulfilled!')
+      console.log('Executed buy amount:', order.executedBuyAmount)
+      console.log('Executed sell amount:', order.executedSellAmount)
+      return order
+    }
+
+    if (order.status === 'cancelled' || order.status === 'expired') {
+      throw new Error(`Order ${order.status}`)
+    }
+
+    // Wait 10 seconds before checking again
+    await new Promise(resolve => setTimeout(resolve, 10000))
+  }
+
+  throw new Error('Order fulfillment timeout')
+}
+
+// Usage
+const result = await quoteAndPost.postSwapOrderFromQuote({})
+await waitForOrderFulfillment(result.orderId, chainId)
+```
+
+### Error Handling and Retries
+
+Implement robust error handling:
+
+```typescript retry.ts
+async function postOrderWithRetry(
+  sdk: TradingSdk,
+  params: any,
+  maxRetries = 3
+) {
+  let lastError: Error
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Attempt ${attempt} of ${maxRetries}`)
+
+      const quote = await sdk.getQuote(params)
+      const result = await quote.postSwapOrderFromQuote({})
+
+      console.log('Order posted successfully')
+      return result
+    } catch (error) {
+      lastError = error as Error
+      console.error(`Attempt ${attempt} failed:`, error.message)
+
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000 // Exponential backoff
+        console.log(`Retrying in ${delay}ms...`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+    }
+  }
+
+  throw new Error(`Failed after ${maxRetries} attempts: ${lastError.message}`)
+}
+```
+
+### Logging and Monitoring
+
+Add comprehensive logging:
+
+```typescript logging.ts
+import { enableLogging } from '@cowprotocol/sdk-common'
+
+// Enable SDK logging
+enableLogging(true)
+
+const sdk = new TradingSdk(
+  {
+    chainId,
+    appCode: 'NodeScript',
+    signer: wallet,
+  },
+  {
+    enableLogging: true,
+  }
+)
+
+// Custom logger
+function logOrderDetails(order: any) {
+  console.log('\n=== Order Details ===')
+  console.log('Sell Token:', order.sellToken)
+  console.log('Buy Token:', order.buyToken)
+  console.log('Sell Amount:', order.sellAmount)
+  console.log('Buy Amount:', order.buyAmount)
+  console.log('Slippage:', order.slippageBps / 100, '%')
+  console.log('=====================\n')
+}
+```
 
 ## Testing
 
-The documentation references Vitest for unit testing quote generation and validation with assertions on expected output values.
+Test your Node.js scripts:
 
-## Additional Resources
+```typescript test.ts
+import { describe, it, expect } from 'vitest'
+import { TradingSdk } from '@cowprotocol/cow-sdk'
 
-- [Limit Orders](/cow-sdk/examples/limit-orders)
-- [Order Management](/cow-sdk/guides/order-management)
-- [Trading SDK API](/cow-sdk/api/trading-sdk)
+describe('Trading Bot', () => {
+  it('should create a valid quote', async () => {
+    const sdk = new TradingSdk({
+      chainId: 11155111,
+      appCode: 'Test',
+    })
+
+    const quote = await sdk.getQuoteOnly({
+      owner: '0x...',
+      kind: OrderKind.SELL,
+      // ... other params
+    })
+
+    expect(quote.amountsAndCosts.afterNetworkCosts.buyAmount).toBeDefined()
+  })
+})
+```
+
+## Production Considerations
+
+1. **Use Environment Variables**: Never hardcode private keys
+2. **Implement Rate Limiting**: Avoid API rate limits
+3. **Add Health Checks**: Monitor your bot's health
+4. **Use Proper Logging**: Log all important events
+5. **Handle Errors Gracefully**: Implement retry logic
+6. **Monitor Gas Prices**: Optimize for network conditions
+7. **Secure Private Keys**: Use secure key management systems
+
+## Next Steps
+
+- Learn about [limit orders](/examples/limit-orders)
+- Explore [order management](/guides/order-management)
+- Read about [Trading SDK](/api/trading-sdk)

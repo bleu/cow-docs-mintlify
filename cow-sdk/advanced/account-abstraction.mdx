@@ -5,45 +5,445 @@ description: "Pre-authorize and execute multiple operations through account abst
 
 # Account Abstraction with CoW Shed SDK
 
+The CoW Shed SDK enables account abstraction functionality for CoW Protocol, allowing smart contract wallets to pre-authorize and execute multiple calls on behalf of users. This acts as a user-owned smart contract (1/1 multisig) that can execute batched operations.
+
 ## Overview
 
-The CoW Shed SDK enables smart contract wallets to pre-authorize and execute multiple operations through account abstraction. This functionality allows users to sign calls offline and have them executed later by any party, supporting gasless transaction execution.
+CoW Shed provides:
 
-## Key Capabilities
+- **Pre-authorized calls**: Sign calls off-chain and execute them later
+- **Batch execution**: Execute multiple calls in a single transaction
+- **Gasless execution**: Anyone can execute pre-authorized calls
+- **Smart wallet support**: Works with any EIP-1271 compatible wallet
 
-CoW Shed provides several important features:
-
-- **Pre-authorized calls**: Sign operations offline and execute them at a later time
-- **Batch execution**: Process multiple calls within a single transaction
-- **Gasless transactions**: Any address can execute pre-authorized operations
-- **Smart wallet compatibility**: Functions with any EIP-1271 compatible wallet implementation
-
-## Getting Started
-
-Installation is straightforward:
+## Installation
 
 ```bash
 npm install @cowprotocol/cow-shed
 ```
 
-The SDK can also be accessed through the main CoW SDK package.
+Or use it directly from the main SDK:
 
-## Core Implementation Pattern
+```bash
+npm install @cowprotocol/cow-sdk
+```
 
-The basic workflow involves three steps:
+## Basic Usage
 
-1. **Initialize** the CowShedSdk with an adapter and signer
-2. **Prepare calls** using the ICoWShedCall interface (specifying target, callData, value, delegation preference, and failure tolerance)
-3. **Sign and execute** the batch, obtaining a transaction that can be sent by any address
+### Initialize CowShedSdk
 
-## Advanced Configuration
+```typescript
+import { CowShedSdk, ICoWShedCall, SupportedChainId } from '@cowprotocol/cow-shed'
+import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter'
+import { JsonRpcProvider, Wallet } from 'ethers'
 
-The SDK supports several customization options including custom nonces for replay protection, deadline specifications for expiration windows, explicit or default gas limit settings, and configurable signing schemes (EIP712 or ETHSIGN).
+// Proper adapter initialization
+const provider = new JsonRpcProvider('YOUR_RPC_URL')
+const wallet = new Wallet('YOUR_PRIVATE_KEY', provider)
+const adapter = new EthersV6Adapter({ provider, signer: wallet })
 
-## Practical Use Cases
+const cowShedSdk = new CowShedSdk(adapter)
+```
 
-Common applications include gasless order placement (users sign orders for relayer execution), atomic batch operations combining multiple transactions, and integration with existing smart wallet systems like Safe wallets.
+### Get CoW Shed Account Address
 
-## Production Recommendations
+```typescript
+// Get the cow-shed account for any given chainId and owner's address
+const cowShedAccount = cowShedSdk.getCowShedAccount(
+  SupportedChainId.MAINNET,
+  '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045'
+)
 
-Best practices emphasize strategic use of failure tolerance flags, implementing reasonable deadline windows rather than maximum values, providing fallback gas limits for complex operations, and generating unique nonces to prevent replay attacks.
+console.log('CoW Shed Account:', cowShedAccount)
+```
+
+### Sign and Execute Calls
+
+```typescript
+// Prepare the calls you want to execute using the cow-shed account
+const calls: ICoWShedCall[] = [
+  {
+    target: '<contract-address-1>',
+    callData: 'call-data-1',
+    value: 0n,
+    isDelegateCall: true,
+    allowFailure: false,
+  },
+  {
+    target: '<contract-address-2>',
+    callData: '<call-data-2>',
+    value: 0n,
+    isDelegateCall: true,
+    allowFailure: false,
+  },
+]
+
+// Sign the calls
+const preAuthorizedCall = await cowShedSdk.signCalls({
+  chainId: SupportedChainId.MAINNET,
+  calls,
+  signer: wallet, // Optional - will use global adapter's signer if not provided
+})
+
+// Get the details of the pre-authorized call you need to send
+const { signedMulticall, gasLimit } = preAuthorizedCall
+const { to, data, value } = signedMulticall
+
+// Execute the transaction using any wallet. The calldata has been pre-authed,
+// so you don't need any special permissions to send this transaction
+const anotherWallet = new Wallet('<another-private-key>', provider)
+const tx = await anotherWallet.sendTransaction({
+  to,
+  data,
+  value,
+  gasLimit,
+})
+
+const receipt = await tx.wait()
+console.log('Transaction executed:', receipt.hash)
+```
+
+## Call Structure
+
+### ICoWShedCall Interface
+
+```typescript
+interface ICoWShedCall {
+  target: string           // Contract address to call
+  callData: string         // Encoded function call data
+  value: bigint           // ETH value to send (in wei)
+  isDelegateCall: boolean // Whether to use delegatecall
+  allowFailure: boolean   // Whether to allow this call to fail
+}
+```
+
+### Creating Calls
+
+```typescript
+import { encodeFunctionData } from 'viem'
+
+// Example: Approve ERC20 token
+const approveCall: ICoWShedCall = {
+  target: '0xTokenAddress',
+  callData: encodeFunctionData({
+    abi: ERC20_ABI,
+    functionName: 'approve',
+    args: [spenderAddress, amount]
+  }),
+  value: 0n,
+  isDelegateCall: false,
+  allowFailure: false,
+}
+
+// Example: Execute swap
+const swapCall: ICoWShedCall = {
+  target: '0xSwapContract',
+  callData: encodeFunctionData({
+    abi: SWAP_ABI,
+    functionName: 'swap',
+    args: [tokenIn, tokenOut, amountIn]
+  }),
+  value: 0n,
+  isDelegateCall: false,
+  allowFailure: false,
+}
+```
+
+## Advanced Features
+
+### Custom Nonce
+
+Specify a custom nonce for replay protection:
+
+```typescript
+const preAuthorizedCall = await cowShedSdk.signCalls({
+  chainId: SupportedChainId.MAINNET,
+  calls,
+  nonce: '0x1234567890abcdef', // Custom 32-byte nonce
+})
+```
+
+### Custom Deadline
+
+Set an expiration time for the pre-authorized calls:
+
+```typescript
+const futureTimestamp = BigInt(Math.floor(Date.now() / 1000) + 3600) // 1 hour from now
+
+const preAuthorizedCall = await cowShedSdk.signCalls({
+  chainId: SupportedChainId.MAINNET,
+  calls,
+  deadline: futureTimestamp,
+})
+```
+
+### Gas Limit Configuration
+
+```typescript
+// Provide explicit gas limit
+const preAuthorizedCall = await cowShedSdk.signCalls({
+  chainId: SupportedChainId.MAINNET,
+  calls,
+  gasLimit: 500000n,
+})
+
+// Or provide default gas limit if estimation fails
+const preAuthorizedCall2 = await cowShedSdk.signCalls({
+  chainId: SupportedChainId.MAINNET,
+  calls,
+  defaultGasLimit: 500000n, // Used if estimation fails
+})
+```
+
+### Signing Schemes
+
+```typescript
+import { SigningScheme } from '@cowprotocol/sdk-contracts-ts'
+
+const preAuthorizedCall = await cowShedSdk.signCalls({
+  chainId: SupportedChainId.MAINNET,
+  calls,
+  signingScheme: SigningScheme.EIP712, // Default
+  // Or: SigningScheme.ETHSIGN
+})
+```
+
+## Complete Example
+
+Here's a complete example of approving tokens and placing a CoW order:
+
+```typescript
+import {
+  CowShedSdk,
+  ICoWShedCall,
+  SupportedChainId
+} from '@cowprotocol/cow-shed'
+import {
+  EthersV6Adapter
+} from '@cowprotocol/sdk-ethers-v6-adapter'
+import { encodeFunctionData, parseEther, parseUnits } from 'viem'
+import { JsonRpcProvider, Wallet } from 'ethers'
+
+// 1. Initialize
+const provider = new JsonRpcProvider('https://mainnet.infura.io/v3/YOUR-KEY')
+const wallet = new Wallet('YOUR_PRIVATE_KEY', provider)
+const adapter = new EthersV6Adapter({ provider, signer: wallet })
+const cowShedSdk = new CowShedSdk(adapter)
+
+// 2. Get CoW Shed account
+const ownerAddress = await wallet.getAddress()
+const cowShedAccount = cowShedSdk.getCowShedAccount(
+  SupportedChainId.MAINNET,
+  ownerAddress
+)
+
+// 3. Prepare calls
+const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
+const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+const SETTLEMENT = '0x9008D19f58AAbD9eD0D60971565AA8510560ab41'
+
+const calls: ICoWShedCall[] = [
+  // Approve WETH
+  {
+    target: WETH,
+    callData: encodeFunctionData({
+      abi: [{
+        name: 'approve',
+        type: 'function',
+        inputs: [
+          { name: 'spender', type: 'address' },
+          { name: 'amount', type: 'uint256' }
+        ],
+        outputs: [{ type: 'bool' }]
+      }],
+      functionName: 'approve',
+      args: [SETTLEMENT, parseEther('1')]
+    }),
+    value: 0n,
+    isDelegateCall: false,
+    allowFailure: false,
+  },
+  // Set pre-signature for order
+  {
+    target: SETTLEMENT,
+    callData: encodeFunctionData({
+      abi: [{
+        name: 'setPreSignature',
+        type: 'function',
+        inputs: [
+          { name: 'orderUid', type: 'bytes' },
+          { name: 'signed', type: 'bool' }
+        ],
+        outputs: []
+      }],
+      functionName: 'setPreSignature',
+      args: [orderUid, true]
+    }),
+    value: 0n,
+    isDelegateCall: false,
+    allowFailure: false,
+  },
+]
+
+// 4. Sign calls
+const preAuthorizedCall = await cowShedSdk.signCalls({
+  chainId: SupportedChainId.MAINNET,
+  calls,
+})
+
+// 5. Execute (can be done by anyone)
+const { signedMulticall, gasLimit } = preAuthorizedCall
+const { to, data, value } = signedMulticall
+
+const tx = await wallet.sendTransaction({
+  to,
+  data,
+  value,
+  gasLimit,
+})
+
+const receipt = await tx.wait()
+console.log('Pre-authorized calls executed:', receipt.hash)
+```
+
+## Use Cases
+
+### 1. Gasless Order Placement
+
+Users can sign orders off-chain and have relayers execute them:
+
+```typescript
+const calls = [approveToken, setPreSignature]
+const preAuthorized = await cowShedSdk.signCalls({ chainId, calls })
+
+// Send preAuthorized to relayer service
+await relayerService.execute(preAuthorized)
+```
+
+### 2. Batch Operations
+
+Execute multiple operations atomically:
+
+```typescript
+const calls = [
+  approveToken1,
+  approveToken2,
+  createOrder,
+  stakeTokens,
+]
+
+const preAuthorized = await cowShedSdk.signCalls({ chainId, calls })
+```
+
+### 3. Smart Wallet Integration
+
+Use with Safe or other smart wallets:
+
+```typescript
+// CoW Shed account is deterministic per owner
+const safeAddress = '0xSafeWalletAddress'
+const cowShedAccount = cowShedSdk.getCowShedAccount(
+  SupportedChainId.MAINNET,
+  safeAddress
+)
+
+// Sign with Safe
+const preAuthorized = await cowShedSdk.signCalls({
+  chainId: SupportedChainId.MAINNET,
+  calls,
+  signer: safeWallet,
+})
+```
+
+## Custom Factory Options
+
+Customize the CoW Shed factory configuration:
+
+```typescript
+import { ICoWShedOptions } from '@cowprotocol/cow-shed'
+
+const customOptions: ICoWShedOptions = {
+  factoryAddress: '0xCustomFactoryAddress',
+  implementationAddress: '0xCustomImplementationAddress',
+  proxyCreationCode: '0x...',
+}
+
+const cowShedSdk = new CowShedSdk(adapter, customOptions)
+```
+
+## Error Handling
+
+```typescript
+try {
+  const preAuthorized = await cowShedSdk.signCalls({
+    chainId: SupportedChainId.MAINNET,
+    calls,
+  })
+
+  const tx = await wallet.sendTransaction(preAuthorized.signedMulticall)
+  await tx.wait()
+} catch (error) {
+  if (error.message.includes('gas')) {
+    console.error('Gas estimation failed - provide defaultGasLimit')
+  } else if (error.message.includes('nonce')) {
+    console.error('Nonce already used - generate new nonce')
+  } else if (error.message.includes('deadline')) {
+    console.error('Pre-authorization expired')
+  } else {
+    console.error('Execution failed:', error)
+  }
+}
+```
+
+## Best Practices
+
+### Use allowFailure strategically
+
+Set `allowFailure: true` for non-critical operations:
+
+```typescript
+const calls: ICoWShedCall[] = [
+  { ...criticalCall, allowFailure: false },
+  { ...optionalCall, allowFailure: true },
+]
+```
+
+### Set appropriate deadlines
+
+Don't use MAX_UINT256 for production - set reasonable expiration:
+
+```typescript
+const oneHour = BigInt(Math.floor(Date.now() / 1000) + 3600)
+const preAuthorized = await cowShedSdk.signCalls({
+  chainId,
+  calls,
+  deadline: oneHour,
+})
+```
+
+### Estimate gas carefully
+
+Provide default gas limit for complex operations:
+
+```typescript
+const preAuthorized = await cowShedSdk.signCalls({
+  chainId,
+  calls,
+  defaultGasLimit: 1000000n, // Fallback if estimation fails
+})
+```
+
+### Use unique nonces
+
+Generate unique nonces to prevent replay attacks:
+
+```typescript
+const nonce = adapter.utils.formatBytes32String(
+  `${Date.now()}-${Math.random()}`
+)
+```
+
+## Next Steps
+
+- **Hooks** - Execute custom logic before and after orders
+- **Partner Fee** - Configure partner fee collection

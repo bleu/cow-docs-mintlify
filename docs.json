@@ -257,9 +257,7 @@
             "pages": [
               "cow-protocol/reference/widget-params",
               "cow-protocol/reference/hook-dapp",
-              "cow-protocol/reference/custom-links",
-              "governance/reference/fees",
-              "governance/reference/partner-fee"
+              "cow-protocol/reference/custom-links"
             ]
           }
         ]
@@ -529,6 +527,8 @@
             "group": "Reference",
             "icon": "file-code",
             "pages": [
+              "governance/reference/fees",
+              "governance/reference/partner-fee",
               "governance/reference/cip-template",
               "governance/reference/multisigs"
             ]
@@ -724,7 +724,7 @@
     },
     {
       "source": "/cow-protocol/integrate/sdk",
-      "destination": "/cow-protocol/howto/integrate/sdk"
+      "destination": "/cow-sdk/introduction"
     },
     {
       "source": "/cow-protocol/integrate/api",
