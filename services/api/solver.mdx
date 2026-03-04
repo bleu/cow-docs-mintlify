@@ -1,0 +1,82 @@
+---
+title: "Solver Engine API"
+description: "API reference for solver engine route optimization within CoW Protocol"
+---
+
+# Solver Engine API
+
+The Solver Engine API enables route optimization services within CoW Protocol. These engines receive auction data and return abstract solutions without handling calldata encoding, transaction simulation, or settlement submission.
+
+## Core Responsibilities
+
+Solver engines focus on four main functions:
+
+1. **Route Finding** - Determining optimal paths through liquidity
+2. **Order Matching** - Identifying coincidence of wants between orders
+3. **Price Discovery** - Computing uniform clearing prices
+4. **Constraint Satisfaction** - Respecting order limits and balance rules
+
+## Solver Types
+
+CoW Protocol provides internal solvers (Baseline, Balancer, Legacy) while supporting external providers including 1inch, 0x, ParaSwap, and custom implementations.
+
+## API Endpoints
+
+### POST /solve
+
+Receives auction data and returns one or multiple solutions. Key parameters include:
+
+- **tokens**: Token address mappings with decimals, symbols, reference prices
+- **orders**: Array of CoW Protocol orders requiring solutions
+- **liquidity**: Available on-chain liquidity sources
+- **effectiveGasPrice**: Current gas pricing in Wei
+- **deadline**: ISO 8601 timestamp for solution delivery
+
+**Response includes**: Solution ID, uniform clearing prices, trades, interactions, and gas estimates.
+
+### POST /notify
+
+Receives performance feedback on solutions, with notification types including:
+
+- `success`: Solution settled on-chain
+- `simulationFailed`: Solution reverted during testing
+- `timeout`: Solution missed deadline
+- `banned`: Solver has been restricted
+
+## Solution Requirements
+
+Solutions must satisfy:
+
+- **Order Limits**: Executed amounts respect sell/buy constraints
+- **Uniform Prices**: All trades use identical price vectors
+- **Token Conservation**: Total inputs equal outputs per token
+- **Fee Application**: Proper surplus, volume, and price improvement fee calculations
+
+## Scoring Formula
+
+```
+Score = sum(user_surplus) + sum(protocol_fees) - gas_cost_in_native_token
+```
+
+## Fee Policies
+
+Three fee types apply:
+
+1. **Surplus Fee**: Charge `factor` x surplus, capped at `maxVolumeFactor` x volume
+2. **Volume Fee**: Factor multiplied by executed volume
+3. **Price Improvement Fee**: Factor applied to improvement over quoted prices
+
+## Best Practices
+
+- Respect solution deadlines consistently
+- Validate input data thoroughly
+- Apply fee policies with precision
+- Provide accurate gas estimations
+- Handle partial fills appropriately
+- Test constraints before returning solutions
+
+## Resources
+
+- [CIP-2: Internalization](https://github.com/cowprotocol/CIPs) - Settlement optimization
+- [CIP-20: Solution Scoring](https://github.com/cowprotocol/CIPs) - Scoring methodology
+- [Baseline Solver](https://github.com/cowprotocol/services) - Reference implementation

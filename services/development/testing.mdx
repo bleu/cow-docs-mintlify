@@ -1,0 +1,116 @@
+---
+title: "Testing"
+description: "Comprehensive testing guide for CoW Protocol Services"
+---
+
+# Testing
+
+This guide covers the testing infrastructure and practices for CoW Protocol Services.
+
+<Warning>
+Always use `cargo nextest run` instead of `cargo test`. The CI environment uses nextest, which handles global state differently. Tests that pass locally with `cargo test` may fail in CI.
+</Warning>
+
+## Test Categories
+
+### Unit Tests
+
+Validate individual functions without external dependencies.
+
+```bash
+just test-unit
+```
+
+### Database Tests
+
+Require PostgreSQL and must run serially to avoid race conditions.
+
+**Prerequisites**:
+1. Start Docker Compose: `docker compose up -d db`
+2. Use the `--test-threads 1` flag
+
+```bash
+just test-db
+```
+
+### End-to-End Tests
+
+Two types of E2E tests:
+
+#### Local Node Tests
+
+Deploy contracts on a clean Ethereum node:
+
+```bash
+just test-e2e-local
+```
+
+#### Forked Network Tests
+
+Require setting environment variables for RPC endpoints:
+
+```bash
+export FORK_URL_MAINNET="https://eth.llamarpc.com"
+export FORK_URL_GNOSIS="https://rpc.gnosischain.com"
+just test-e2e-forked
+```
+
+### Documentation Tests
+
+Verify code examples in comments stay current:
+
+```bash
+cargo test --doc
+```
+
+### Driver Tests
+
+Require increased stack size due to complex simulation requirements:
+
+```bash
+RUST_MIN_STACK=3145728 just test-driver
+```
+
+## Running Tests Locally
+
+Summary of `just` commands for each test type:
+
+| Command | Description |
+|---------|-------------|
+| `just test-unit` | Unit tests |
+| `just test-db` | Database tests |
+| `just test-e2e-local` | Local E2E tests |
+| `just test-e2e-forked` | Forked network tests |
+| `just test-driver` | Driver tests |
+
+## Best Practices
+
+- Keep tests fast
+- Test one behavior per test
+- Use descriptive names like `test_order_fails_when_expired`
+- Avoid flaky tests dependent on timing or external state
+- Write tests before implementation when possible
+
+## Troubleshooting
+
+### Using `cargo test` Instead of `cargo nextest`
+
+Tests may pass with `cargo test` but fail in CI. Always use `cargo nextest run`.
+
+### Database Connection Problems
+
+Ensure Docker Compose is running:
+
+```bash
+docker compose up -d db
+docker compose ps
+```
+
+### Missing RPC URLs for Forked Tests
+
+Set the required environment variables:
+
+```bash
+export FORK_URL_MAINNET="your-mainnet-rpc-url"
+export FORK_URL_GNOSIS="your-gnosis-rpc-url"
+```

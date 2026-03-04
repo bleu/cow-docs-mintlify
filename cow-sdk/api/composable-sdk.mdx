@@ -1,0 +1,41 @@
+---
+title: "Composable SDK"
+description: "Advanced conditional order types including TWAP orders and custom conditional mechanisms"
+---
+
+# Composable SDK
+
+## Core Purpose
+
+The Composable SDK enables sophisticated order management through advanced conditional order types, particularly TWAP (Time-Weighted Average Price) orders and custom conditional mechanisms using the ComposableCoW framework.
+
+## Key Components
+
+### ConditionalOrder Base Class
+
+This abstract foundation supports creating, managing, and validating orders. It provides methods like `poll()` to check order tradability, `isAuthorized()` to verify ownership, and calldata generation for on-chain interactions.
+
+### TWAP Implementation
+
+Time-weighted averaging splits large orders into parts executed at intervals. Configuration includes:
+- Token pair specification (sellToken/buyToken)
+- Total amounts across all parts
+- Number of parts and timing between executions
+- Start time options (immediate or scheduled)
+- Duration constraints per part
+
+### Multiplexer System
+
+Manages multiple conditional orders using Merkle tree structures, enabling batch order submission with proof generation for various storage locations (private, emitted, IPFS, Swarm, or Waku).
+
+## Installation & Setup
+
+```bash
+npm install @cowprotocol/sdk-composable
+```
+
+Register order types before using the multiplexer, then create instances specifying chain ID and proof location preferences.
+
+## Common Workflows
+
+Users typically create orders with specific parameters, validate them, retrieve creation calldata for on-chain execution, then use polling mechanisms to monitor execution readiness. The system integrates with Safe wallets and watchtowers for automated order management.

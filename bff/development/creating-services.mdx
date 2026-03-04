@@ -1,0 +1,148 @@
+---
+title: "Creating Services and Libraries"
+description: "Guide to scaffolding new services, applications, and libraries in the CoW Protocol BFF monorepo using NX generators"
+---
+
+# Creating Services and Libraries
+
+The CoW Protocol BFF monorepo uses NX generators to scaffold new projects with proper TypeScript, Docker, and configuration setup.
+
+## Available Generators
+
+Three main generators are available:
+
+| Command           | Purpose                      |
+| ----------------- | ---------------------------- |
+| `yarn new:fastify`| REST API services            |
+| `yarn new:node`   | Background workers, CLI tools |
+| `yarn new:lib`    | Shared libraries             |
+
+## Fastify API Services
+
+```bash
+yarn new:fastify
+```
+
+Running the Fastify generator creates a complete API structure with:
+
+- App configuration (`src/app/app.ts`)
+- Entry point (`src/main.ts`)
+- Docker setup
+- ESLint settings
+- Testing infrastructure
+
+### Route Organization
+
+Keep route schemas in separate files (e.g., `*.schemas.ts`). Do not inline JSON schemas in route handlers.
+
+### Post-Generation Steps
+
+1. Add the new service to `docker-compose.yml` with appropriate networking and environment configuration
+2. Update CI/CD pipeline configurations
+3. Configure environment variables
+
+## Node.js Applications
+
+```bash
+yarn new:node
+```
+
+The Node.js generator supports:
+
+- Background workers
+- Message queue consumers
+- Scheduled jobs
+- CLI tools
+
+### Bootstrap Pattern
+
+Applications typically include graceful shutdown handling:
+
+```typescript
+import { logger } from '@cowprotocol/shared';
+
+async function main() {
+  logger.info('Starting service...');
+
+  // Application logic here
+
+  process.on('SIGTERM', async () => {
+    logger.info('Shutting down gracefully...');
+    // Cleanup logic
+    process.exit(0);
+  });
+}
+
+main().catch((error) => {
+  logger.error({ err: error }, 'Fatal error');
+  process.exit(1);
+});
+```
+
+## Shared Libraries
+
+```bash
+yarn new:lib
+```
+
+Libraries enable code reuse across multiple applications.
+
+### Post-Generation Setup
+
+1. **TypeScript path alias** - Register in `tsconfig.base.json`:
+
+```json
+{
+  "paths": {
+    "@cowprotocol/my-library": ["libs/my-library/src/index.ts"]
+  }
+}
+```
+
+2. **Public API** - Define exports in `src/index.ts`:
+
+```typescript
+export { MyService } from './lib/my-service';
+export { MyRepository } from './lib/my-repository';
+export type { MyInterface } from './lib/types';
+```
+
+3. **Module boundaries** - Follow these rules:
+   - Apps can import from libs
+   - Libs should only import from other libs
+   - Never create circular dependencies
+
+### Existing Libraries
+
+The monorepo includes these shared libraries:
+
+| Library                     | Purpose                |
+| --------------------------- | ---------------------- |
+| `@cowprotocol/repositories` | Data access layer      |
+| `@cowprotocol/services`     | Business logic         |
+| `@cowprotocol/shared`       | Utilities and types    |
+| `@cowprotocol/notifications`| Notification templates |
+| `@cowprotocol/abis`         | Smart contract ABIs    |
+
+## Architecture Enforcement
+
+NX enforces module boundaries to maintain clean architecture:
+
+- Apps can import from libs
+- Libs should only import from other libs
+- Circular dependencies are prevented
+
+## Pre-Commit Checklist
+
+Before committing changes, run all checks:
+
+```bash
+# Run tests
+yarn test
+
+# Run linter
+yarn lint
+
+# Build the project
+yarn build
+```

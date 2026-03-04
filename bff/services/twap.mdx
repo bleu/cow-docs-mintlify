@@ -1,0 +1,146 @@
+---
+title: "TWAP Service"
+description: "A Fastify-based API for managing time-weighted average price orders in CoW Protocol"
+---
+
+# TWAP Service
+
+The TWAP service functions as a configuration storage layer for time-weighted average price orders. It manages TWAP order configurations by persisting order configurations and providing endpoints for CRUD operations across multiple blockchain networks.
+
+## Core Responsibilities
+
+* Storing TWAP order configurations and Safe transaction data
+* Providing query endpoints for wallet-specific orders
+* Validating order parameters before persistence
+* Reading orderbook data to monitor execution status
+* Supporting Mainnet (1), Goerli (5), and Gnosis Chain (100)
+
+## How to Run
+
+### Development
+
+```bash
+# Start PostgreSQL and orderbook databases via Docker Compose
+docker-compose up -d db
+
+# Run migrations
+yarn twap:migration:run
+
+# Launch the service (port 3001)
+yarn nx start twap
+```
+
+### Production
+
+```bash
+# Build the application
+yarn build twap
+
+# Start the production server
+node dist/apps/twap/main.js
+```
+
+### Docker
+
+```bash
+# Build the Docker image
+yarn docker-build twap
+
+# Run with environment variables for database connectivity
+docker run -p 3001:3000 \
+  -e DATABASE_HOST=postgres \
+  -e DATABASE_NAME=twap \
+  twap
+```
+
+## Configuration
+
+Environment variables control server and database settings:
+
+### Server
+
+| Variable | Default   |
+| -------- | --------- |
+| `HOST`   | localhost |
+| `PORT`   | 3001      |
+
+### TWAP Database
+
+| Variable            | Description       |
+| ------------------- | ----------------- |
+| `DATABASE_NAME`     | Database name     |
+| `DATABASE_HOST`     | Database host     |
+| `DATABASE_PORT`     | Database port     |
+| `DATABASE_USERNAME` | Database username |
+| `DATABASE_PASSWORD` | Database password |
+
+### Orderbook Database
+
+| Variable                     | Description            |
+| ---------------------------- | ---------------------- |
+| `ORDERBOOK_DATABASE_HOST`    | Orderbook DB host      |
+| `ORDERBOOK_DATABASE_PORT`    | Orderbook DB port      |
+| `ORDERBOOK_DATABASE_USERNAME`| Orderbook DB username  |
+| `ORDERBOOK_DATABASE_PASSWORD`| Orderbook DB password  |
+
+## API Endpoints
+
+### GET /:chainId/:walletAddress/orders
+
+Retrieves all TWAP orders for a specified wallet and chain. Returns an array of order objects containing token addresses, amounts, timing parameters, and wallet information.
+
+### POST /:chainId/:walletAddress/orders
+
+Creates a new TWAP order with parameters defining the selling token, buying token, recipient address, part amounts, timing schedule (start time, intervals, number of parts), and Safe transaction hash.
+
+## Data Models
+
+**Order Entity**: Stores TWAP configuration including tokens, amounts, recipient, timing parameters (t0, n, t, span), and app data hash.
+
+**Wallet Entity**: Represents Safe wallet addresses with one-to-many relationship to orders.
+
+**SafeTx Entity**: Persists Safe transaction metadata associated with order creation.
+
+## Database Architecture
+
+The service requires two PostgreSQL instances:
+
+1. **Primary database** - For order and wallet storage with TypeORM migrations
+2. **Read-only orderbook database** - For tracking execution and settlement events
+
+## Plugin System
+
+Fastify plugins provide modular functionality:
+
+* **Environment Plugin** - Validates required configuration variables
+* **ORM Plugin** - Manages TypeORM database connections
+* **Orderbook Plugin** - Establishes read-only orderbook access
+* **Swagger Plugin** - Generates OpenAPI documentation at `/documentation`
+
+## Execution Model
+
+The TWAP service functions primarily as storage infrastructure. Actual order execution involves:
+
+* **CoW Protocol Watchtower** - Monitoring and part creation
+* **Orderbook** - Matching and settlement
+* **Safe infrastructure** - Transaction execution
+
+## Integration
+
+The main API service can proxy TWAP requests using HTTP forwarding, exposing TWAP functionality through a unified API gateway via the `TWAP_BASE_URL` configuration.
+
+## Development Commands
+
+```bash
+# Local development
+nx start twap
+
+# Production builds
+nx build twap
+
+# Testing
+nx test twap
+
+# Docker containerization
+nx docker-build twap
+```

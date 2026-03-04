@@ -1,0 +1,173 @@
+---
+title: "Token Endpoints"
+description: "API endpoints for retrieving token information including USD pricing and holder data"
+---
+
+# Token Endpoints
+
+Endpoints for retrieving token information including USD pricing and holder data across supported blockchain networks.
+
+## Get Token USD Price
+
+Retrieve current USD pricing for any ERC-20 token.
+
+**Endpoint:** `GET /{chainId}/tokens/{tokenAddress}/usdPrice`
+
+### Path Parameters
+
+- **chainId** (required): Network identifier such as `1`, `mainnet`, `100`, or `gnosis`
+- **tokenAddress** (required): Token contract address (checksummed or lowercase); use `-` for native tokens
+
+### Response
+
+| Field | Type   | Description                  |
+| ----- | ------ | ---------------------------- |
+| price | number | Current token value in USD   |
+
+### Code Examples
+
+```bash
+curl https://api.cow.fi/1/tokens/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2/usdPrice
+```
+
+```javascript
+const response = await fetch(
+  'https://api.cow.fi/1/tokens/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2/usdPrice'
+);
+const data = await response.json();
+console.log(data.price);
+```
+
+```python
+import requests
+
+response = requests.get(
+    'https://api.cow.fi/1/tokens/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2/usdPrice'
+)
+data = response.json()
+print(data['price'])
+```
+
+### Response Example
+
+```json
+{
+  "price": 3561.1267842
+}
+```
+
+### Error Response (404)
+
+```json
+{
+  "message": "Price not found"
+}
+```
+
+---
+
+## Get Token Top Holders
+
+Retrieve the list of principal token holders.
+
+**Endpoint:** `GET /{chainId}/tokens/{tokenAddress}/topHolders`
+
+### Path Parameters
+
+- **chainId** (required): Network identifier like `1`, `100`, or `11155111`
+- **tokenAddress** (required): Token contract address in any standard format
+
+### Response
+
+Returns an array of holder objects:
+
+| Field   | Type   | Description                            |
+| ------- | ------ | -------------------------------------- |
+| address | string | Holder wallet address                  |
+| balance | string | Token quantity in wei-equivalent units  |
+
+### Code Examples
+
+```bash
+curl https://api.cow.fi/1/tokens/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2/topHolders
+```
+
+```javascript
+const response = await fetch(
+  'https://api.cow.fi/1/tokens/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2/topHolders'
+);
+const holders = await response.json();
+console.log(`Found ${holders.length} holders`);
+```
+
+```python
+import requests
+
+response = requests.get(
+    'https://api.cow.fi/1/tokens/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2/topHolders'
+)
+holders = response.json()
+print(f"Found {len(holders)} holders")
+```
+
+### Response Example
+
+```json
+[
+  {
+    "address": "0x1234567890abcdef1234567890abcdef12345678",
+    "balance": "1000000000000000000000"
+  },
+  {
+    "address": "0xabcdef1234567890abcdef1234567890abcdef12",
+    "balance": "500000000000000000000"
+  }
+]
+```
+
+### Error Response (404)
+
+```json
+{
+  "message": "Token holders not found"
+}
+```
+
+---
+
+## Notes
+
+### Native Token Pricing
+
+For native assets like ETH or xDAI, substitute `-` as the token address:
+
+```bash
+curl https://api.cow.fi/1/tokens/-/usdPrice
+```
+
+### Address Format Flexibility
+
+Accepted formats include both checksummed and lowercase variations. The system normalizes addresses automatically.
+
+### Caching Behavior
+
+Price data responses implement caching. Examine the `Cache-Control` header for cache duration details.
+
+### Network Support
+
+Available on all supported networks with varying data completeness:
+
+| Network          | Coverage |
+| ---------------- | -------- |
+| Ethereum Mainnet | Complete |
+| Gnosis Chain     | Complete |
+| Sepolia          | Partial  |
+
+### Error Handling
+
+| Status | Cause                | Recommended Action                      |
+| ------ | -------------------- | --------------------------------------- |
+| 404    | Token not located    | Confirm token address and chain ID      |
+| 404    | Pricing unavailable  | Token may lack oracle-provided price    |
+| 400    | Malformed address    | Provide valid Ethereum address format   |
+| 500    | Server issue         | Attempt request again after brief delay |

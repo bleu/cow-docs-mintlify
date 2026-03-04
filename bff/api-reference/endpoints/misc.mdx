@@ -1,0 +1,53 @@
+---
+title: "Miscellaneous Endpoints"
+description: "Utility endpoints for the BFF API service, including version information, root redirects, and TWAP proxy"
+---
+
+# Miscellaneous Endpoints
+
+Utility endpoints for the BFF API service.
+
+## GET /about
+
+Returns service information.
+
+### Response Fields
+
+| Field          | Type   | Description                                   |
+| -------------- | ------ | --------------------------------------------- |
+| name           | string | Always returns `"BFF API"`                    |
+| version        | string | Set via `VERSION` environment variable        |
+| gitCommitHash  | string | Optional field showing the deployed git commit |
+
+### Example Response
+
+```json
+{
+  "name": "BFF API",
+  "version": "0.24.0",
+  "gitCommitHash": "abc123def456"
+}
+```
+
+The endpoint caches responses for 10 minutes.
+
+---
+
+## GET /
+
+The root endpoint redirects users to the interactive API documentation at `/docs/static/index.html` via a 307 redirect.
+
+---
+
+## TWAP Proxy
+
+An optional proxying feature for Time-Weighted Average Price requests. Enable it by setting the `TWAP_BASE_URL` environment variable to point to your TWAP service.
+
+When configured, requests to `/twap/*` routes are forwarded to the specified service. For example, a request to `/twap/orders` would proxy to the configured base URL's `/orders` endpoint.
+
+The proxy only functions when `TWAP_BASE_URL` is explicitly set; otherwise, this feature remains unavailable.
+
+## Related Resources
+
+* [Environment Variables](/deployment/environment-variables) - Configuration reference
+* [TWAP Service](/services/twap) - Standalone TWAP service documentation

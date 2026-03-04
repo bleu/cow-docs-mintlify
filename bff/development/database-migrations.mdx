@@ -1,0 +1,182 @@
+---
+title: "Database Migrations"
+description: "Guide for creating, running, and managing TypeORM database migrations in the CoW Protocol BFF"
+---
+
+# Database Migrations
+
+The CoW Protocol BFF uses TypeORM for database management through the `libs/repositories` library. Migrations serve as version control for your database schema, enabling teams to track changes, apply them consistently across environments, and rollback when necessary.
+
+## Core Commands
+
+| Command                    | Description                           |
+| -------------------------- | ------------------------------------- |
+| `yarn typeorm migration:create src/migrations/migration-name` | Create empty migration file |
+| `yarn migration:generate`  | Auto-generate from entity changes     |
+| `yarn migration:run`       | Apply pending migrations              |
+| `yarn migration:revert`    | Undo the last migration               |
+| `yarn typeorm migration:show` | Display migration history          |
+
+## Manual Migration Creation
+
+Generate an empty file and write SQL directly:
+
+```bash
+yarn typeorm migration:create src/migrations/add-user-table
+```
+
+This creates a migration file with `up()` and `down()` methods:
+
+```typescript
+import { MigrationInterface, QueryRunner } from 'typeorm';
+
+export class AddUserTable1234567890 implements MigrationInterface {
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
+      CREATE TABLE "user" (
+        "id" SERIAL PRIMARY KEY,
+        "address" VARCHAR NOT NULL UNIQUE,
+        "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+  }
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP TABLE "user"`);
+  }
+}
+```
+
+## Auto-Generated Migrations
+
+Define TypeORM entities first, then generate migration files based on schema differences:
+
+```bash
+yarn migration:generate
+```
+
+This compares your entity definitions against the current database schema and produces the necessary SQL.
+
+## Running Migrations
+
+```bash
+# Apply all pending migrations
+yarn migration:run
+
+# Check migration status
+yarn typeorm migration:show
+```
+
+## Reverting Migrations
+
+```bash
+# Undo the last migration
+yarn migration:revert
+```
+
+**Important**: Only the **last** migration can be reverted. To undo multiple migrations, run the revert command multiple times.
+
+## Common Patterns
+
+### Adding a Table
+
+```typescript
+public async up(queryRunner: QueryRunner): Promise<void> {
+  await queryRunner.query(`
+    CREATE TABLE "notification" (
+      "id" SERIAL PRIMARY KEY,
+      "account" VARCHAR NOT NULL,
+      "type" VARCHAR NOT NULL,
+      "message" TEXT,
+      "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+}
+
+public async down(queryRunner: QueryRunner): Promise<void> {
+  await queryRunner.query(`DROP TABLE "notification"`);
+}
+```
+
+### Adding a Column
+
+```typescript
+public async up(queryRunner: QueryRunner): Promise<void> {
+  await queryRunner.query(`
+    ALTER TABLE "user" ADD COLUMN "email" VARCHAR
+  `);
+}
+
+public async down(queryRunner: QueryRunner): Promise<void> {
+  await queryRunner.query(`
+    ALTER TABLE "user" DROP COLUMN "email"
+  `);
+}
+```
+
+### Renaming a Column
+
+```typescript
+public async up(queryRunner: QueryRunner): Promise<void> {
+  await queryRunner.query(`
+    ALTER TABLE "user" RENAME COLUMN "name" TO "display_name"
+  `);
+}
+
+public async down(queryRunner: QueryRunner): Promise<void> {
+  await queryRunner.query(`
+    ALTER TABLE "user" RENAME COLUMN "display_name" TO "name"
+  `);
+}
+```
+
+### Data Migration
+
+```typescript
+public async up(queryRunner: QueryRunner): Promise<void> {
+  // Step 1: Add new column
+  await queryRunner.query(`ALTER TABLE "order" ADD COLUMN "status" VARCHAR`);
+
+  // Step 2: Migrate data
+  await queryRunner.query(`UPDATE "order" SET "status" = 'active' WHERE "expired" = false`);
+  await queryRunner.query(`UPDATE "order" SET "status" = 'expired' WHERE "expired" = true`);
+
+  // Step 3: Make column non-nullable
+  await queryRunner.query(`ALTER TABLE "order" ALTER COLUMN "status" SET NOT NULL`);
+}
+```
+
+## Best Practices
+
+1. **Always implement complete `down()` methods** for rollback capability
+2. **Test migrations bidirectionally** before production deployment
+3. **Never modify migrations after production deployment** - create new migrations instead
+4. **Use descriptive naming** conventions (e.g., `add-user-email-index`)
+5. **Back up databases** before production migrations
+6. **Make changes backward-compatible** through staged deployments
+
+## Production Deployment
+
+The recommended deployment sequence:
+
+1. **Back up the database**
+2. **Run migrations before deploying application code**:
+   ```bash
+   yarn migration:run
+   ```
+3. **Deploy the new application version**
+4. **Monitor for issues** post-deployment
+5. **Rollback if needed**:
+   ```bash
+   yarn migration:revert
+   ```
+
+## Naming Conventions
+
+Use clear, action-oriented file names:
+
+- `add-user-table`
+- `add-order-status-column`
+- `create-notification-index`
+- `rename-user-name-to-display-name`
+- `migrate-order-status-data`

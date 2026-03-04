@@ -1,0 +1,200 @@
+---
+title: "Authentication"
+description: "Authentication and authorization for the CoW Protocol BFF API"
+---
+
+# Authentication
+
+The CoW Protocol BFF API is designed to be accessible without traditional API key authentication for most read operations. However, certain operations require cryptographic signatures to verify ownership.
+
+## Public Endpoints
+
+Most API endpoints are publicly accessible without authentication:
+
+* Token information and pricing
+* Market data and slippage calculations
+* Pool and yield information
+* Transaction simulation
+* Account balance queries
+* Affiliate statistics (read-only)
+
+These endpoints can be accessed directly with HTTP requests:
+
+```bash
+curl https://api.cow.fi/1/tokens/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2/usdPrice
+```
+
+## Signature-Based Authentication
+
+### Affiliate Program Registration
+
+Creating an affiliate code requires EIP-712 signature verification to prove wallet ownership. This ensures that only the wallet owner can bind an affiliate code to their address.
+
+#### EIP-712 Typed Data Structure
+
+When registering an affiliate code, you must sign the following typed data:
+
+**Domain:**
+
+```json
+{
+  "name": "CoW Swap Affiliate",
+  "version": "1"
+}
+```
+
+**Types:**
+
+```json
+{
+  "AffiliateCode": [
+    { "name": "walletAddress", "type": "address" },
+    { "name": "code", "type": "string" },
+    { "name": "chainId", "type": "uint256" }
+  ]
+}
+```
+
+**Message:**
+
+```json
+{
+  "walletAddress": "0x...",
+  "code": "YOUR-CODE",
+  "chainId": 1
+}
+```
+
+#### Signature Generation Example
+
+Using ethers.js v6:
+
+```javascript
+import { ethers } from 'ethers';
+
+const domain = {
+  name: 'CoW Swap Affiliate',
+  version: '1'
+};
+
+const types = {
+  AffiliateCode: [
+    { name: 'walletAddress', type: 'address' },
+    { name: 'code', type: 'string' },
+    { name: 'chainId', type: 'uint256' }
+  ]
+};
+
+const message = {
+  walletAddress: '0x1234...', // Your wallet address
+  code: 'MYCODE',
+  chainId: 1
+};
+
+const signer = await provider.getSigner();
+const signature = await signer.signTypedData(domain, types, message);
+```
+
+#### Signature Verification
+
+The API verifies signatures using the following process:
+
+1. **EOA (Externally Owned Account)**: Standard ECDSA signature verification
+2. **Smart Contract Wallets**: ERC-1271 signature verification
+
+The signature is verified on Ethereum Mainnet (chainId: 1) for all affiliate registrations, regardless of the chain where trades occur.
+
+### Making Authenticated Requests
+
+To register an affiliate code, include the signature in the request body:
+
+```bash
+curl -X POST https://api.cow.fi/affiliate/0x1234.../  \
+  -H "Content-Type: application/json" \
+  -d '{
+    "walletAddress": "0x1234...",
+    "code": "MYCODE",
+    "signedMessage": "0xabcd..."
+  }'
+```
+
+## CORS Policy
+
+The API supports Cross-Origin Resource Sharing (CORS) for browser-based applications:
+
+```
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Headers: Cache-Control
+```
+
+## Error Responses
+
+### 401 Unauthorized
+
+Returned when signature verification fails:
+
+```json
+{
+  "message": "Affiliate has invalid signature"
+}
+```
+
+### 400 Bad Request
+
+Returned when wallet address mismatch occurs:
+
+```json
+{
+  "message": "Affiliate wallet address mismatch"
+}
+```
+
+### 409 Conflict
+
+Returned when attempting to register an affiliate code that already exists:
+
+```json
+{
+  "message": "Affiliate code already taken"
+}
+```
+
+## Security Considerations
+
+### Signature Replay Protection
+
+The API stores signed messages to prevent replay attacks. Each signature can only be used once to register an affiliate code.
+
+### Chain ID Validation
+
+All affiliate signatures are verified on Ethereum Mainnet (chainId: 1). This prevents cross-chain replay attacks and ensures consistency.
+
+### Address Normalization
+
+All Ethereum addresses are normalized to lowercase to prevent case-sensitivity issues during verification.
+
+## Rate Limiting
+
+While the API doesn't require API keys, reasonable rate limits are enforced to prevent abuse:
+
+* **Read operations**: Higher limits with caching
+* **Write operations**: Lower limits to prevent spam
+* **SSE connections**: Limited concurrent connections per IP
+
+## Best Practices
+
+1. **Cache responses**: Respect `Cache-Control` headers to reduce load
+2. **Use appropriate chains**: Query data from the correct network
+3. **Handle errors gracefully**: Implement retry logic with exponential backoff
+4. **Validate inputs**: Ensure addresses and parameters are properly formatted
+5. **Secure signatures**: Never share private keys or expose signing mechanisms
+
+## Environment Variables
+
+Some features require configuration via environment variables:
+
+* **CMS_ENABLED**: Enable/disable affiliate program features
+* **DUNE_API_KEY**: Enable/disable statistics endpoints
+* **DATABASE_URL**: Required for balance tracking and notifications
+
+Public API endpoints will return appropriate error messages if required services are unavailable.

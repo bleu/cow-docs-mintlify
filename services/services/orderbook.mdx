@@ -1,0 +1,71 @@
+---
+title: "Orderbook Service"
+description: "CoW Protocol's primary user-facing interface for order submission, validation, quoting, and historical queries"
+---
+
+# Orderbook Service
+
+The Orderbook service functions as CoW Protocol's primary user-facing interface, providing HTTP APIs for order submission, validation, quoting, and historical queries. It validates orders against multiple criteria before persisting them to PostgreSQL for consumption by downstream services.
+
+## Core Responsibilities
+
+The service manages four key functions:
+
+1. **Order validation** - checking signatures, balances, token approvals, and parameters
+2. **Order persistence** - storing valid orders in PostgreSQL
+3. **Price quoting** - generating trading quotes through multiple estimation backends
+4. **Data retrieval** - enabling users to check order status and trade history
+
+## API Endpoints
+
+The REST API includes:
+
+- `POST /api/v1/orders` - submit new orders
+- `POST /api/v1/quote` - request trading quotes
+- `GET /api/v1/orders/{uid}` - retrieve order details
+- `GET /api/v1/account/{owner}/orders` - list user orders
+- `GET /api/v1/trades` - query historical trades
+- `DELETE /api/v1/orders/{uid}` - cancel orders
+
+## Validation Architecture
+
+The service performs extensive checks including:
+
+- **Signature verification**: EIP-712, EIP-1271, PreSign
+- **Balance confirmation**: Verify the user has sufficient token balance
+- **Token allowance validation**: Ensure the settlement contract is approved
+- **Banned user detection**: Chainalysis integration for compliance
+- **Gas limit enforcement**: Prevent orders that would exceed gas limits
+
+## Infrastructure
+
+### Database
+
+PostgreSQL handles order storage, trade history, caching, and logging. Optional read replicas can be configured for query offloading.
+
+### Key Dependencies
+
+- **Ethereum RPC nodes** for blockchain state
+- **External solver APIs** for pricing
+- **Smart contract integrations**: Settlement, WETH, Signatures contracts
+
+## Deployment
+
+The service runs via Cargo with required parameters including database URLs, configuration file path, and Ethereum node endpoints:
+
+```bash
+cargo run --bin orderbook -- \
+  --db-url "postgresql://user:pass@localhost/cow" \
+  --node-url "https://eth.llamarpc.com" \
+  --config config/orderbook.toml
+```
+
+Docker deployment is also supported through containerized images.
+
+## Scaling
+
+- Multiple orderbook instances can run concurrently against the same database
+- Horizontally scalable to handle high API traffic
+- Read replicas can offload query load from the primary database
+
+**Source**: `crates/orderbook/`

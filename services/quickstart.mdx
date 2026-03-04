@@ -1,0 +1,101 @@
+---
+title: "Quickstart"
+description: "Launch CoW Protocol Services locally using Docker Compose in fork mode for development and testing"
+---
+
+# Quickstart
+
+This guide walks you through launching CoW Protocol Services locally using Docker Compose. The environment operates in "fork mode," allowing developers to test against a forked blockchain with real token contracts while maintaining isolation.
+
+## Prerequisites
+
+You will need:
+
+- **Docker Desktop/Engine** with Docker Compose
+- **An Ethereum RPC endpoint** (e.g., Alchemy, Infura, or a local node)
+- **Rust toolchain** (optional, for local development)
+
+<Warning>
+RPC demand is very high. Free tier RPC endpoints may rate-limit or perform poorly. We recommend either local nodes or paid services.
+</Warning>
+
+## Setup Steps
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/cowprotocol/services.git
+cd services
+```
+
+### 2. Configure Environment Variables
+
+Set your RPC endpoint and chain ID:
+
+```bash
+cp .env.example .env
+# Edit .env with your RPC endpoint and desired chain ID
+```
+
+### 3. Launch Services
+
+Start all services using Docker Compose:
+
+```bash
+docker compose up
+```
+
+On macOS/Windows, use the non-interactive compose file for better performance:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.noninteractive.yml up
+```
+
+### 4. Monitor Logs
+
+Wait until all services initialize properly. You should see logs from the orderbook, autopilot, driver, and solver services.
+
+## Access Points
+
+Once running, you can reach the following interfaces:
+
+| Service | URL |
+|---------|-----|
+| CoW Swap UI | [localhost:8000](http://localhost:8000) |
+| CoW Explorer | [localhost:8001](http://localhost:8001) |
+| Orderbook API | [localhost:8080](http://localhost:8080) |
+| Database UI (Adminer) | [localhost:8082](http://localhost:8082) |
+| Otterscan Block Explorer | [localhost:8003](http://localhost:8003) |
+| Anvil RPC Node | [localhost:8545](http://localhost:8545) |
+
+## Testing Workflow
+
+### Test Accounts
+
+The playground provides test accounts with 10,000 ETH each, derived from the standard mnemonic:
+
+```
+test test test test test test test test test test test junk
+```
+
+<Warning>
+Never use these keys on real networks! They are publicly known test accounts.
+</Warning>
+
+### Place a Test Swap
+
+1. **Wrap ETH to WETH** using the Anvil RPC node
+2. **Place a swap order** through the CoW Swap UI or directly via the Orderbook API
+3. **Monitor settlement** through service logs and the block explorer
+
+## Network Support
+
+The setup supports multiple chains by adjusting environment variables and restarting services:
+
+- Ethereum Mainnet
+- Gnosis Chain
+- Arbitrum One
+- Base
+- Polygon
+
+Simply update the `CHAIN_ID` and `RPC_URL` in your `.env` file and restart Docker Compose.

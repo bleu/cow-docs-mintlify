@@ -1,0 +1,422 @@
+---
+title: "Repositories"
+description: "Data access layer for the CoW Protocol BFF with support for multiple data sources, caching, and fallback strategies"
+---
+
+# Repositories
+
+The repositories library provides a flexible data access layer with support for multiple data sources, caching, and fallback strategies. All repositories follow a consistent pattern using TypeScript interfaces and InversifyJS for dependency injection.
+
+## Architecture
+
+The repository layer follows these key patterns:
+
+* **Interface-based design**: Each repository defines a clear interface contract
+* **Fallback strategy**: Multiple implementations can be chained for resilience
+* **Caching layer**: Transparent caching with configurable TTL
+* **Dependency injection**: Uses InversifyJS with Symbol-based identifiers
+
+## Core Repositories
+
+### ERC20 Repository
+
+Retrieves ERC20 token information (name, symbol, decimals) from various sources.
+
+**Parameters:**
+- `chainId` (SupportedChainId, required) - The blockchain network ID
+- `tokenAddress` (string, required) - The token contract address
+
+**Response Fields:**
+- `address` (string) - The token contract address
+- `name` (string) - Token name (e.g., "USD Coin")
+- `symbol` (string) - Token symbol (e.g., "USDC")
+- `decimals` (number) - Token decimals (e.g., 6 for USDC)
+
+#### Implementations
+
+* **Erc20RepositoryViem**: Queries blockchain via Viem RPC client
+* **Erc20RepositoryNative**: Returns native token information
+* **Erc20RepositoryFallback**: Chains multiple repositories
+* **Erc20RepositoryCache**: Adds caching layer with 24-hour TTL
+
+```typescript
+import { Erc20Repository, erc20RepositorySymbol } from '@cowprotocol/repositories';
+
+const erc20: Erc20 | null = await erc20Repository.get(
+  SupportedChainId.MAINNET,
+  '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' // USDC
+);
+```
+
+### USD Repository
+
+Fetches USD price data for tokens across different time strategies.
+
+**Parameters:**
+- `chainIdOrSlug` (string, required) - Chain ID or slug identifier (e.g., "mainnet", "gnosis")
+- `tokenAddress` (string) - Token contract address (optional for native tokens)
+- `priceStrategy` ('5m' | 'hourly' | 'daily') - Time interval for historical prices
+
+**Response Fields:**
+- `price` (number) - Current USD price of the token
+- `pricePoints` (PricePoint[]) - Historical price data with timestamps
+
+#### Price Point Structure
+
+```typescript
+interface PricePoint {
+  date: Date;        // Timestamp of price point
+  price: number;     // USD price at that time
+  volume: number;    // Trading volume
+}
+```
+
+#### Implementations
+
+* **UsdRepositoryCoingecko**: Fetches prices from CoinGecko API
+* **UsdRepositoryCow**: Uses CoW Protocol API for price data
+* **UsdRepositoryFallback**: Falls back from Coingecko to CoW API
+* **UsdRepositoryCache**: Caches with 2-minute TTL for values, 30-minute for null results
+
+```typescript
+import { UsdRepository, usdRepositorySymbol } from '@cowprotocol/repositories';
+
+const price = await usdRepository.getUsdPrice('mainnet', '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48');
+
+const historicalPrices = await usdRepository.getUsdPrices(
+  'mainnet',
+  '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+  'hourly'
+);
+```
+
+### Token Holder Repository
+
+Retrieves top token holders for a given token.
+
+**Parameters:**
+- `chainId` (SupportedChainId, required) - The blockchain network ID
+- `tokenAddress` (string, required) - The token contract address
+
+**Response Fields:**
+- `address` (string) - Holder wallet address
+- `balance` (string) - Token balance as a string (to handle large numbers)
+
+#### Implementations
+
+* **TokenHolderRepositoryMoralis**: Primary source via Moralis API
+* **TokenHolderRepositoryEthplorer**: Fallback via Ethplorer API
+* **TokenHolderRepositoryFallback**: Chains Moralis -> Ethplorer
+* **TokenHolderRepositoryCache**: 2-minute cache for successful results
+
+```typescript
+const holders = await tokenHolderRepository.getTopTokenHolders(
+  SupportedChainId.MAINNET,
+  '0xDEf1CA1fb7FBcDC777520aa7f396b4E015F497aB'
+);
+```
+
+### User Balance Repository
+
+Fetches user token balances on-chain.
+
+**Parameters:**
+- `chainId` (SupportedChainId, required) - The blockchain network ID
+- `userAddress` (string, required) - User wallet address
+- `tokenAddress` (string, required) - Token contract address
+
+**Response Fields:**
+- `balance` (bigint) - Token balance in base units
+
+#### Implementations
+
+* **UserBalanceRepositoryViem**: Queries via Viem RPC client
+* **UserBalanceRepositoryCache**: 1-second cache for balance queries
+
+### Simulation Repository
+
+Simulates transaction bundles using Tenderly.
+
+**Parameters:**
+- `chainId` (SupportedChainId, required) - The blockchain network ID
+- `simulationsInput` (SimulationInput[], required) - Array of transactions to simulate
+
+**Response Fields:**
+- `link` (string) - Tenderly dashboard link to simulation results
+- `status` (boolean) - Whether simulation succeeded
+- `gasUsed` (string) - Total gas consumed by the simulation
+- `cumulativeBalancesDiff` (`Record<string, Record<string, string>>`) - Balance changes by address and token
+- `stateDiff` (StateDiff[]) - State changes from the simulation
+
+#### Implementation
+
+* **SimulationRepositoryTenderly**: Integrates with Tenderly simulation API
+
+```typescript
+const results = await simulationRepository.postBundleSimulation(
+  SupportedChainId.MAINNET,
+  [
+    {
+      from: '0x...',
+      to: '0x...',
+      input: '0x...',
+      value: '0',
+      gas: 100000
+    }
+  ]
+);
+```
+
+### Cache Repository
+
+Core caching abstraction used by other repositories.
+
+**Parameters:**
+- `key` (string, required) - Cache key identifier
+- `value` (string, required) - Serialized value to cache
+- `ttl` (number, required) - Time-to-live in seconds
+
+#### Implementations
+
+* **CacheRepositoryRedis**: Production caching with Redis
+* **CacheRepositoryMemory**: In-memory cache for development
+
+```typescript
+import { getCacheKey } from '@cowprotocol/repositories';
+
+const key = getCacheKey('repos', 'erc20', 'get', chainId, tokenAddress);
+await cacheRepository.set(key, JSON.stringify(value), 3600);
+
+const cached = await cacheRepository.get(key);
+```
+
+## Database Repositories
+
+### Indexer State Repository
+
+Manages blockchain indexer state for tracking processed blocks.
+
+* **IndexerStateRepositoryPostgres**: PostgreSQL-backed implementation
+* **IndexerStateRepositoryOrm**: TypeORM-based alternative
+
+### OnChain Placed Orders Repository
+
+Stores and retrieves on-chain order data.
+
+* **OnChainPlacedOrdersRepositoryPostgres**: PostgreSQL storage
+
+### Expired Orders Repository
+
+Tracks expired orders for cleanup and monitoring.
+
+* **ExpiredOrdersRepositoryPostgres**: PostgreSQL storage
+
+### Orders App Data Repository
+
+Stores application-specific order metadata.
+
+* **OrdersAppDataRepositoryPostgres**: PostgreSQL storage
+
+## Integration Repositories
+
+### Affiliates Repository
+
+Fetches affiliate program configuration.
+
+* **AffiliatesRepositoryCms**: Retrieves from CMS API
+
+### Dune Repository
+
+Interacts with Dune Analytics for querying blockchain data.
+
+**Parameters:**
+- `queryId` (number, required) - Dune query identifier
+- `parameters` (`Record<string, unknown>`) - Query parameters
+- `performance` ('medium' | 'large') - Execution tier
+
+**Response Fields:**
+- `execution_id` (string) - Unique execution identifier
+- `rows` (T[]) - Query result rows
+
+```typescript
+// Execute a Dune query
+const execution = await duneRepository.executeQuery({
+  queryId: 123456,
+  parameters: { chain: 'ethereum' },
+  performance: 'medium'
+});
+
+// Wait for and fetch results
+const results = await duneRepository.waitForExecution({
+  executionId: execution.execution_id,
+  maxWaitTimeMs: 60000
+});
+```
+
+### Push Notifications Repositories
+
+Manages push notification subscriptions and delivery.
+
+* **PushSubscriptionsRepositoryCms**: Stores subscriptions in CMS
+* **PushNotificationsRepositoryRabbit**: Publishes via RabbitMQ
+
+### Token Balances Repository
+
+Bulk token balance fetching for multiple tokens.
+
+* **TokenBalancesRepositoryAlchemy**: Uses Alchemy API
+* **TokenBalancesRepositoryMoralis**: Alternative via Moralis
+
+## Factory Functions
+
+The `factories.ts` module provides factory functions for creating pre-configured repository instances:
+
+```typescript
+import {
+  getCacheRepository,
+  getErc20Repository,
+  getUsdRepository,
+  getTokenHolderRepository,
+  getUserBalanceRepository,
+  getSimulationRepository
+} from '@cowprotocol/services';
+
+// Automatically configures Redis or memory cache
+const cache = getCacheRepository();
+
+// Returns Erc20RepositoryCache wrapping a fallback chain
+const erc20Repo = getErc20Repository(cache);
+
+// Returns UsdRepositoryFallback with Coingecko -> CoW API
+const usdRepo = getUsdRepository(cache, erc20Repo);
+```
+
+## Fallback Strategy Pattern
+
+Many repositories implement a fallback pattern for resilience:
+
+```typescript
+@injectable()
+export class UsdRepositoryFallback implements UsdRepository {
+  constructor(private usdRepositories: UsdRepository[]) {}
+
+  async getUsdPrice(chainIdOrSlug: string, tokenAddress: string): Promise<number | null> {
+    for (let i = 0; i < this.usdRepositories.length; i++) {
+      const price = await this.usdRepositories[i].getUsdPrice(chainIdOrSlug, tokenAddress);
+      if (price !== null) {
+        return price;
+      }
+      logger.info(`Falling back to ${this.usdRepositories[i + 1].name}`);
+    }
+    return null;
+  }
+}
+```
+
+## Cache Strategy Pattern
+
+Caching repositories wrap underlying implementations:
+
+```typescript
+@injectable()
+export class Erc20RepositoryCache implements Erc20Repository {
+  constructor(
+    private proxy: Erc20Repository,
+    private cache: CacheRepository,
+    cacheName: string,
+    private cacheTimeSeconds: number
+  ) {}
+
+  async get(chainId: SupportedChainId, tokenAddress: string): Promise<Erc20 | null> {
+    const cacheKey = getCacheKey('repos', 'erc20', 'get', chainId, tokenAddress);
+    const cached = await this.cache.get(cacheKey);
+    if (cached) {
+      return cached === 'null' ? null : JSON.parse(cached);
+    }
+
+    const value = await this.proxy.get(chainId, tokenAddress);
+
+    await this.cache.set(
+      cacheKey,
+      value === null ? 'null' : JSON.stringify(value),
+      this.cacheTimeSeconds
+    );
+
+    return value;
+  }
+}
+```
+
+## Dependency Injection
+
+Repositories use InversifyJS symbols for injection:
+
+```typescript
+export const erc20RepositorySymbol = Symbol.for('Erc20Repository');
+export const usdRepositorySymbol = Symbol.for('UsdRepository');
+export const cacheRepositorySymbol = Symbol.for('CacheRepository');
+
+// In a service
+@injectable()
+export class MyService {
+  constructor(
+    @inject(erc20RepositorySymbol) private erc20Repo: Erc20Repository,
+    @inject(usdRepositorySymbol) private usdRepo: UsdRepository
+  ) {}
+}
+```
+
+## Data Sources
+
+The repositories library integrates with multiple external data sources:
+
+* **Blockchain RPC**: Via Viem clients for on-chain data
+* **CoinGecko**: Cryptocurrency price data
+* **CoW Protocol API**: Order book and price data
+* **Moralis**: Token holder and balance data
+* **Ethplorer**: Token analytics fallback
+* **Alchemy**: Token balances and metadata
+* **Tenderly**: Transaction simulation
+* **Dune Analytics**: Blockchain analytics queries
+* **PostgreSQL**: Persistent order and indexer state
+* **Redis**: High-performance caching
+* **RabbitMQ**: Message queue for notifications
+* **CMS**: Content and configuration management
+
+## Utilities
+
+### Cache Key Generation
+
+```typescript
+import { getCacheKey } from '@cowprotocol/repositories';
+
+const key = getCacheKey('repos', 'usd', 'getPrice', chainId, tokenAddress);
+// Result: "repos:usd:getprice:1:0xa0b8..."
+```
+
+### Database Connection
+
+```typescript
+import { createNewPostgresPool } from '@cowprotocol/repositories';
+
+const pool = createNewPostgresPool();
+```
+
+### Viem Clients
+
+```typescript
+import { getViemClients } from '@cowprotocol/repositories';
+
+const clients = getViemClients();
+const mainnetClient = clients[SupportedChainId.MAINNET];
+```
+
+## Best Practices
+
+1. **Always use factory functions** in production for proper configuration
+2. **Leverage caching** to reduce external API calls and improve performance
+3. **Implement fallbacks** for critical data fetching operations
+4. **Use dependency injection** for testability and flexibility
+5. **Cache null values** separately to avoid repeated failed lookups
+6. **Set appropriate TTLs** based on data volatility (24h for token info, 2min for prices)
+7. **Handle errors gracefully** by returning null instead of throwing

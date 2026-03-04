@@ -1,0 +1,122 @@
+---
+title: "Quickstart"
+description: "Execute your first token swap using the CoW Protocol SDK in under five minutes"
+---
+
+# CoW Protocol SDK Quickstart Guide
+
+This documentation provides a comprehensive walkthrough for executing your first token swap using the CoW Protocol SDK in under five minutes.
+
+## Key Prerequisites
+
+Before starting, ensure you have:
+- Node.js version 16 or higher
+- A wallet containing a private key for transaction signing
+- An RPC endpoint URL (Alchemy, Infura, or Tenderly)
+- Test tokens on Sepolia testnet
+
+<Warning>
+Test on testnets before attempting mainnet transactions.
+</Warning>
+
+## Installation & Setup
+
+The SDK requires three core packages:
+
+```bash
+npm install @cowprotocol/cow-sdk @cowprotocol/sdk-viem-adapter viem
+```
+
+Environment variables should be configured in a `.env` file with your `PRIVATE_KEY` and `RPC_URL`. Never commit this file to version control.
+
+## Web3 Adapter Configuration
+
+The guide provides implementations for three frameworks:
+- **Viem**: Using `createPublicClient` and `privateKeyToAccount`
+- **Ethers v6**: Using `JsonRpcProvider` and `Wallet`
+- **Ethers v5**: Using `ethers.providers.JsonRpcProvider`
+
+Each adapter requires a provider (read-only client) and signer (wallet with private key).
+
+## Core Swap Process
+
+The workflow follows these steps:
+
+1. **Initialize TradingSdk** with chain ID, app identifier, and adapter
+2. **Request a quote** specifying sell/buy tokens, amounts, and slippage tolerance
+3. **Review quote results** including minimum amounts and validity period
+4. **Sign and post the order** using the quote function
+5. **Retrieve order ID** for tracking and explorer verification
+
+### Order Configuration Options
+
+- **Order Types**: `SELL` (exact amount out) or `BUY` (exact amount in)
+- **Slippage**: Expressed in basis points (50 = 0.5%, 100 = 1%)
+- **Custom Receiver**: Send tokens to a different address
+- **Validity Period**: Control order expiration timing
+- **Partial Fills**: Enable or disable fractional execution
+
+## Token Approval Requirements
+
+Before swapping, you must approve CoW Protocol to access your tokens. The SDK provides helper methods to check current allowance and execute approvals if needed.
+
+## Monitoring & Order Statuses
+
+After posting, orders can be tracked with statuses including:
+- `open` - awaiting execution
+- `fulfilled` - completely filled
+- `expired` - validity period elapsed
+- `cancelled` - user-initiated cancellation
+
+## Troubleshooting Common Issues
+
+The documentation addresses frequent problems:
+- **Insufficient balance**: Obtain test tokens from the Sepolia faucet
+- **Allowance errors**: Complete token approval before swapping
+- **Expired quotes**: Refresh quotes within the validity window
+- **RPC failures**: Verify endpoint URLs or try alternative providers
+- **Invalid private keys**: Confirm 64-character hex format with "0x" prefix
+
+## Developer Attribution (UTM Tracking)
+
+The SDK automatically includes UTM tracking in all orders to attribute trading volume to developers. Default parameters:
+
+```typescript
+{
+  utmSource: 'cowmunity',
+  utmMedium: 'cow-sdk@7.1.6',  // SDK version
+  utmCampaign: 'developer-cohort',
+  utmContent: '',
+  utmTerm: 'js'
+}
+```
+
+Customize or disable via `advancedSettings.appData.metadata.utm`:
+
+```typescript
+// Custom UTM
+await sdk.getQuote(parameters, {
+  appData: {
+    metadata: {
+      utm: { utmContent: 'my-integration-v2' }
+    }
+  }
+})
+
+// Disable UTM
+await sdk.getQuote(parameters, {
+  appData: {
+    metadata: {
+      utm: {}
+    }
+  }
+})
+```
+
+<Note>
+Providing any `utm` field gives you full control — the SDK will not add defaults. Use `utmContent` for graffiti without affecting your `appCode`.
+</Note>
+
+## Additional Resources
+
+Complete working examples are available for both Node.js (Viem) and React implementations on the CoW Protocol GitHub repository, plus the CoW Explorer for order tracking.

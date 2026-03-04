@@ -1,0 +1,66 @@
+---
+title: "Driver Service"
+description: "The execution layer between solver engines and the blockchain, managing liquidity, simulation, and settlement"
+---
+
+# Driver Service
+
+The Driver service functions as the execution layer between solver engines and the blockchain, managing liquidity fetching, solution encoding, simulation, and transaction submission -- essentially everything except route-finding algorithms.
+
+## Key Responsibilities
+
+The Driver handles five primary functions:
+
+1. **Liquidity Fetching** - Collects on-chain liquidity from DEXes (Uniswap, Balancer, etc.)
+2. **Solution Encoding** - Transforms solutions into settlement contract calldata
+3. **Simulation** - Validates solutions through Tenderly, Enso, or node simulation before submission
+4. **Transaction Management** - Oversees gas pricing, nonce handling, and broadcast operations
+5. **Mempool Integration** - Monitors transaction status and manages replacements
+
+## Supported Liquidity Sources
+
+The system integrates with multiple DEX protocols:
+
+- Uniswap V2 and V3
+- Balancer V2
+- Swapr
+- CoW Protocol AMMs
+
+Configuration uses TOML files specifying pool addresses and Graph endpoints.
+
+## Simulation Options
+
+Three backends are available:
+
+- **Ethereum Node** (default) - Accurate but slower
+- **Tenderly** - High-performance with debugging features
+- **Enso** - Optimized for complex DeFi interactions
+
+## Operational Models
+
+### Colocated Solvers
+
+External partners maintain their own Driver + Solver infrastructure, providing full control but requiring maintenance responsibility.
+
+### Non-Colocated Solvers
+
+CoW Protocol operates the Driver while partners provide solver APIs, reducing operational burden for solver developers.
+
+## API Endpoints
+
+Three primary endpoints manage the workflow:
+
+- `POST /solve` - Receives auctions, returns solutions
+- `POST /settle` - Executes winning solutions
+- `POST /quote` - Generates trading quotes
+
+## Monitoring
+
+The service exposes Prometheus metrics tracking:
+
+- Solve duration
+- Simulation latency
+- Settlement submissions
+- Liquidity fetch times
+
+**Source**: `crates/driver/`

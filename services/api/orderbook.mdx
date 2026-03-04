@@ -1,0 +1,103 @@
+---
+title: "Orderbook API"
+description: "API reference for CoW Protocol order placement, querying, and price estimation"
+---
+
+# Orderbook API
+
+The Orderbook API serves as the primary interface for order placement, querying, and price estimation within CoW Protocol. It operates across multiple blockchain networks with both production and staging environments available.
+
+## Network Endpoints
+
+The API is deployed on numerous networks including Ethereum Mainnet, Gnosis Chain, Arbitrum One, Base, Avalanche, Polygon, and several others.
+
+- **Production**: `api.cow.fi`
+- **Staging**: `barn.api.cow.fi`
+
+## Core Order Operations
+
+### Create Order
+
+`POST /api/v1/orders`
+
+Places new orders requiring EIP-712 signatures for ownership verification. The request must include sell/buy tokens, amounts, validity period, and signature details.
+
+### Retrieve Order
+
+`GET /api/v1/orders/{UID}`
+
+Fetches complete order data including execution status, fees paid, and settlement information.
+
+### List Account Orders
+
+`GET /api/v1/account/{owner}/orders`
+
+Returns paginated orders for a specific address, sorted newest first.
+
+### Cancel Orders
+
+`DELETE /api/v1/orders`
+
+Marks orders as invalid through signature-authenticated requests. This represents a "best-effort" cancellation that may not prevent settlement if already in-flight.
+
+## Pricing and Quotes
+
+### Get Quote
+
+`POST /api/v1/quote`
+
+Generates price quotes with fee estimates. Response includes complete order parameters ready to sign and submit. Supports three quality levels:
+
+- **fast** - Quickest response
+- **optimal** - Balanced quality
+- **verified** - Recommended for production
+
+### Get Native Token Price
+
+`GET /api/v1/token/{token}/native_price`
+
+Returns how much native currency (e.g., ETH) equals one unit of a specified token.
+
+## Trade and Settlement Information
+
+### Get Trades
+
+`GET /api/v2/trades`
+
+Retrieves paginated trade execution records filtered by trader or order UID.
+
+### Get Solver Competition
+
+`GET /api/v2/solver_competition/{id}`
+
+Displays auction results showing which solvers submitted solutions and their rankings.
+
+### Get Orders by Transaction
+
+`GET /api/v1/orders/tx/{txHash}`
+
+Lists all orders settled within a specific blockchain transaction.
+
+## Key Features
+
+- **Authentication**: Most endpoints are public; order operations require cryptographic signatures
+- **Rate Limiting**: Order creation and quote requests are protected against excessive usage (HTTP 429 responses)
+- **AppData Management**: Store and retrieve metadata associated with orders through dedicated endpoints
+- **Status Tracking**: Monitor orders from submission through settlement with detailed status information
+
+## Recommended Workflow
+
+1. Request a verified quote
+2. Sign order parameters using EIP-712
+3. Submit the signed order
+4. Track status through settlement
+5. Verify execution via trades endpoint
+6. Optionally cancel if needed
+
+## Best Practices
+
+- Always request verified quotes for production trading
+- Link quote IDs to orders for improved analytics
+- Set appropriate validity windows to manage gas cost exposure
+- Handle rate limit responses with exponential backoff
+- Use the `from` field to validate signature correctness early

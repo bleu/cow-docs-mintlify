@@ -1,0 +1,54 @@
+---
+title: "Subgraph SDK"
+description: "TypeScript client for querying CoW Protocol's historical trading data and metrics from TheGraph"
+---
+
+# SubgraphApi
+
+## Overview
+
+The SubgraphApi is a TypeScript client enabling queries of CoW Protocol's historical trading data and metrics from TheGraph subgraphs across multiple blockchain networks.
+
+## Installation
+
+```bash
+npm install @cowprotocol/sdk-subgraph
+```
+
+## Core Capabilities
+
+- **Main Client Access** - Provides a dedicated client for subgraph querying
+- **Ready-to-Use Query Templates** - Includes common queries for protocol statistics
+- **Cross-Chain Functionality** - Works with Ethereum, Gnosis Chain, Arbitrum, Base, and Sepolia
+- **Type-Safe Results** - All GraphQL responses are fully typed
+- **Flexible Querying** - Supports custom GraphQL queries with type safety
+
+## Essential Methods
+
+### getTotals()
+
+Retrieves comprehensive protocol statistics including token counts, order volumes, trader numbers, settlement data, USD-denominated volume, and fee information.
+
+### getLastDaysVolume(days)
+
+Fetches temporal volume breakdowns returning arrays with timestamp, volume in USD, and trade counts.
+
+### getLastHoursVolume(hours)
+
+Similar to daily volume but with hourly granularity.
+
+### runQuery()
+
+Executes custom GraphQL queries with optional variables for advanced use cases.
+
+## Setup Requirements
+
+Users must obtain an API key from TheGraph Studio before initializing the client.
+
+<Warning>
+Keep your API key secure and never expose it in client-side code.
+</Warning>
+
+## Practical Usage Patterns
+
+Examples demonstrate protocol metric retrieval, historical data analysis spanning weeks and hours, querying top traders by volume, and executing queries across multiple chains simultaneously.

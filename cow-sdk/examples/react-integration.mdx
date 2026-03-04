@@ -1,0 +1,384 @@
+---
+title: "React Integration"
+description: "Incorporate the CoW Protocol SDK into React applications with wallet management and state handling"
+---
+
+# React Integration
+
+This guide demonstrates how to add the CoW Protocol SDK to a React application, including wallet connection and state management.
+
+## Installation
+
+```bash
+npm install @cowprotocol/cow-sdk @cowprotocol/sdk-ethers-v6-adapter ethers
+```
+
+## Setup SDK Instance
+
+Create a shared SDK instance for use throughout your application.
+
+```typescript
+import { setGlobalAdapter, SupportedChainId, TradingSdk } from '@cowprotocol/cow-sdk'
+import { JsonRpcProvider } from 'ethers'
+import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter'
+
+export const chainId = SupportedChainId.SEPOLIA
+
+export const rpcProvider = new JsonRpcProvider(
+  'https://sepolia.gateway.tenderly.co',
+  chainId
+)
+
+export const cowSdkAdapter = new EthersV6Adapter({
+  provider: rpcProvider,
+})
+
+setGlobalAdapter(cowSdkAdapter)
+
+export const tradingSdk = new TradingSdk({
+  chainId,
+  appCode: 'MyReactApp',
+})
+```
+
+## Swap Component
+
+A complete swap component with wallet integration:
+
+```tsx
+import {
+  type AccountAddress,
+  OrderKind,
+  type QuoteAndPost,
+  WRAPPED_NATIVE_CURRENCIES,
+} from '@cowprotocol/cow-sdk'
+import { useEffect, useState } from 'react'
+import { chainId, cowSdkAdapter, tradingSdk } from './cowSdk'
+import { BrowserProvider } from 'ethers'
+
+const WETH = WRAPPED_NATIVE_CURRENCIES[chainId]
+const USDC = {
+  chainId,
+  address: '0xbe72E441BF55620febc26715db68d3494213D8Cb',
+  decimals: 18,
+  symbol: 'USDC',
+  name: 'USDC (test)',
+}
+
+export function SwapForm() {
+  const [account, setAccount] = useState<AccountAddress | null>(null)
+  const [sellAmount, setSellAmount] = useState('0.1')
+  const [quoteAndPost, setQuoteAndPost] = useState<QuoteAndPost | null>(null)
+  const [swapError, setSwapError] = useState<Error | null>(null)
+  const [postedOrderHash, setPostedOrderHash] = useState<string | null>(null)
+  const [isOrderPostingInProgress, setIsOrderPostingInProgress] = useState(false)
+  const [slippagePercent, setSlippagePercent] = useState(0.5)
+
+  const slippageBps = slippagePercent * 100
+  const isLoading = isOrderPostingInProgress || Boolean(account && sellAmount && !quoteAndPost)
+
+  // Connect wallet
+  useEffect(() => {
+    const ethereum = window.ethereum
+    if (!ethereum) return
+
+    const provider = new BrowserProvider(ethereum, chainId)
+
+    provider.send('eth_requestAccounts', []).then(async (accounts) => {
+      if (!accounts.length) {
+        setSwapError(new Error('Wallet is not connected'))
+        return
+      }
+
+      const firstAccount = accounts[0]
+
+      cowSdkAdapter.setProvider(provider)
+      const signer = await provider.getSigner()
+      cowSdkAdapter.setSigner(signer)
+      tradingSdk.setTraderParams({ signer })
+
+      setAccount(firstAccount)
+      console.log('Connected account:', firstAccount)
+    })
+  }, [])
+
+  // Update quote when params change
+  useEffect(() => {
+    if (!account) return
+
+    setQuoteAndPost(null)
+
+    tradingSdk
+      .getQuote({
+        chainId,
+        kind: OrderKind.SELL,
+        owner: account,
+        amount: Math.round(Number(sellAmount) * 10 ** WETH.decimals).toString(),
+        sellToken: WETH.address,
+        sellTokenDecimals: WETH.decimals,
+        buyToken: USDC.address,
+        buyTokenDecimals: USDC.decimals,
+        slippageBps,
+      })
+      .then(setQuoteAndPost)
+      .catch(setSwapError)
+  }, [slippageBps, sellAmount, account])
+
+  const postOrder = () => {
+    if (!quoteAndPost) return
+
+    setIsOrderPostingInProgress(true)
+
+    quoteAndPost
+      .postSwapOrderFromQuote({
+        appData: {
+          metadata: {
+            quote: {
+              slippageBips: slippageBps,
+            },
+          },
+        },
+      })
+      .then((response) => {
+        if (!response) {
+          setSwapError(new Error('No response from order posting'))
+          return
+        }
+        setPostedOrderHash(response.orderId)
+      })
+      .catch(setSwapError)
+      .finally(() => {
+        setIsOrderPostingInProgress(false)
+      })
+  }
+
+  const buyAmountRaw = quoteAndPost?.quoteResults.amountsAndCosts.afterNetworkCosts.buyAmount
+  const buyAmountView = buyAmountRaw
+    ? (Number(buyAmountRaw) / 10 ** USDC.decimals).toFixed(6)
+    : undefined
+
+  if (!window.ethereum) {
+    return (
+      <div>
+        <h3>Please install MetaMask or another browser wallet</h3>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {account && (
+        <div className="box">
+          Account: <span>{account}</span>
+        </div>
+      )}
+
+      {postedOrderHash && (
+        <div className="box success">
+          <h4>Order has been posted</h4>
+          <p>
+            <a
+              href={`https://explorer.cow.fi/sepolia/orders/${postedOrderHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              See details in Explorer
+            </a>
+          </p>
+        </div>
+      )}
+
+      <div className="box">
+        <strong>Sell</strong>
+        <input
+          type="number"
+          value={sellAmount}
+          onChange={(e) => setSellAmount(e.target.value)}
+        />
+        <span>{WETH.symbol}</span>
+      </div>
+
+      <div className="box">
+        <strong>Buy</strong>
+        <input type="number" value={buyAmountView ?? 'Loading...'} disabled />
+        <span>{USDC.symbol}</span>
+      </div>
+
+      <div className="box">
+        <label>Slippage:</label>
+        <input
+          type="number"
+          value={slippagePercent}
+          min={0}
+          max={10}
+          step={0.5}
+          onChange={(e) => setSlippagePercent(+e.target.value)}
+        />
+        <span>%</span>
+      </div>
+
+      {swapError && (
+        <div className="box error">
+          {swapError.message || JSON.stringify(swapError)}
+        </div>
+      )}
+
+      <button disabled={isLoading} onClick={postOrder}>
+        {isLoading ? 'Loading...' : 'Post order'}
+      </button>
+    </div>
+  )
+}
+```
+
+## App Component
+
+Wrap your swap form in the main application:
+
+```tsx
+import { SwapForm } from './components/SwapForm'
+import './App.css'
+
+function App() {
+  return (
+    <div className="App">
+      <h1>CoW Protocol Swap</h1>
+      <SwapForm />
+    </div>
+  )
+}
+
+export default App
+```
+
+## Key Patterns
+
+### 1. Dynamic Signer Updates
+
+Update the SDK when the wallet changes:
+
+```typescript
+cowSdkAdapter.setProvider(provider)
+const signer = await provider.getSigner()
+cowSdkAdapter.setSigner(signer)
+tradingSdk.setTraderParams({ signer })
+```
+
+### 2. Quote Updates
+
+Automatically refresh quotes when parameters change:
+
+```typescript
+useEffect(() => {
+  if (!account) return
+
+  tradingSdk
+    .getQuote(params)
+    .then(setQuoteAndPost)
+    .catch(setSwapError)
+}, [sellAmount, slippageBps, account])
+```
+
+### 3. Loading States
+
+Track loading states for improved user experience:
+
+```typescript
+const isLoading =
+  isOrderPostingInProgress ||
+  Boolean(account && sellAmount && !quoteAndPost)
+```
+
+## Error Handling
+
+Handle common errors gracefully:
+
+```typescript
+const postOrder = async () => {
+  try {
+    const response = await quoteAndPost.postSwapOrderFromQuote({})
+    setPostedOrderHash(response.orderId)
+  } catch (error) {
+    if (error.message.includes('User denied')) {
+      setSwapError(new Error('Transaction was rejected'))
+    } else if (error.message.includes('insufficient funds')) {
+      setSwapError(new Error('Insufficient balance'))
+    } else {
+      setSwapError(error)
+    }
+  }
+}
+```
+
+## TypeScript Types
+
+Declare the ethereum window object:
+
+```typescript
+import { Eip1193Provider } from 'ethers'
+
+declare global {
+  interface Window {
+    ethereum?: Eip1193Provider
+  }
+}
+
+export {}
+```
+
+## Styling Example
+
+Basic CSS for the swap form:
+
+```css
+.box {
+  margin: 10px 0;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.box.success {
+  background-color: #d4edda;
+  border-color: #c3e6cb;
+}
+
+.box.error {
+  background-color: #f8d7da;
+  border-color: #f5c6cb;
+  color: #721c24;
+}
+
+input[type="number"] {
+  margin: 0 10px;
+  padding: 8px;
+  width: 150px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+button {
+  padding: 12px 24px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+```
+
+## Next Steps
+
+- Check out [Wagmi integration](/cow-sdk/examples/wagmi-integration) for better wallet management
+- Learn about [limit orders](/cow-sdk/examples/limit-orders)
+- Explore the Trading SDK API

@@ -1,0 +1,321 @@
+---
+title: "Order Types"
+description: "Understanding order kinds, execution modes, and classifications in CoW Protocol"
+---
+
+# Order Types
+
+Understanding CoW Protocol order kinds and execution modes
+
+## Overview
+
+CoW Protocol supports different order types to accommodate various trading strategies. Understanding these types is essential for building effective trading applications.
+
+## Order Kind
+
+Every order has a `kind` that determines whether you're specifying the exact sell or buy amount:
+
+### SELL Orders
+
+A **sell order** specifies the exact amount of tokens you want to sell.
+
+```typescript
+import { OrderKind } from '@cowprotocol/cow-sdk'
+
+const sellOrder = {
+  kind: OrderKind.SELL,
+  sellToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
+  buyToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',  // USDC
+  sellAmount: '1000000000000000000', // Sell exactly 1 WETH
+  buyAmount: '3000000000',            // Receive at least 3000 USDC
+  // ...
+}
+```
+
+<Info>
+- `sellAmount` is the **exact** amount you're selling
+- `buyAmount` is the **minimum** amount you'll accept
+- The actual execution may give you more than `buyAmount` (positive slippage)
+</Info>
+
+### BUY Orders
+
+A **buy order** specifies the exact amount of tokens you want to receive.
+
+```typescript
+import { OrderKind } from '@cowprotocol/cow-sdk'
+
+const buyOrder = {
+  kind: OrderKind.BUY,
+  sellToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
+  buyToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',  // USDC
+  sellAmount: '1000000000000000000', // Spend at most 1 WETH
+  buyAmount: '3000000000',            // Buy exactly 3000 USDC
+  // ...
+}
+```
+
+<Info>
+- `buyAmount` is the **exact** amount you're buying
+- `sellAmount` is the **maximum** amount you'll spend
+- The actual execution may cost less than `sellAmount` (positive slippage)
+</Info>
+
+## Execution Modes
+
+Orders can be configured as either fill-or-kill or partially fillable:
+
+### Fill-or-Kill Orders
+
+A fill-or-kill order must be executed entirely in a single settlement or not at all.
+
+```typescript
+const fillOrKillOrder = {
+  // ... other order parameters
+  partiallyFillable: false,  // Default
+}
+```
+
+<Check>
+- You need the entire order executed atomically
+- Trading smaller amounts where partial fills aren't practical
+- You want predictable, all-or-nothing execution
+</Check>
+
+### Partially Fillable Orders
+
+A partially fillable order can be executed across multiple settlements until the full amount is filled or the order expires.
+
+```typescript
+const partiallyFillableOrder = {
+  // ... other order parameters
+  partiallyFillable: true,
+}
+```
+
+<Check>
+- Trading large amounts that might be hard to fill at once
+- You want to capture liquidity as it becomes available
+- Building limit orders that execute over time
+</Check>
+
+## Swap Orders vs Limit Orders
+
+### Swap Orders (Market Orders)
+
+Swap orders execute immediately at the best available price with slippage protection.
+
+```typescript
+import { TradingSdk, OrderKind } from '@cowprotocol/cow-sdk'
+
+const sdk = new TradingSdk({
+  chainId: 1,
+  appCode: 'MyApp',
+  signer,
+})
+
+// Get a quote and post a swap order
+const { postSwapOrderFromQuote } = await sdk.getQuote({
+  chainId: 1,
+  kind: OrderKind.SELL,
+  owner: '0x...',
+  amount: '1000000000000000000',
+  sellToken: WETH_ADDRESS,
+  sellTokenDecimals: 18,
+  buyToken: USDC_ADDRESS,
+  buyTokenDecimals: 6,
+  slippageBps: 50, // 0.5% slippage tolerance
+})
+
+const orderId = await postSwapOrderFromQuote({})
+```
+
+**Characteristics:**
+- Execute at current market conditions
+- Have slippage tolerance (e.g., 0.5%)
+- Typically fill-or-kill
+- Short validity period (e.g., 20 minutes)
+- Class: `"market"`
+
+### Limit Orders
+
+Limit orders execute only when your specified price is met or exceeded.
+
+```typescript
+import { TradingSdk, OrderKind } from '@cowprotocol/cow-sdk'
+
+const limitOrder = await sdk.postLimitOrder({
+  chainId: 1,
+  kind: OrderKind.SELL,
+  owner: '0x...',
+  sellToken: WETH_ADDRESS,
+  sellTokenDecimals: 18,
+  buyToken: USDC_ADDRESS,
+  buyTokenDecimals: 6,
+  sellAmount: '1000000000000000000', // Sell 1 WETH
+  buyAmount: '3500000000',            // For at least 3500 USDC
+  validTo: Math.floor(Date.now() / 1000) + 86400 * 7, // Valid for 7 days
+  partiallyFillable: true, // Allow partial fills
+})
+```
+
+**Characteristics:**
+- Execute at your specified limit price or better
+- No slippage tolerance
+- Can be partially fillable
+- Longer validity period (hours to days)
+- Class: `"limit"`
+
+## Order Parameters
+
+All orders share these core parameters:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `sellToken` | string | Yes | Address of the token being sold |
+| `buyToken` | string | Yes | Address of the token being bought |
+| `sellAmount` | string | Yes | Amount of sell token (in wei/smallest unit) |
+| `buyAmount` | string | Yes | Amount of buy token (in wei/smallest unit) |
+| `validTo` | number | Yes | Unix timestamp when the order expires |
+| `appData` | string | Yes | 32-byte hash of order metadata. See [App Data](/concepts/app-data) |
+| `feeAmount` | string | Yes | Protocol fee amount in sell token |
+| `kind` | OrderKind | Yes | Order kind: `OrderKind.SELL` or `OrderKind.BUY` |
+| `partiallyFillable` | boolean | Yes | Whether the order can be partially filled |
+| `receiver` | string | No | Address to receive the bought tokens (defaults to order owner) |
+| `sellTokenBalance` | OrderBalance | No | How to withdraw sell tokens: `erc20`, `external`, or `internal` (Balancer Vault) |
+| `buyTokenBalance` | OrderBalance | No | How to receive buy tokens: `erc20` or `internal` (Balancer Vault) |
+
+## Token Balance Sources
+
+Orders can interact with different token balance sources:
+
+### ERC20 Balance (Default)
+
+```typescript
+import { OrderBalance } from '@cowprotocol/sdk-contracts-ts'
+
+const order = {
+  // ... other parameters
+  sellTokenBalance: OrderBalance.ERC20, // Default
+  buyTokenBalance: OrderBalance.ERC20,  // Default
+}
+```
+
+Standard ERC20 token balances with direct allowance to the CoW Protocol settlement contract.
+
+### Balancer Vault Balances
+
+For advanced use cases with Balancer Vault integration:
+
+```typescript
+const order = {
+  // ... other parameters
+  sellTokenBalance: OrderBalance.INTERNAL, // Use Balancer internal balance
+  buyTokenBalance: OrderBalance.INTERNAL,  // Receive to internal balance
+}
+```
+
+<Info>
+Most applications use the default `ERC20` balance mode. Balancer Vault integration is for advanced scenarios.
+</Info>
+
+## Order Lifecycle
+
+<Steps>
+  <Step title="Order Creation">
+    Create and sign an order with your desired parameters
+  </Step>
+  <Step title="Order Submission">
+    Submit the signed order to the CoW Protocol API
+  </Step>
+  <Step title="Order Discovery">
+    Solvers discover your order and compete to find the best execution
+  </Step>
+  <Step title="Order Execution">
+    The winning solver executes your order on-chain in a batch settlement
+  </Step>
+  <Step title="Order Completion">
+    Tokens are transferred and the order is marked as filled
+  </Step>
+</Steps>
+
+## Practical Examples
+
+```typescript
+// Sell exactly 1 WETH for at least 3000 USDC
+const { postSwapOrderFromQuote } = await sdk.getQuote({
+  kind: OrderKind.SELL,
+  amount: '1000000000000000000', // 1 WETH
+  sellToken: WETH,
+  buyToken: USDC,
+  slippageBps: 50,
+  // ...
+})
+```
+
+```typescript
+// Buy exactly 3000 USDC for at most 1 WETH
+const { postSwapOrderFromQuote } = await sdk.getQuote({
+  kind: OrderKind.BUY,
+  amount: '3000000000', // 3000 USDC
+  sellToken: WETH,
+  buyToken: USDC,
+  slippageBps: 50,
+  // ...
+})
+```
+
+```typescript
+// Sell 1 WETH only if you get at least 3500 USDC
+await sdk.postLimitOrder({
+  kind: OrderKind.SELL,
+  sellAmount: '1000000000000000000',
+  buyAmount: '3500000000',
+  partiallyFillable: true,
+  validTo: now + 86400 * 7, // 7 days
+  // ...
+})
+```
+
+```typescript
+// Buy exactly 3000 USDC only if it costs 0.9 WETH or less
+await sdk.postLimitOrder({
+  kind: OrderKind.BUY,
+  sellAmount: '900000000000000000',
+  buyAmount: '3000000000',
+  partiallyFillable: false,
+  validTo: now + 86400 * 7,
+  // ...
+})
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use SELL for Market Orders">
+    Most users know how much they want to sell. Use `OrderKind.SELL` for simpler UX.
+  </Card>
+  <Card title="Set Reasonable Validity">
+    Market orders: 10-30 minutes. Limit orders: hours to days based on volatility.
+  </Card>
+  <Card title="Partial Fills for Large Orders">
+    Enable `partiallyFillable: true` for large orders to improve fill rates.
+  </Card>
+  <Card title="Monitor Order Status">
+    Poll the OrderBook API to track order status and fills over time.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={3}>
+  <Card title="Signing Schemes" href="/concepts/signing-schemes">
+    Learn how orders are signed
+  </Card>
+  <Card title="App Data" href="/concepts/app-data">
+    Add metadata to your orders
+  </Card>
+  <Card title="Trading SDK" href="/api/trading-sdk">
+    Start building with the SDK
+  </Card>
+</CardGroup>

@@ -1,0 +1,60 @@
+---
+title: "Documentation Framework"
+description: "How CoW DAO documentation is organized using the Diataxis framework"
+hidden: true
+---
+
+CoW DAO documentation follows the [Diataxis framework](https://diataxis.fr), which organizes content into four distinct quadrants based on what readers need. Each persona section (Traders, Integrators, Solvers, Contributors, Governance) uses these quadrants internally to structure its content.
+
+## The Four Quadrants
+
+| | **Learning** | **Working** |
+|---|---|---|
+| **Practical** | **[Tutorials](#tutorials)** — Learning-oriented | **[How-To Guides](#how-to-guides)** — Task-oriented |
+| **Theoretical** | **[Explanation](#explanation)** — Understanding-oriented | **[Reference](#reference)** — Information-oriented |
+
+### Explanation
+
+Explanation content helps you **understand** concepts and ideas. It provides background, context, and the "why" behind how things work.
+
+- *What is it?* Conceptual discussions, architecture overviews, design rationale
+- *When to read?* When you want to deepen your understanding of CoW Protocol
+- *Example:* [What are Intents?](/cow-protocol/explanation/introduction/intents), [How CoW AMMs Work](/cow-amm/explanation/how-cow-amms-work)
+
+### Tutorials
+
+Tutorials are **learning experiences** that take you through a series of steps to complete a project. They teach by doing.
+
+- *What is it?* Step-by-step lessons with a concrete outcome
+- *When to read?* When you're new and want to learn by building something
+- *Example:* [Place a Swap](/cow-protocol/tutorials/cow-swap/swap), [Create a Solver](/cow-protocol/tutorials/solvers/create)
+
+### How-To Guides
+
+How-to guides help you **accomplish a specific task**. They assume you already have basic knowledge and need practical directions.
+
+- *What is it?* Goal-oriented instructions for real-world tasks
+- *When to read?* When you know what you want to do and need to know how
+- *Example:* [Integrate via Widget](/cow-protocol/howto/integrate/widget), [Integrate via SDK](/cow-protocol/howto/integrate/sdk)
+
+### Reference
+
+Reference material provides **technical descriptions** of the system — APIs, contracts, parameters, and specifications.
+
+- *What is it?* Accurate, complete technical information
+- *When to read?* When you need to look up specific details while working
+- *Example:* [Orderbook API](/cow-protocol/reference/apis/orderbook), [Settlement Contract](/cow-protocol/reference/contracts/core/settlement)
+
+## Which Section Should I Read?
+
+```
+Do you want to learn or do something?
+├── Learn / Understand
+│   ├── New to CoW Protocol? → Start with Explanation
+│   └── Want hands-on learning? → Follow a Tutorial
+└── Do something specific
+    ├── Need step-by-step task instructions? → How-To Guide
+    └── Need technical specs or API details? → Reference
+```
+
+For the full background on this documentation methodology, see [diataxis.fr](https://diataxis.fr).

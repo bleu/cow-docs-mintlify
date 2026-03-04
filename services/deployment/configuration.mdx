@@ -1,0 +1,100 @@
+---
+title: "Configuration"
+description: "Hierarchical configuration system for CoW Protocol Services including CLI, environment variables, TOML files, and runtime adjustments"
+---
+
+# Configuration
+
+CoW Protocol Services employ a hierarchical configuration system supporting command-line arguments, environment variables, TOML files, and runtime adjustments. All services include `--help` documentation.
+
+## Configuration Priority
+
+Settings follow this precedence (highest to lowest):
+
+1. Command-line arguments
+2. Environment variables
+3. Configuration file values
+4. Default values
+
+## Key Configuration Areas
+
+### Database Connectivity
+
+Services use PostgreSQL with sqlx connection pooling. The default pool size is 10 connections, adjustable via `--db-max-connections`.
+
+Connection strings follow PostgreSQL format:
+
+```
+postgresql://[user[:password]@][host][:port][/database]
+```
+
+### Network Settings
+
+Core parameters include:
+
+- **Primary RPC**: `--node-url`
+- **Simulation RPC**: `--simulation-node-url` (optional)
+- **Chain identification**: `--chain-id`
+- **Block timing**: `--network-block-interval`
+
+Contract addresses can be overridden for settlement, balances, and signatures components.
+
+### Gas Estimation
+
+Services support multiple estimators (Native, Web3, EthGasStation, GasNow) with configurable price caps.
+
+It is recommended to include "Native" and "Web3" for compatibility across all EVM chains.
+
+## Logging System
+
+The system uses `tracing-subscriber` with flexible EnvFilter syntax:
+
+```
+target[span{field=value}]=level
+```
+
+### Output Formats
+
+- **Human-readable** (default) - For development
+- **Structured JSON** - Preferred for production with log aggregation systems
+
+### Runtime Adjustments
+
+Connect to UNIX sockets to modify log filtering without restart:
+
+```
+/tmp/log_filter_override_<program_name>_<pid>.sock
+```
+
+## TOML Configuration
+
+Complex settings use TOML files for services like Driver, Autopilot, and Orderbook, supporting structured configuration for solvers, contracts, liquidity, and fee policies.
+
+## Network-Specific Presets
+
+| Network | Chain ID | Block Interval |
+|---------|----------|----------------|
+| Mainnet | 1 | 12s |
+| Gnosis | 100 | 5s |
+| Arbitrum | 42161 | 250ms |
+| Base | 8453 | 2s |
+
+## Performance Optimization
+
+Connection pool recommendations vary by service role:
+
+| Service | Recommended Pool Size |
+|---------|----------------------|
+| Orderbook | 50 |
+| Autopilot | 20 |
+| Driver | 15 |
+
+Multiple RPC endpoints enable redundancy and separate simulation capabilities.
+
+## Best Practices
+
+- Store sensitive credentials in environment variables only
+- Enable JSON logging for production deployments
+- Use appropriate log levels (`info`/`warn` for production, `debug`/`trace` for troubleshooting)
+- Leverage runtime filtering for production debugging without restarts
+- Explicitly set chain IDs to catch configuration errors early

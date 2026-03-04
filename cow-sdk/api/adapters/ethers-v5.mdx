@@ -1,0 +1,43 @@
+---
+title: "Ethers v5 Adapter"
+description: "Integration between the CoW Protocol SDK and ethers.js v5"
+---
+
+# Ethers v5 Adapter
+
+The Ethers v5 Adapter enables integration between the CoW Protocol SDK and ethers.js v5, allowing developers to leverage both libraries together.
+
+## Installation
+
+```bash
+npm install @cowprotocol/sdk-ethers-v5-adapter
+```
+
+## Setup
+
+The adapter constructor accepts either ethers Provider instances or RPC URL strings, plus optional Signer objects or private keys. A `JsonRpcProvider` will be created automatically if you supply just an RPC URL string.
+
+## Core Capabilities
+
+The adapter exposes several essential methods for blockchain interaction:
+
+- **Read operations**: `call()`, `readContract()`, `getBlock()`, `getCode()`, `getStorageAt()`
+- **Transaction handling**: `getTransactionReceipt()`
+- **Chain information**: `getChainId()`
+- **Contract interaction**: `getContract()` for creating contract instances
+
+## Advanced Features
+
+The adapter includes specialized EIP-712 signing classes:
+
+- **TypedDataVersionedSigner** (general-purpose)
+- **TypedDataV3Signer** (legacy protocol support)
+- **IntChainIdTypedDataV4Signer** (MetaMask compatibility fixes)
+
+## Integration Examples
+
+The documentation demonstrates three primary usage patterns:
+
+1. **Standalone adapter usage** - Direct initialization with provider and signer
+2. **Integration with CowSdk** - Passing adapter to the main SDK class
+3. **Pairing with individual SDK packages** - Using with TradingSdk for order posting and trading operations

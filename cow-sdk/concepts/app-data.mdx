@@ -1,0 +1,380 @@
+---
+title: "App Data"
+description: "A flexible metadata system for attaching additional information to CoW Protocol orders"
+---
+
+# App Data
+
+## Overview
+
+App Data is a flexible metadata system enabling developers to attach additional information to CoW Protocol orders. It supports developer attribution, analytics tracking, custom hooks, and more.
+
+## What is App Data?
+
+App Data is a 32-byte hash (`bytes32`) stored in every order that points to a JSON document containing metadata. The document can include slippage tolerance, order classification, UTM tracking, partner fees, CoW Hooks, and custom application data.
+
+```typescript
+const order = {
+  appData: '0x8e4f5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e',
+}
+```
+
+## App Data Structure
+
+```typescript
+interface AppDataDoc {
+  version: string
+  appCode: string
+  environment?: string
+  metadata: {
+    quote?: {
+      slippageBips: number
+    }
+    orderClass?: {
+      orderClass: 'market' | 'limit' | 'liquidity' | 'twap'
+    }
+    utm?: {
+      utmSource?: string
+      utmMedium?: string
+      utmCampaign?: string
+      utmContent?: string
+      utmTerm?: string
+    }
+    hooks?: {
+      pre?: CoWHook[]
+      post?: CoWHook[]
+    }
+    partnerFee?: {
+      bps: number
+      recipient: string
+    }
+  }
+}
+```
+
+## Creating App Data
+
+### Basic Usage
+
+```typescript
+import { buildAppData } from '@cowprotocol/cow-sdk'
+
+const appDataInfo = await buildAppData({
+  appCode: 'MyTradingApp',
+  slippageBps: 50,
+  orderClass: 'market',
+})
+
+// Returns:
+// {
+//   doc: { /* full app data document */ },
+//   fullAppData: '{ ... }',
+//   appDataKeccak256: '0x...'
+// }
+```
+
+### Using in Orders
+
+```typescript
+const { appDataKeccak256 } = await buildAppData({
+  appCode: 'MyApp',
+  slippageBps: 50,
+  orderClass: 'market',
+})
+
+const order = {
+  sellToken: '0x...',
+  buyToken: '0x...',
+  appData: appDataKeccak256,
+}
+```
+
+## Default UTM Parameters
+
+The SDK automatically includes UTM parameters:
+
+```typescript
+const defaultUtm = {
+  utmCampaign: 'developer-cohort',
+  utmContent: '',
+  utmMedium: 'cow-sdk@X.Y.Z',
+  utmSource: 'cowmunity',
+  utmTerm: 'js',
+}
+```
+
+### Overriding UTM Parameters
+
+```typescript
+const appDataInfo = await buildAppData(
+  {
+    appCode: 'MyApp',
+    slippageBps: 50,
+    orderClass: 'market',
+  },
+  {
+    metadata: {
+      utm: {
+        utmSource: 'my-platform',
+        utmMedium: 'web-app',
+        utmCampaign: 'launch-week',
+      },
+    },
+  }
+)
+```
+
+Custom UTM parameters completely replace the defaults when provided.
+
+## Partner Fees
+
+```typescript
+const appDataInfo = await buildAppData({
+  appCode: 'MyApp',
+  slippageBps: 50,
+  orderClass: 'market',
+  partnerFee: {
+    bps: 25,
+    recipient: '0x1234...',
+  },
+})
+```
+
+Partner fees are deducted from order surplus and don't affect minimum user output.
+
+## CoW Hooks
+
+CoW Hooks execute custom contract calls before and/or after order execution, enabling token approvals, reward claiming, staking, and arbitrary DeFi operations.
+
+### Hook Structure
+
+```typescript
+interface CoWHook {
+  target: string
+  callData: string
+  gasLimit: string
+}
+```
+
+### Pre-Hooks Example
+
+```typescript
+import { encodeFunctionData } from 'viem'
+
+const approveCallData = encodeFunctionData({
+  abi: ERC20_ABI,
+  functionName: 'approve',
+  args: [SPENDER_ADDRESS, MAX_UINT256],
+})
+
+const appDataInfo = await buildAppData(
+  {
+    appCode: 'MyApp',
+    slippageBps: 50,
+    orderClass: 'market',
+  },
+  {
+    metadata: {
+      hooks: {
+        pre: [
+          {
+            target: TOKEN_ADDRESS,
+            callData: approveCallData,
+            gasLimit: '50000',
+          },
+        ],
+      },
+    },
+  }
+)
+```
+
+### Post-Hooks Example
+
+```typescript
+const stakeCallData = encodeFunctionData({
+  abi: STAKING_ABI,
+  functionName: 'stake',
+  args: [AMOUNT],
+})
+
+const appDataInfo = await buildAppData(
+  {
+    appCode: 'MyApp',
+    slippageBps: 50,
+    orderClass: 'market',
+  },
+  {
+    metadata: {
+      hooks: {
+        post: [
+          {
+            target: STAKING_CONTRACT,
+            callData: stakeCallData,
+            gasLimit: '100000',
+          },
+        ],
+      },
+    },
+  }
+)
+```
+
+<Warning>
+**Hook Limitations:**
+- Hooks execute in the same transaction as the order
+- Failed hooks cause the entire transaction to revert
+- Set appropriate gas limits to avoid out-of-gas errors
+- Only use trusted contracts as hook targets
+</Warning>
+
+## Advanced Usage
+
+### Merging App Data
+
+```typescript
+import { mergeAppDataDoc } from '@cowprotocol/cow-sdk'
+
+const existingDoc = await buildAppData({
+  appCode: 'MyApp',
+  slippageBps: 50,
+  orderClass: 'market',
+})
+
+const mergedAppData = await mergeAppDataDoc(
+  existingDoc.doc,
+  {
+    metadata: {
+      referrer: {
+        address: '0x...',
+      },
+    },
+  }
+)
+```
+
+### Custom Metadata Fields
+
+```typescript
+const appDataInfo = await buildAppData(
+  {
+    appCode: 'MyApp',
+    slippageBps: 50,
+    orderClass: 'market',
+  },
+  {
+    environment: 'production',
+    metadata: {
+      signer: '0x...',
+      referrer: {
+        address: '0x...',
+      },
+    },
+  }
+)
+```
+
+## IPFS Integration
+
+```typescript
+const { fullAppData, appDataKeccak256 } = await buildAppData({
+  appCode: 'MyApp',
+  slippageBps: 50,
+  orderClass: 'market',
+})
+
+import { keccak256, toUtf8Bytes } from 'ethers'
+const computedHash = keccak256(toUtf8Bytes(fullAppData))
+// computedHash === appDataKeccak256
+```
+
+The CoW Protocol API automatically uploads app data to IPFS when you submit orders.
+
+## Retrieving App Data
+
+```typescript
+import { MetadataApi } from '@cowprotocol/sdk-app-data'
+import { getGlobalAdapter } from '@cowprotocol/cow-sdk'
+
+const metadataApi = new MetadataApi(getGlobalAdapter())
+
+const appDataDoc = await metadataApi.fetchDocFromAppData(
+  '0x8e4f5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e'
+)
+
+console.log(appDataDoc.metadata.quote?.slippageBips)
+```
+
+## Common Patterns
+
+**Market Order:**
+```typescript
+const appData = await buildAppData({
+  appCode: 'MyTradingApp',
+  slippageBps: 50,
+  orderClass: 'market',
+})
+```
+
+**Limit Order:**
+```typescript
+const appData = await buildAppData({
+  appCode: 'MyTradingApp',
+  slippageBps: 0,
+  orderClass: 'limit',
+})
+```
+
+**With Partner Fee:**
+```typescript
+const appData = await buildAppData({
+  appCode: 'MyTradingApp',
+  slippageBps: 50,
+  orderClass: 'market',
+  partnerFee: {
+    bps: 10,
+    recipient: '0x...',
+  },
+})
+```
+
+**With Custom UTM:**
+```typescript
+const appData = await buildAppData(
+  {
+    appCode: 'MyApp',
+    slippageBps: 50,
+    orderClass: 'market',
+  },
+  {
+    metadata: {
+      utm: {
+        utmSource: 'twitter',
+        utmMedium: 'social',
+        utmCampaign: 'launch',
+      },
+    },
+  }
+)
+```
+
+## Best Practices
+
+- **Use Descriptive App Codes**: Choose clear, unique identifiers for analytics
+- **Set Appropriate Slippage**: Market orders 0.5-1%, limit orders 0%, volatile tokens higher
+- **Test Hooks Thoroughly**: Always test on testnets before production
+- **Cache App Data Hashes**: Reuse identical metadata hashes to reduce IPFS uploads
+
+## Troubleshooting
+
+**App data hash mismatch**: Ensure the exact `fullAppData` JSON string with deterministic formatting is used. The SDK handles this automatically.
+
+**Hook execution failed**: Verify target contract address, callData encoding matches function signature, gasLimit is sufficient, and test hook separately.
+
+**Custom UTM not appearing**: When providing `metadata.utm`, it replaces all defaults. Set all desired UTM fields explicitly.
+
+## Next Steps
+
+- [Order Types](/cow-sdk/concepts/order-types) - Learn about different order types
+- [Trading SDK](/cow-sdk/api/trading-sdk) - Start building with the SDK
+- [Hooks Guide](/cow-sdk/advanced/hooks) - Advanced hooks implementation

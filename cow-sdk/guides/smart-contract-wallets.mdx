@@ -1,0 +1,339 @@
+---
+title: "Smart Contract Wallets"
+description: "Using the PRESIGN signing scheme with smart contract wallets like Safe"
+---
+
+# Smart Contract Wallets
+
+Smart contract wallets (like Safe/Gnosis Safe) require a different signing method than regular EOA (Externally Owned Account) wallets. The SDK supports smart contract wallets using the `PRESIGN` signing scheme.
+
+## Overview
+
+Smart contract wallets cannot sign EIP-712 messages directly. Instead, they use on-chain signatures through the `PRESIGN` method:
+
+1. Create an order with `SigningScheme.PRESIGN`
+2. Get a pre-sign transaction from the SDK
+3. Execute the transaction to "sign" the order on-chain
+
+<Note>
+  PRESIGN is more gas-efficient for smart contract wallets compared to EIP-1271 signatures.
+</Note>
+
+## The PRESIGN Signing Scheme
+
+When you use `SigningScheme.PRESIGN`, the SDK creates an order in a "pre-sign" state. The order is only valid after you execute an on-chain transaction that registers your approval.
+
+### How it Works
+
+1. **Create order with PRESIGN scheme** - The order is created in the order book with a special "pre-sign" status
+2. **Get pre-sign transaction** - Use `getPreSignTransaction` to get the transaction data
+3. **Execute transaction** - Send the transaction from your smart contract wallet
+4. **Order becomes valid** - Once the transaction is confirmed, the order is ready for execution
+
+## Creating Swap Orders with Smart Contract Wallets
+
+### Example
+
+```typescript
+import {
+  SupportedChainId,
+  OrderKind,
+  TradeParameters,
+  SwapAdvancedSettings,
+  SigningScheme,
+  TradingSdk,
+} from '@cowprotocol/sdk-trading'
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+import { createPublicClient, http, privateKeyToAccount } from 'viem'
+import { sepolia } from 'viem/chains'
+
+const adapter = new ViemAdapter({
+  provider: createPublicClient({
+    chain: sepolia,
+    transport: http('YOUR_RPC_URL')
+  }),
+  signer: privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`)
+})
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.SEPOLIA,
+  appCode: 'YOUR_APP_CODE',
+}, {}, adapter)
+
+const smartContractWalletAddress = '0x1234567890123456789012345678901234567890'
+
+const parameters: TradeParameters = {
+  kind: OrderKind.BUY,
+  sellToken: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+  sellTokenDecimals: 18,
+  buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+  buyTokenDecimals: 18,
+  amount: '120000000000000000',
+}
+
+const advancedParameters: SwapAdvancedSettings = {
+  quoteRequest: {
+    // Specify the PRESIGN signing scheme
+    signingScheme: SigningScheme.PRESIGN,
+  },
+}
+
+// Step 1: Create the order
+const { orderId } = await sdk.postSwapOrder(parameters, advancedParameters)
+
+console.log('Order created with "pre-sign" state, id: ', orderId)
+
+// Step 2: Get the pre-sign transaction
+const preSignTransaction = await sdk.getPreSignTransaction({
+  orderId,
+  account: smartContractWalletAddress
+})
+
+console.log('Execute this transaction to sign the order:', preSignTransaction)
+
+// Step 3: Execute the transaction from your smart contract wallet
+// (implementation depends on your wallet SDK)
+```
+
+## Creating Limit Orders with Smart Contract Wallets
+
+### Example
+
+```typescript
+import {
+  SupportedChainId,
+  OrderKind,
+  LimitTradeParameters,
+  LimitOrderAdvancedSettings,
+  SigningScheme,
+  TradingSdk,
+} from '@cowprotocol/sdk-trading'
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+import { createPublicClient, http, privateKeyToAccount } from 'viem'
+import { sepolia } from 'viem/chains'
+
+const adapter = new ViemAdapter({
+  provider: createPublicClient({
+    chain: sepolia,
+    transport: http('YOUR_RPC_URL')
+  }),
+  signer: privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`)
+})
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.SEPOLIA,
+  appCode: 'YOUR_APP_CODE',
+}, {}, adapter)
+
+const smartContractWalletAddress = '0x1234567890123456789012345678901234567890'
+
+const limitOrderParameters: LimitTradeParameters = {
+  kind: OrderKind.BUY,
+  sellToken: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+  sellTokenDecimals: 18,
+  buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+  buyTokenDecimals: 18,
+  sellAmount: '120000000000000000',
+  buyAmount: '66600000000000000000',
+  owner: smartContractWalletAddress, // Important: specify the owner
+}
+
+const advancedParameters: LimitOrderAdvancedSettings = {
+  additionalParams: {
+    signingScheme: SigningScheme.PRESIGN,
+  },
+}
+
+const { orderId } = await sdk.postLimitOrder(
+  limitOrderParameters,
+  advancedParameters
+)
+
+const preSignTransaction = await sdk.getPreSignTransaction({
+  orderId,
+  account: smartContractWalletAddress
+})
+
+console.log('Order created with "pre-sign" state, id: ', orderId)
+console.log('Execute the transaction to sign the order', preSignTransaction)
+```
+
+<Warning>
+  When creating limit orders with smart contract wallets, you must specify the `owner` parameter if it differs from the signer. CoW Protocol uses the `owner` to check balance, allowance, and other permissions.
+</Warning>
+
+## Getting Pre-Sign Quotes
+
+For more accurate gas estimation, specify the signing scheme when getting quotes:
+
+```typescript
+import {
+  SupportedChainId,
+  OrderKind,
+  TradeParameters,
+  SwapAdvancedSettings,
+  SigningScheme,
+  TradingSdk,
+} from '@cowprotocol/sdk-trading'
+
+const parameters: TradeParameters = {
+  kind: OrderKind.BUY,
+  sellToken: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+  sellTokenDecimals: 18,
+  buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+  buyTokenDecimals: 18,
+  amount: '120000000000000000',
+}
+
+const advancedParameters: SwapAdvancedSettings = {
+  quoteRequest: {
+    // Specify the signing scheme for accurate quotes
+    signingScheme: SigningScheme.PRESIGN,
+  },
+}
+
+const { quoteResults } = await sdk.getQuote(parameters, advancedParameters)
+
+console.log('Quote:', quoteResults)
+```
+
+## The getPreSignTransaction Method
+
+The `getPreSignTransaction` method returns transaction parameters ready to be executed.
+
+### Parameters
+
+- `orderId` - The unique identifier of the order to sign
+- `account` - The smart contract wallet address
+
+### Returns
+
+A `TransactionParams` object with:
+
+- `to` - The contract address (Settlement contract)
+- `data` - The encoded function call
+- `gasLimit` - Estimated gas limit
+- `value` - ETH value to send (usually '0')
+
+### Implementation Details
+
+The method calls `setPreSignature(orderId, true)` on the CoW Protocol Settlement contract:
+
+```typescript
+// From the SDK source code (getPreSignTransaction.ts)
+export async function getPreSignTransaction(
+  signer: Signer,
+  chainId: SupportedChainId,
+  orderId: string,
+): Promise<TransactionParams> {
+  const contract = getSettlementContract(chainId, signer)
+
+  const preSignatureCall = contract.interface.encodeFunctionData(
+    'setPreSignature',
+    [orderId, true]
+  )
+
+  const gas = await contract.estimateGas
+    .setPreSignature?.(orderId, true)
+    .catch(() => GAS_LIMIT_DEFAULT)
+
+  return {
+    data: preSignatureCall,
+    gasLimit: '0x' + calculateGasMargin(gas).toString(16),
+    to: contract.address,
+    value: '0',
+  }
+}
+```
+
+## Executing Pre-Sign Transactions
+
+### With Safe SDK
+
+```typescript
+import Safe from '@safe-global/protocol-kit'
+
+const safe = await Safe.create({
+  safeAddress: smartContractWalletAddress,
+  ethAdapter,
+})
+
+const safeTransaction = await safe.createTransaction({
+  transactions: [preSignTransaction]
+})
+
+const txResponse = await safe.executeTransaction(safeTransaction)
+const receipt = await txResponse.transactionResponse?.wait()
+
+console.log('Order signed on-chain:', receipt.hash)
+```
+
+### With Viem Wallet Client
+
+```typescript
+import { createWalletClient, http } from 'viem'
+import { mainnet } from 'viem/chains'
+
+const walletClient = createWalletClient({
+  chain: mainnet,
+  transport: http(),
+})
+
+const hash = await walletClient.sendTransaction({
+  to: preSignTransaction.to,
+  data: preSignTransaction.data,
+  gas: BigInt(preSignTransaction.gasLimit),
+  value: BigInt(preSignTransaction.value),
+})
+
+console.log('Transaction hash:', hash)
+```
+
+## Gas Considerations
+
+PRESIGN orders require an on-chain transaction, which costs gas:
+
+- **Gas cost**: ~50,000-100,000 gas depending on the wallet implementation
+- **When to use**: Best for larger orders where gas cost is negligible compared to order value
+- **Alternative**: For small orders, consider using an EOA wallet instead
+
+<Note>
+  The pre-sign transaction gas cost is separate from the order execution cost. The execution cost is covered by the protocol's fee mechanism.
+</Note>
+
+## Common Issues and Solutions
+
+### Order Not Found
+
+**Problem**: The order hasn't been created yet or the order ID is incorrect.
+
+**Solution**: Ensure you wait for `postSwapOrder` or `postLimitOrder` to complete before calling `getPreSignTransaction`.
+
+### Insufficient Allowance
+
+**Problem**: The smart contract wallet hasn't approved tokens.
+
+**Solution**: Approve tokens before creating orders (see [Token Approvals](/guides/token-approvals) guide).
+
+### Transaction Reverts
+
+**Problem**: The pre-sign transaction reverts on-chain.
+
+**Solution**:
+- Verify the order ID is correct
+- Ensure the wallet has enough ETH for gas
+- Check that you're using the correct chain ID
+
+## Best Practices
+
+1. **Always specify the owner**: For limit orders, explicitly set the `owner` parameter
+2. **Get quotes with PRESIGN**: Include the signing scheme in quote requests for accurate estimates
+3. **Wait for confirmation**: Ensure the pre-sign transaction is confirmed before expecting order execution
+4. **Handle transaction errors**: Implement proper error handling for the on-chain transaction
+5. **Check order status**: Verify the order status after signing to ensure it's ready
+
+## Next Steps
+
+- Learn about [Token Approvals](/guides/token-approvals) for smart contract wallets
+- See [Order Management](/guides/order-management) to track pre-signed orders
+- Explore [Creating Swap Orders](/guides/creating-swap-orders) for basic concepts

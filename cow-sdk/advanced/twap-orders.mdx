@@ -1,0 +1,245 @@
+---
+title: "TWAP Orders"
+description: "Time-Weighted Average Price orders that split large trades into smaller parts executed at regular intervals"
+---
+
+# TWAP Orders
+
+## Overview
+
+Time-Weighted Average Price (TWAP) orders split large trades into smaller parts executed at regular intervals, reducing price impact and helping achieve better average execution prices.
+
+## Installation
+
+```bash
+npm install @cowprotocol/sdk-composable
+```
+
+## Creating TWAP Orders
+
+### Basic Implementation
+
+```typescript
+import { Twap, TwapData } from '@cowprotocol/sdk-composable'
+
+const twapData: TwapData = {
+  sellToken: '0x6B175474E89094C44Da98b954EedeAC495271d0F', // DAI
+  buyToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
+  receiver: '0xYourAddress',
+  sellAmount: BigInt('1000000000000000000000'), // 1000 DAI
+  buyAmount: BigInt('500000000000000000'), // 0.5 WETH minimum
+  numberOfParts: BigInt(10),
+  timeBetweenParts: BigInt(3600), // 1 hour between parts
+  appData: '0x...',
+}
+
+const twapOrder = Twap.fromData(twapData)
+```
+
+## Core Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `sellToken` | `string` | Token address to sell |
+| `buyToken` | `string` | Token address to buy |
+| `receiver` | `string` | Recipient address |
+| `sellAmount` | `bigint` | Total amount across all parts |
+| `buyAmount` | `bigint` | Minimum total purchase amount |
+| `numberOfParts` | `bigint` | Parts count (2 to 4,294,967,295) |
+| `timeBetweenParts` | `bigint` | Interval between executions (seconds) |
+| `appData` | `string` | 32-byte app data hash |
+
+## Optional Parameters
+
+**Start Time Options:**
+- `AT_MINING_TIME` (default): Begins when transaction mines
+- `AT_EPOCH`: Begins at specific timestamp
+
+**Duration Options:**
+- `AUTO` (default): Each part valid for entire interval
+- `LIMIT_DURATION`: Each part expires after specified duration
+
+## Advanced Configuration
+
+### Custom Start Time
+
+```typescript
+const twapData: TwapData = {
+  // ... core parameters
+  startTime: {
+    startType: StartTimeValue.AT_EPOCH,
+    epoch: BigInt(Math.floor(Date.now() / 1000) + 3600)
+  },
+}
+```
+
+### Limited Part Duration
+
+```typescript
+const twapData: TwapData = {
+  // ... core parameters
+  durationOfPart: {
+    durationType: DurationType.LIMIT_DURATION,
+    duration: BigInt(1800) // 30 minutes
+  },
+}
+```
+
+## Validation
+
+```typescript
+const validation = twapOrder.isValid()
+
+if (!validation.isValid) {
+  console.error('Validation failed:', validation.reason)
+}
+```
+
+Possible validation errors include:
+- InvalidSameToken
+- InvalidToken
+- InvalidSellAmount
+- InvalidMinBuyAmount
+- InvalidStartTime
+- InvalidNumParts
+- InvalidFrequency
+- InvalidSpan
+- InvalidData
+
+## Complete Setup Example
+
+```typescript
+import {
+  Twap,
+  TwapData,
+  Multiplexer,
+  StartTimeValue,
+  DurationType
+} from '@cowprotocol/sdk-composable'
+import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter'
+import { SupportedChainId } from '@cowprotocol/sdk-config'
+
+// Initialize adapter
+const adapter = new EthersV6Adapter({ provider, signer: wallet })
+
+// Define parameters
+const twapData: TwapData = {
+  sellToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
+  buyToken: '0x6B175474E89094C44Da98b954EedeAC495271d0F', // DAI
+  receiver: await wallet.getAddress(),
+  sellAmount: parseEther('10'),
+  buyAmount: parseUnits('20000', 18),
+  numberOfParts: BigInt(24),
+  timeBetweenParts: BigInt(3600),
+  startTime: {
+    startType: StartTimeValue.AT_MINING_TIME
+  },
+  durationOfPart: {
+    durationType: DurationType.AUTO
+  },
+  appData: '0x0000000000000000000000000000000000000000000000000000000000000000',
+}
+
+// Create and validate order
+const twapOrder = Twap.fromData(twapData)
+const validation = twapOrder.isValid()
+if (!validation.isValid) throw new Error(`Invalid: ${validation.reason}`)
+
+// Set root and store proofs
+const multiplexer = new Multiplexer(SupportedChainId.MAINNET)
+multiplexer.addOrder('twap-1', twapOrder)
+const tree = multiplexer.getOrGenerateTree()
+const root = tree.root
+
+const composableCowContract = adapter.getContract(
+  COMPOSABLE_COW_CONTRACT_ADDRESS[SupportedChainId.MAINNET],
+  ComposableCowABI
+)
+await composableCowContract.setRoot(root)
+const proofs = multiplexer.dumpProofsAndParams()
+await storeProofsOffChain(proofs)
+```
+
+## Order Lifecycle
+
+1. **Creation**: Configure TWAP parameters
+2. **Merkle Root**: Set root on ComposableCoW contract
+3. **Proof Storage**: Store proofs off-chain for watchtowers
+4. **Monitoring**: Watchtowers monitor execution conditions
+5. **Part Execution**: Each part executes at scheduled time
+6. **Completion**: All parts execute or order expires
+
+## Monitoring TWAP Progress
+
+```typescript
+const startTimestamp = await twapOrder.startTimestamp({
+  owner: userAddress,
+  chainId: SupportedChainId.MAINNET,
+  provider,
+})
+
+const endTimestamp = twapOrder.endTimestamp(startTimestamp)
+const currentTime = Math.floor(Date.now() / 1000)
+
+if (currentTime < startTimestamp) {
+  console.log('Not started')
+} else if (currentTime >= endTimestamp) {
+  console.log('Completed or expired')
+} else {
+  const elapsed = currentTime - startTimestamp
+  const currentPart = Math.floor(elapsed / Number(twapData.timeBetweenParts))
+  console.log(`Part ${currentPart + 1} of ${twapData.numberOfParts}`)
+}
+```
+
+## Serialization
+
+```typescript
+const serialized = twapOrder.serialize()
+const deserialized = Twap.deserialize(serialized)
+const description = twapOrder.toString()
+```
+
+## Best Practices
+
+**Interval Selection:** Choose `timeBetweenParts` based on liquidity, volatility, and execution timeline. Common intervals: 5 minutes (300s), 15 minutes (900s), 1 hour (3600s), 1 day (86400s).
+
+**Part Count:** Usually 10-50 parts depending on total amount balances efficiency with complexity.
+
+**Duration Strategy:** Use AUTO for flexibility or LIMIT_DURATION set to 50-80% of interval for safety.
+
+**Execution Tracking:** Monitor parts executed, average price, slippage per part, and failed orders.
+
+## Use Cases
+
+### Daily Dollar-Cost Averaging
+
+```typescript
+const dcaTwap: TwapData = {
+  sellToken: USDC_ADDRESS,
+  buyToken: WETH_ADDRESS,
+  receiver: userAddress,
+  sellAmount: parseUnits('3000', 6),
+  buyAmount: parseEther('1'),
+  numberOfParts: BigInt(30),
+  timeBetweenParts: BigInt(86400), // Daily
+}
+```
+
+### Large Trade Execution
+
+```typescript
+const largeTrade: TwapData = {
+  sellToken: WETH_ADDRESS,
+  buyToken: USDC_ADDRESS,
+  receiver: userAddress,
+  sellAmount: parseEther('100'),
+  buyAmount: parseUnits('200000', 6),
+  numberOfParts: BigInt(16),
+  timeBetweenParts: BigInt(900), // 15 minutes
+  durationOfPart: {
+    durationType: DurationType.LIMIT_DURATION,
+    duration: BigInt(600) // 10 minutes
+  },
+}
+```

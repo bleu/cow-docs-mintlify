@@ -1,0 +1,79 @@
+---
+title: "Autopilot Service"
+description: "CoW Protocol's central coordinator orchestrating batch auctions every 12-15 seconds"
+---
+
+# Autopilot Service
+
+The Autopilot service functions as CoW Protocol's central coordinator, orchestrating batch auctions approximately every 12-15 seconds. It manages the complete lifecycle from order collection through settlement execution.
+
+## Core Responsibilities
+
+Autopilot handles four primary functions:
+
+- Gathering and validating orders from the orderbook
+- Distributing auctions to solver drivers for competition
+- Selecting optimal solutions based on settlement quality
+- Monitoring on-chain execution outcomes
+
+## Auction Cycle
+
+Each auction follows a structured timeline:
+
+1. **Block synchronization** (0-2s) - Waits for new blockchain blocks
+2. **Maintenance** (0-5s) - Updates pricing and indexed events
+3. **Order preparation** (0-1s) - Fetches and filters viable orders
+4. **Solver competition** (12-15s) - Collects solutions from drivers
+5. **Winner selection** (0-1s) - Ranks and picks best settlement(s)
+6. **Settlement execution** (1-60s) - Winning driver submits to chain
+
+## Order Filtering Criteria
+
+Valid orders must satisfy several requirements:
+
+- Valid cryptographic signature
+- Non-expired status
+- Sufficient token balance (unless disabled)
+- Non-banned address status
+- Approved token usage
+- Minimum validity period remaining
+
+## Configuration
+
+Key parameters control operation:
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `solve_deadline` | 15s | Solver computation time limit |
+| `submission_deadline` | 5 blocks | Settlement timeout window |
+| `max_winners_per_auction` | 20 | Parallel settlements allowed |
+
+## Fee Mechanisms
+
+The protocol applies three fee models:
+
+- **Surplus**: Percentage of order profit captured
+- **Price Improvement**: Fee based on executed vs. quoted price
+- **Volume**: Fixed percentage of trade amount
+
+These can be configured per order classification (market, limit, etc.).
+
+## Deployment Modes
+
+### Standard Mode
+
+Runs live auctions with actual settlement submissions.
+
+### Shadow Mode
+
+Simulates competition without on-chain execution (testing only).
+
+### High Availability
+
+Multiple instances with leader election enabled. Only one autopilot runs per network as the central coordinator.
+
+## Observability
+
+Metrics endpoint provides real-time performance data. Liveness checks fail if no auction executes within the configured `max_auction_age`, enabling Kubernetes health monitoring.
+
+**Source**: `crates/autopilot/`

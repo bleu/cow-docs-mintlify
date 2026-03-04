@@ -1,0 +1,46 @@
+---
+title: "Introduction"
+description: "Overview of CoW Protocol BFF (Backend For Frontend), a TypeScript-based service collection powering CoW Swap and related applications"
+---
+
+# Introduction
+
+The CoW Protocol BFF is a comprehensive collection of TypeScript-based backend services designed to power the CoW Swap frontend and other CoW Protocol applications.
+
+## Core Capabilities
+
+The platform offers six main feature categories:
+
+1. **Multi-Chain Support** - Token pricing and balance data across eight networks (Ethereum, Gnosis Chain, Polygon, Arbitrum, Base, Avalanche, BNB Chain, and Sepolia testnet)
+
+2. **Real-Time Updates** - Server-Sent Events delivering live wallet balance information for multiple tokens simultaneously
+
+3. **Notifications** - Telegram integration with RabbitMQ messaging for order status alerts
+
+4. **Market Analysis** - Dynamic slippage calculations based on volatility patterns
+
+5. **Transaction Preview** - Tenderly-powered simulation tools for trade outcome forecasting
+
+6. **Yield Tracking** - Multi-protocol DeFi opportunity aggregation and comparison
+
+## Technical Foundation
+
+The architecture utilizes:
+
+- **Fastify** - HTTP framework
+- **NX** - Monorepo management
+- **PostgreSQL with TypeORM** - Data persistence
+- **Redis** - Caching
+- **RabbitMQ** - Asynchronous messaging
+- **Ethers.js/Viem** - Blockchain interactions
+
+## Service Components
+
+Four primary applications form the system:
+
+- **API Service** - REST endpoints
+- **Notification Producer** - Event monitoring
+- **Telegram Service** - Message delivery
+- **TWAP Service** - Price calculations
+
+These are supplemented by shared libraries for repositories, business logic, and utilities.

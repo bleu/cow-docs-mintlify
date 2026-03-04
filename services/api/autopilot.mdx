@@ -1,0 +1,61 @@
+---
+title: "Autopilot API"
+description: "API reference for CoW Protocol's batch auction management and solver integration"
+---
+
+# Autopilot API
+
+The Autopilot service manages CoW Protocol's batch auctions by collecting orders, creating auctions, distributing them to solvers, ranking solutions, and executing settlements on-chain.
+
+## Operational Flow
+
+Autopilot operates on a recurring schedule (typically every 12-15 seconds):
+
+1. **Auction Creation** - Filters solvable orders from the orderbook
+2. **Distribution** - Sends auction data to registered solvers
+3. **Ranking** - Scores and evaluates solver solutions
+4. **Execution** - Instructs winning solvers to settle on-chain
+5. **Monitoring** - Validates settlements and enforces compliance rules
+
+## Primary API Endpoints
+
+### Get Current Auction
+
+`GET /api/v1/auction`
+
+Returns the active batch auction with solvable orders and reference token prices. This endpoint requires API key authorization.
+
+### Get Native Price
+
+`GET /native_price/{token}`
+
+Internal API for retrieving cached token prices, used by CoW Protocol services.
+
+## Solver Integration Requirements
+
+Solvers must implement four endpoints:
+
+- `/solve` - Receives auction data and returns potential solutions
+- `/reveal` - Provides transaction calldata for verification purposes
+- `/settle` - Executes the winning solution on-chain
+- `/notify` - Handles outcome notifications (bans, violations)
+
+## Scoring Methodology
+
+Solutions are ranked using:
+
+```
+User Surplus + Protocol Fees - Gas Cost (in native token)
+```
+
+This calculation follows CIP-20 specifications and includes reference scoring mechanisms per CIP-67 for fair combinatorial auctions.
+
+## Solver Types
+
+### Colocated
+
+External teams manage their own infrastructure and settlement.
+
+### Non-Colocated
+
+CoW Protocol operates the driver with external solver APIs (1inch, 0x, Balancer).

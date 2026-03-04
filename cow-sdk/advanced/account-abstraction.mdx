@@ -1,0 +1,49 @@
+---
+title: "Account Abstraction"
+description: "Pre-authorize and execute multiple operations through account abstraction with the CoW Shed SDK"
+---
+
+# Account Abstraction with CoW Shed SDK
+
+## Overview
+
+The CoW Shed SDK enables smart contract wallets to pre-authorize and execute multiple operations through account abstraction. This functionality allows users to sign calls offline and have them executed later by any party, supporting gasless transaction execution.
+
+## Key Capabilities
+
+CoW Shed provides several important features:
+
+- **Pre-authorized calls**: Sign operations offline and execute them at a later time
+- **Batch execution**: Process multiple calls within a single transaction
+- **Gasless transactions**: Any address can execute pre-authorized operations
+- **Smart wallet compatibility**: Functions with any EIP-1271 compatible wallet implementation
+
+## Getting Started
+
+Installation is straightforward:
+
+```bash
+npm install @cowprotocol/cow-shed
+```
+
+The SDK can also be accessed through the main CoW SDK package.
+
+## Core Implementation Pattern
+
+The basic workflow involves three steps:
+
+1. **Initialize** the CowShedSdk with an adapter and signer
+2. **Prepare calls** using the ICoWShedCall interface (specifying target, callData, value, delegation preference, and failure tolerance)
+3. **Sign and execute** the batch, obtaining a transaction that can be sent by any address
+
+## Advanced Configuration
+
+The SDK supports several customization options including custom nonces for replay protection, deadline specifications for expiration windows, explicit or default gas limit settings, and configurable signing schemes (EIP712 or ETHSIGN).
+
+## Practical Use Cases
+
+Common applications include gasless order placement (users sign orders for relayer execution), atomic batch operations combining multiple transactions, and integration with existing smart wallet systems like Safe wallets.
+
+## Production Recommendations
+
+Best practices emphasize strategic use of failure tolerance flags, implementing reasonable deadline windows rather than maximum values, providing fallback gas limits for complex operations, and generating unique nonces to prevent replay attacks.

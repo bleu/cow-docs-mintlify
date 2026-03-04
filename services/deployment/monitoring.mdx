@@ -1,0 +1,108 @@
+---
+title: "Monitoring"
+description: "Monitoring and observability for CoW Protocol Services including metrics, tracing, logging, and diagnostics"
+---
+
+# Monitoring and Observability
+
+CoW Protocol Services provide comprehensive monitoring through several integrated systems.
+
+## Core Components
+
+- **Prometheus metrics** exposed on port 9586 by default
+- **OpenTelemetry distributed tracing** with OTLP/gRPC export
+- **Structured JSON logging** via the `tracing` crate
+- **Runtime diagnostics** including dynamic log filtering
+- **jemalloc-based heap profiling** capabilities
+
+## Metrics and Monitoring
+
+Services automatically expose Prometheus-compatible metrics covering:
+
+- Auction overhead tracking by component and phase
+- Database query performance metrics
+- HTTP request rates and latencies
+- Service-specific counters (orders, quotes, settlements, solutions)
+
+### Scrape Configuration
+
+The recommended scrape interval is every 15 seconds. Example Prometheus configuration:
+
+```yaml
+scrape_configs:
+  - job_name: 'cow-services'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['orderbook:9586', 'autopilot:9586', 'driver:9586']
+```
+
+Kubernetes ServiceMonitor deployments are also supported.
+
+## Distributed Tracing
+
+Services support OpenTelemetry tracing with OTLP export via gRPC, allowing trace propagation across service boundaries using W3C TraceContext headers.
+
+Configuration requires specifying the collector endpoint and trace level.
+
+## Logging and Log Management
+
+### Structured JSON Logging
+
+The system uses structured JSON logging with fields including:
+
+- Timestamp
+- Level
+- Target module
+- Message
+- Integrated trace IDs
+
+### Log Levels
+
+Log levels range from TRACE (most verbose) to ERROR:
+
+| Level | Usage |
+|-------|-------|
+| TRACE | Detailed debugging information |
+| DEBUG | Development and troubleshooting |
+| INFO | Normal operational messages |
+| WARN | Potential issues |
+| ERROR | Failures requiring attention |
+
+### Runtime Log Filter Adjustment
+
+A notable feature enables runtime log filter adjustment through UNIX sockets without requiring service restarts:
+
+```bash
+echo "orderbook=debug" | socat - UNIX-CONNECT:/tmp/log_filter_override_orderbook_12345.sock
+```
+
+## Advanced Diagnostics
+
+### Heap Profiling
+
+Services generate pprof-format heap dumps via UNIX sockets when jemalloc profiling is enabled. Analysis uses the Google pprof tool to identify memory allocation hotspots.
+
+### tokio-console
+
+Available exclusively in playground environments for async task inspection. Not recommended for production due to significant memory overhead.
+
+## Health Checks and Alerting
+
+### Health Check Endpoints
+
+Three endpoints support Kubernetes orchestration:
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/liveness` | Service is running |
+| `/ready` | Service can accept traffic |
+| `/startup` | Service has completed initialization |
+
+### Recommended Alerting Thresholds
+
+Set up alerts for:
+
+- **Service availability**: Alert if any service is down for more than 2 minutes
+- **Error rates**: Alert if error rate exceeds baseline
+- **Connection pool exhaustion**: Alert when pool usage exceeds 80%
+- **Query latency**: Alert when database queries exceed acceptable thresholds

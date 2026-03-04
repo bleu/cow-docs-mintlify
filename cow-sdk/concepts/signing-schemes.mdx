@@ -1,0 +1,386 @@
+---
+title: "Signing Schemes"
+description: "The four signing methods supported by CoW Protocol for different wallet types and security requirements"
+---
+
+# Signing Schemes
+
+Order signature methods supported by CoW Protocol
+
+## Overview
+
+CoW Protocol supports multiple signing schemes to accommodate different wallet types and use cases. Understanding these schemes is crucial for implementing order signing in your application.
+
+## Available Signing Schemes
+
+The protocol supports four signing schemes, defined in the `SigningScheme` enum:
+
+```typescript
+enum SigningScheme {
+  EIP712 = 0b00,   // Standard EIP-712 typed data signing
+  ETHSIGN = 0b01,  // Legacy eth_sign RPC method
+  EIP1271 = 0b10,  // Smart contract signatures
+  PRESIGN = 0b11,  // On-chain pre-approved signatures
+}
+```
+
+## EIP-712 (Recommended)
+
+**EIP-712** is the preferred signing scheme. It provides structured, human-readable data to wallets, making signatures safer and more transparent for users.
+
+### How It Works
+
+EIP-712 creates typed, structured data that wallets can display to users before signing:
+
+```typescript
+import { OrderSigningUtils } from '@cowprotocol/cow-sdk'
+import { SupportedChainId } from '@cowprotocol/sdk-config'
+
+const order = {
+  sellToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+  buyToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+  sellAmount: '1000000000000000000',
+  buyAmount: '3000000000',
+  validTo: Math.floor(Date.now() / 1000) + 1200,
+  appData: '0x0000000000000000000000000000000000000000000000000000000000000000',
+  feeAmount: '10000000000000000',
+  kind: 'sell',
+  partiallyFillable: false,
+}
+
+const { signature, signingScheme } = await OrderSigningUtils.signOrder(
+  order,
+  SupportedChainId.MAINNET,
+  signer
+)
+
+// signingScheme will be EcdsaSigningScheme.EIP712
+```
+
+### Type Definition
+
+The EIP-712 type structure for CoW Protocol orders:
+
+```typescript
+const COW_EIP712_TYPES = {
+  Order: [
+    { name: 'sellToken', type: 'address' },
+    { name: 'buyToken', type: 'address' },
+    { name: 'receiver', type: 'address' },
+    { name: 'sellAmount', type: 'uint256' },
+    { name: 'buyAmount', type: 'uint256' },
+    { name: 'validTo', type: 'uint32' },
+    { name: 'appData', type: 'bytes32' },
+    { name: 'feeAmount', type: 'uint256' },
+    { name: 'kind', type: 'string' },
+    { name: 'partiallyFillable', type: 'bool' },
+    { name: 'sellTokenBalance', type: 'string' },
+    { name: 'buyTokenBalance', type: 'string' },
+  ],
+}
+```
+
+<Check>
+**Benefits of EIP-712:**
+- Users can see exactly what they're signing
+- Better UX with clear wallet prompts
+- Improved security against phishing attacks
+- Supported by all modern wallets
+</Check>
+
+## ETHSIGN (Legacy)
+
+**ETHSIGN** uses the `eth_sign` RPC method, which is a legacy signing approach. The SDK automatically falls back to this method if EIP-712 signing fails.
+
+### When It's Used
+
+```typescript
+// The SDK tries EIP-712 first, then falls back to ETHSIGN
+const result = await OrderSigningUtils.signOrder(
+  order,
+  chainId,
+  signer
+)
+
+// result.signingScheme could be:
+// - EcdsaSigningScheme.EIP712 (preferred)
+// - EcdsaSigningScheme.ETHSIGN (fallback)
+```
+
+<Warning>
+**Limitations of ETHSIGN:**
+- Signs a raw hash without context
+- Wallet displays cryptic hex strings
+- Less secure user experience
+- Being phased out by modern wallets
+
+Use EIP-712 whenever possible. ETHSIGN is primarily for backward compatibility.
+</Warning>
+
+## EIP-1271 (Smart Contract Wallets)
+
+**EIP-1271** enables smart contract wallets (like Safe/Gnosis Safe, Argent) to validate signatures on-chain.
+
+### How It Works
+
+Instead of an ECDSA signature, the order includes the contract address. The settlement contract calls `isValidSignature()` on the wallet contract to verify the order.
+
+```typescript
+// For smart contract wallets, you typically:
+// 1. Create the order
+// 2. Get the order hash
+// 3. Have the contract sign/approve it
+// 4. Submit with EIP1271 scheme
+
+const order = {
+  // ... order parameters
+}
+
+// The smart contract wallet must implement EIP-1271
+interface EIP1271 {
+  function isValidSignature(
+    bytes32 hash,
+    bytes memory signature
+  ) external view returns (bytes4 magicValue);
+}
+```
+
+### Integration Example
+
+For Safe wallets or other smart contract wallets:
+
+```typescript
+import { SigningScheme } from '@cowprotocol/cow-sdk'
+
+// Create order for smart contract wallet
+const orderForSmartWallet = {
+  from: safeAddress, // Smart contract wallet address
+  sellToken: '0x...',
+  buyToken: '0x...',
+  // ... other parameters
+}
+
+// Submit with EIP1271 signing scheme
+const orderId = await orderBookApi.sendOrder({
+  ...orderForSmartWallet,
+  signingScheme: SigningScheme.EIP1271,
+  signature: smartContractSignature,
+})
+```
+
+<Info>
+The smart contract wallet must have the order hash approved (via internal logic or governance) before the settlement contract can execute the order.
+</Info>
+
+## PRESIGN (On-Chain Approval)
+
+**PRESIGN** allows orders to be approved on-chain before execution, without requiring a cryptographic signature.
+
+### How It Works
+
+Users call the `setPreSignature()` function on the CoW Protocol settlement contract to mark an order as approved:
+
+```solidity
+function setPreSignature(
+  bytes calldata orderUid,
+  bool signed
+) external
+```
+
+### Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Smart Contract Integration">
+    Protocols can approve orders programmatically
+  </Card>
+  <Card title="On-Chain Governance">
+    DAOs can vote to approve orders
+  </Card>
+  <Card title="Batch Operations">
+    Approve multiple orders in a single transaction
+  </Card>
+  <Card title="Emergency Actions">
+    Pre-authorize orders for specific scenarios
+  </Card>
+</CardGroup>
+
+### Integration Example
+
+```typescript
+import { getGlobalAdapter } from '@cowprotocol/cow-sdk'
+
+// Get the settlement contract
+const settlementContract = getContract(
+  SETTLEMENT_CONTRACT_ADDRESS,
+  SETTLEMENT_ABI
+)
+
+// Compute the order UID
+const orderUid = computeOrderUid(
+  domain,
+  order,
+  ownerAddress
+)
+
+// Pre-sign the order on-chain
+const tx = await settlementContract.setPreSignature(
+  orderUid,
+  true // signed = true
+)
+await tx.wait()
+
+// Now submit the order with PRESIGN scheme
+const orderId = await orderBookApi.sendOrder({
+  ...order,
+  from: ownerAddress,
+  signingScheme: SigningScheme.PRESIGN,
+  signature: '0x', // Empty signature for presign
+})
+```
+
+## ECDSA Signing Schemes
+
+EIP-712 and ETHSIGN are both ECDSA-based schemes:
+
+```typescript
+type EcdsaSigningScheme = SigningScheme.EIP712 | SigningScheme.ETHSIGN
+
+interface EcdsaSignature {
+  scheme: EcdsaSigningScheme
+  data: SignatureLike // r, s, v components
+}
+```
+
+The SDK automatically handles the details:
+
+```typescript
+// This returns an ECDSA signature (EIP712 or ETHSIGN)
+const { signature, signingScheme } = await OrderSigningUtils.signOrder(
+  order,
+  chainId,
+  signer
+)
+
+// The signature contains the full ECDSA signature data
+// The signingScheme indicates which method was used
+```
+
+## Order Signing Workflow
+
+<Steps>
+  <Step title="Create Order Parameters">
+    Define your order with the required fields
+  </Step>
+  <Step title="Normalize Order">
+    The SDK converts timestamps and validates parameters
+  </Step>
+  <Step title="Sign Order">
+    Call `OrderSigningUtils.signOrder()` which attempts EIP-712 first, then falls back to ETHSIGN
+  </Step>
+  <Step title="Submit Order">
+    Send the signed order to the OrderBook API with the signature and signing scheme
+  </Step>
+</Steps>
+
+## Signature Validation
+
+The settlement contract validates signatures based on the scheme:
+
+<Tabs>
+  <Tab title="EIP-712">
+    ```solidity
+    // Recover signer from typed data signature
+    address signer = ecrecover(
+      hashTypedData(order),
+      signature.v,
+      signature.r,
+      signature.s
+    )
+    require(signer == order.owner)
+    ```
+  </Tab>
+  <Tab title="ETHSIGN">
+    ```solidity
+    // Recover signer from eth_sign signature
+    address signer = ecrecover(
+      keccak256("\x19Ethereum Signed Message:\n32", orderHash),
+      signature.v,
+      signature.r,
+      signature.s
+    )
+    require(signer == order.owner)
+    ```
+  </Tab>
+  <Tab title="EIP-1271">
+    ```solidity
+    // Call smart contract wallet
+    bytes4 result = EIP1271Wallet(order.owner).isValidSignature(
+      orderHash,
+      signature
+    )
+    require(result == EIP1271_MAGIC_VALUE)
+    ```
+  </Tab>
+  <Tab title="PRESIGN">
+    ```solidity
+    // Check on-chain approval
+    require(preSignatures[orderHash][order.owner])
+    ```
+  </Tab>
+</Tabs>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Prefer EIP-712">
+    Always use EIP-712 when possible for the best security and UX.
+  </Card>
+  <Card title="Handle Fallback">
+    The SDK automatically tries ETHSIGN if EIP-712 fails. Don't disable this fallback.
+  </Card>
+  <Card title="Verify Wallet Type">
+    Detect smart contract wallets and use the appropriate signing flow (EIP-1271 or PRESIGN).
+  </Card>
+  <Card title="Cache Signatures">
+    Consider pre-signing orders for repeated trading patterns.
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Signature verification failed">
+    - Verify the chain ID matches the network you're signing for
+    - Ensure the order parameters haven't changed after signing
+    - Check that the signer address matches the order owner
+  </Accordion>
+  <Accordion title="Wallet rejects EIP-712 signature">
+    - The SDK will automatically fall back to ETHSIGN
+    - Some older wallets don't support EIP-712
+    - Check wallet compatibility
+  </Accordion>
+  <Accordion title="Smart contract wallet issues">
+    - Verify the contract implements `isValidSignature()`
+    - Ensure the order is approved in the contract's internal state
+    - Check that the contract address is correct
+  </Accordion>
+  <Accordion title="PRESIGN not working">
+    - Verify the `setPreSignature` transaction was confirmed
+    - Check the order UID matches exactly
+    - Ensure the pre-sign was done from the correct address
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={3}>
+  <Card title="App Data" href="/concepts/app-data">
+    Add metadata to your orders
+  </Card>
+  <Card title="Order Types" href="/concepts/order-types">
+    Learn about different order types
+  </Card>
+  <Card title="Order Signing Utils" href="/api/order-signing-utils">
+    API reference for signing utilities
+  </Card>
+</CardGroup>

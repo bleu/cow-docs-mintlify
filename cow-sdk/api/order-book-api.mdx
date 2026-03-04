@@ -1,0 +1,75 @@
+---
+title: "Order Book API"
+description: "Direct access to CoW Protocol OrderBook endpoints for quotes, order submission, retrieval, and cancellations"
+---
+
+# OrderBookApi
+
+## Overview
+
+The `OrderBookApi` class provides direct access to CoW Protocol OrderBook endpoints, handling quotes, order submission, retrieval, cancellations, and trading data with built-in rate limiting and error handling.
+
+## Installation
+
+```bash
+npm install @cowprotocol/sdk-order-book
+```
+
+## Core Functionality
+
+### Quote Management
+
+The `getQuote()` method retrieves pricing information before order submission, accepting parameters like sell/buy tokens, order kind (sell or buy), and price quality preferences.
+
+### Order Operations
+
+- `sendOrder()` - Submit signed orders to the order book
+- `getOrder()` - Retrieve order details by unique identifier
+- `getOrders()` - Fetch all orders for a specific account owner
+- `getOrderMultiEnv()` - Check both production and staging environments
+
+### Cancellations
+
+The `sendSignedOrderCancellations()` method performs soft cancels that may not prevent execution if already processing.
+
+### Trading Data
+
+Access trade history via `getTrades()` and `getTxOrders()` to retrieve orders from specific settlement transactions.
+
+## Configuration Options
+
+The constructor accepts:
+- Chain ID specification (required)
+- Environment selection (prod/staging)
+- Partner API key for higher rate limits
+- Custom endpoints and rate limiting parameters
+- Exponential backoff retry settings
+
+## Partner API (Authenticated Access)
+
+Partners can use authenticated API access with higher rate limits via the Partner API gateway. Pass your API key when creating an `OrderBookApi` instance:
+
+```typescript
+import { OrderBookApi, SupportedChainId } from '@cowprotocol/cow-sdk'
+
+const orderBookApi = new OrderBookApi({
+  chainId: SupportedChainId.MAINNET,
+  apiKey: 'your-partner-api-key',
+})
+```
+
+By default, the SDK routes requests through `partners.cow.fi` (prod) or `partners.barn.cow.fi` (staging) and includes the `X-API-Key` header. If you provide custom `baseUrls`, those take precedence over the default partner hosts, but the `X-API-Key` header is still sent with every request.
+
+## Additional Features
+
+### Price & Analytics
+
+`getNativePrice()` retrieves token pricing, while `getSolverCompetition()` provides auction competition details.
+
+### App Data
+
+Upload and retrieve metadata through `uploadAppData()` and `getAppData()` methods.
+
+### Error Handling
+
+Implements `OrderBookApiError` for API-specific exceptions with response status and messaging details.

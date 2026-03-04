@@ -1,0 +1,39 @@
+---
+title: "Config"
+description: "Chain configuration, contract addresses, and network utilities for all blockchains supported by CoW Protocol"
+---
+
+# @cowprotocol/sdk-config
+
+## Overview
+
+The `@cowprotocol/sdk-config` package provides chain configuration, contract addresses, and network utilities for all blockchains supported by CoW Protocol.
+
+## Key Features
+
+### Supported Networks
+
+The package supports 12 EVM chains where trading is fully enabled, including Ethereum, Arbitrum, Base, Polygon, and others. It additionally supports bridge-only targets like Optimism, Bitcoin, and Solana.
+
+### Chain Information
+
+Developers can access comprehensive metadata for each chain, including native currency details, RPC endpoints, block explorers, and contract addresses through the `ChainInfo` interface.
+
+### Contract Addresses
+
+Pre-configured addresses are provided for critical CoW Protocol contracts:
+- Settlement contract (default: `0x9008D19f58AAbD9eD0D60971565AA8510560ab41`)
+- Vault relayer and ETH flow contracts
+- ComposableCow and fallback handler contracts
+
+### Utility Functions
+
+Helper functions like `mapSupportedNetworks()` enable developers to map a value or function across all supported networks efficiently.
+
+## Installation & Usage
+
+```bash
+npm install @cowprotocol/sdk-config
+```
+
+Import chain IDs, chain info maps, or individual chain configurations as needed. The package exports both enum types for type safety and constant objects for runtime reference.

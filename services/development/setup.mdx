@@ -1,0 +1,114 @@
+---
+title: "Development Setup"
+description: "Setting up a local development environment for CoW Protocol Services"
+---
+
+# Development Setup
+
+This guide covers establishing a local development environment for CoW Protocol Services, a Rust-based project requiring multiple tools and dependencies.
+
+## Prerequisites
+
+- **Rust 2024 Edition** - Install via [rustup](https://rustup.rs/)
+- **Docker/Docker Compose** - For PostgreSQL and other services
+- **Foundry's `anvil`** - For network testing
+- **`cargo-nextest`** - For running tests
+
+<Warning>
+Do not use `cargo test` - always use `cargo nextest run` due to CI compatibility differences.
+</Warning>
+
+### Optional Tools
+
+- **Just** - Convenient command shortcuts (`just test-unit`, `just fmt`, etc.)
+- **Tombi** - TOML formatting tool
+
+## Setup Steps
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/cowprotocol/services.git
+cd services
+```
+
+### 2. Build Dependencies
+
+Dependencies are automatically resolved via Cargo:
+
+```bash
+cargo build
+```
+
+### 3. Configure PostgreSQL
+
+Start PostgreSQL using Docker Compose, which handles migrations automatically:
+
+```bash
+docker compose up -d db
+```
+
+### 4. Set Environment Variables
+
+For forked network testing, configure RPC endpoints:
+
+```bash
+export FORK_URL_MAINNET="https://eth.llamarpc.com"
+export FORK_URL_GNOSIS="https://rpc.gnosischain.com"
+```
+
+## IDE Configuration
+
+### VS Code
+
+Recommended extensions:
+- rust-analyzer
+- Even Better TOML
+- CodeLLDB (for debugging)
+
+### JetBrains IDEs
+
+- Official Rust plugin
+- Configure nightly rustfmt in settings
+
+### Zed
+
+- Built-in Rust support
+- Tombi extension for TOML
+
+## Verification
+
+Validate your setup by running:
+
+```bash
+# Unit tests
+just test-unit
+
+# Database tests (requires PostgreSQL)
+just test-db
+
+# Formatting check
+cargo +nightly fmt --check
+
+# Clippy linter
+cargo clippy --all-targets --all-features
+```
+
+## Troubleshooting
+
+### Linker Errors
+
+- **Linux**: Install `build-essential` packages
+- **macOS**: Install Xcode command line tools (`xcode-select --install`)
+
+### Memory Constraints
+
+Compilation can be memory-intensive. Ensure you have at least 8GB RAM available.
+
+### Port Conflicts
+
+If PostgreSQL fails to start, check for existing instances on port 5432:
+
+```bash
+lsof -i :5432
+```

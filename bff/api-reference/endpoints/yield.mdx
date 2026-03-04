@@ -1,0 +1,237 @@
+---
+title: "Yield Endpoints"
+description: "API endpoints for retrieving liquidity pool information and APR data across multiple DEX protocols"
+---
+
+# Yield Endpoints
+
+Endpoints for retrieving liquidity pool information and APR data across multiple DEX protocols.
+
+## Get Pools Information
+
+Retrieves detailed information about liquidity pools including APR, TVL, volume, and fee data.
+
+**Endpoint:** `POST /{chainId}/yield/pools`
+
+### Path Parameters
+
+- **chainId** (string, required): The blockchain network ID (e.g., `1`, `100`)
+
+### Request Body
+
+Array of pool addresses to query. Pass an empty array `[]` to fetch all available pools.
+
+- Empty array returns all pools (up to result limit)
+- With addresses returns only specified pools
+- Maximum: 1000 pool addresses
+
+### Response Fields
+
+| Field            | Type   | Description                                   |
+| ---------------- | ------ | --------------------------------------------- |
+| contract_address | string | Pool contract address                         |
+| chain_id         | number | Blockchain network ID                         |
+| project          | string | Liquidity provider / DEX protocol name        |
+| apr              | number | Annual Percentage Rate for liquidity providers |
+| fee              | number | Pool fee tier as a percentage                 |
+| tvl              | number | Total Value Locked in USD                     |
+| volume           | number | Trading volume in the last 24 hours (USD)     |
+
+### Code Examples
+
+**Fetch all pools:**
+
+```bash
+curl -X POST "https://api.cow.fi/1/yield/pools" \
+  -H "Content-Type: application/json" \
+  -d '[]'
+```
+
+**Fetch specific pools:**
+
+```bash
+curl -X POST "https://api.cow.fi/1/yield/pools" \
+  -H "Content-Type: application/json" \
+  -d '["0x1234567890abcdef1234567890abcdef12345678", "0xabcdef1234567890abcdef1234567890abcdef12"]'
+```
+
+```javascript
+// Fetch all pools
+const response = await fetch('https://api.cow.fi/1/yield/pools', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify([])
+});
+const pools = await response.json();
+
+// Fetch specific pools
+const poolAddresses = [
+  '0x1234567890abcdef1234567890abcdef12345678',
+  '0xabcdef1234567890abcdef1234567890abcdef12'
+];
+const specific = await fetch('https://api.cow.fi/1/yield/pools', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(poolAddresses)
+}).then(r => r.json());
+```
+
+```python
+import requests
+import json
+
+# Fetch all pools
+response = requests.post(
+    'https://api.cow.fi/1/yield/pools',
+    headers={'Content-Type': 'application/json'},
+    data=json.dumps([])
+)
+pools = response.json()
+```
+
+### Response Example
+
+```json
+[
+  {
+    "contract_address": "0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8",
+    "chain_id": 1,
+    "project": "Uniswap V3",
+    "apr": 12.45,
+    "fee": 0.3,
+    "tvl": 45678901.23,
+    "volume": 5678901.45
+  },
+  {
+    "contract_address": "0x06df3b2bbb68adc8b0e302443692037ed9f91b42",
+    "chain_id": 1,
+    "project": "Balancer",
+    "apr": 8.76,
+    "fee": 0.25,
+    "tvl": 12345678.90,
+    "volume": 987654.32
+  }
+]
+```
+
+---
+
+## Get Average APR by Project
+
+Retrieves the average APR for each liquidity provider/DEX protocol.
+
+**Endpoint:** `GET /{chainId}/yield/pools-average-apr`
+
+### Path Parameters
+
+- **chainId** (string, required): The blockchain network ID (e.g., `1`, `100`)
+
+### Code Examples
+
+```bash
+curl "https://api.cow.fi/1/yield/pools-average-apr"
+```
+
+```javascript
+const response = await fetch('https://api.cow.fi/1/yield/pools-average-apr');
+const averageAprs = await response.json();
+console.log(averageAprs);
+```
+
+### Response Example
+
+```json
+{
+  "Uniswap V3": 15.234567,
+  "Balancer": 12.456789,
+  "Curve": 8.901234,
+  "Sushiswap": 10.123456,
+  "CoW AMM": 18.567890
+}
+```
+
+---
+
+## Notes
+
+### Supported DEX Protocols
+
+The API aggregates data from multiple liquidity providers:
+
+- **Uniswap V2/V3**: Concentrated liquidity pools
+- **Balancer**: Weighted and stable pools
+- **Curve**: Stablecoin and wrapped token pools
+- **Sushiswap**: AMM pools
+- **CoW AMM**: Native CoW Protocol liquidity
+- Others: Additional DEX protocols based on availability
+
+### APR Calculation
+
+APR represents the yield liquidity providers earn through:
+
+- **Fee income**: Trading fees collected by the pool
+- **Incentives**: Token rewards (if applicable)
+- **Time period**: Calculated over rolling time windows
+- **Precision**: Rounded to 6 decimal places
+
+### TVL and Volume
+
+Both metrics are denominated in USD:
+
+- **TVL**: Snapshot of current liquidity
+- **Volume**: 24-hour rolling trading volume
+
+### Result Limit
+
+The pools endpoint has a maximum result limit of **1000 pools**. When fetching all pools (empty array), results are limited to the top pools by TVL.
+
+### Caching
+
+- **Pools Average APR**: Cached for 6 hours (21,600 seconds)
+- **Pools Info**: Queries are cached at the database level for performance
+
+### Fee Tiers
+
+| Protocol   | Fee Tiers              | Description           |
+| ---------- | ---------------------- | --------------------- |
+| Uniswap V3 | 0.01%, 0.05%, 0.3%, 1% | Multiple tier options |
+| Balancer   | Variable               | Dynamic fees          |
+| Curve      | 0.04% typical          | Low fees for stables  |
+| Sushiswap  | 0.3%                   | Fixed fee             |
+
+### Use Cases
+
+**Yield Comparison Dashboard:**
+
+```javascript
+const aprs = await fetch('https://api.cow.fi/1/yield/pools-average-apr')
+  .then(r => r.json());
+
+Object.entries(aprs).forEach(([protocol, apr]) => {
+  console.log(`${protocol}: ${apr.toFixed(2)}%`);
+});
+```
+
+**Pool Selection for Liquidity:**
+
+```javascript
+const pools = await fetch('https://api.cow.fi/1/yield/pools', {
+  method: 'POST',
+  body: JSON.stringify([])
+}).then(r => r.json());
+
+const scoredPools = pools.map(p => ({
+  ...p,
+  score: p.apr / Math.log(p.tvl)
+})).sort((a, b) => b.score - a.score);
+
+console.log('Best pool:', scoredPools[0]);
+```
+
+### Best Practices
+
+1. **Cache appropriately**: Respect cache headers to reduce load
+2. **Batch queries**: Request multiple pools in a single call
+3. **Handle missing data**: Some pools may have incomplete information
+4. **Consider impermanent loss**: APR doesn't account for IL
+5. **Verify data**: Cross-reference with protocol interfaces for critical decisions

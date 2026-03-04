@@ -1,0 +1,147 @@
+---
+title: "Database"
+description: "PostgreSQL setup, schema management, and operational guidance for CoW Protocol Services"
+---
+
+# Database
+
+CoW Protocol Services relies on PostgreSQL as its persistence layer, supporting orders, auctions, settlements, and related data. The system requires **PostgreSQL 12 or newer** and utilizes sqlx for connection pooling and query management.
+
+## Architecture
+
+### Network Isolation
+
+The platform implements a **database-per-network model**, maintaining separate PostgreSQL instances for:
+
+- Ethereum Mainnet
+- Arbitrum One
+- Base
+- Gnosis Chain
+- Polygon
+- Linea
+- BNB Chain
+- Sepolia testnet
+- Plasma, Ink
+
+This separation prevents cross-network contamination, allows independent scaling, and simplifies backup procedures.
+
+### Service Access Patterns
+
+Different services have distinct database requirements:
+
+| Service | Access | Connection Pool | Notes |
+|---------|--------|----------------|-------|
+| Orderbook | Read/Write | 10-50 | User-facing, highest load |
+| Autopilot | Read/Write | 10-20 | Single instance per network via advisory locks |
+| Driver | Read-only | 5-15 | Lower connection needs |
+| Refunder | Read/Write | 5-10 | Low-volume operations |
+
+## Installation and Configuration
+
+### Resource Requirements
+
+**Development**:
+- 2 CPU cores
+- 4GB RAM
+- 50GB SSD storage
+
+**Production**:
+- 4-8 CPU cores
+- 16-32GB RAM
+- 500GB-2TB NVMe storage
+- 200-500 max connections
+
+### Setup
+
+#### Docker Compose (Development)
+
+```bash
+docker compose up -d db
+```
+
+#### Production
+
+PostgreSQL 14+ is recommended. Create a dedicated user with appropriate privileges:
+
+```sql
+CREATE USER cow WITH PASSWORD 'secure_password';
+CREATE DATABASE cow_mainnet OWNER cow;
+GRANT ALL PRIVILEGES ON DATABASE cow_mainnet TO cow;
+```
+
+Connection strings follow the format:
+
+```
+postgresql://user:password@host:port/database?sslmode=require
+```
+
+## Migration Management
+
+CoW Protocol uses **Flyway** for schema versioning. Migrations follow naming conventions (`V###__description.sql`) and are tracked in the `flyway_schema_history` table.
+
+### Key Practices
+
+- Test on staging environments first
+- Use `CREATE INDEX CONCURRENTLY` to avoid locking
+- Never modify applied migration files
+- Document complex schema changes
+
+## Core Database Components
+
+### Primary Tables
+
+The schema encompasses:
+
+- **Orders storage** - User orders with signatures and metadata
+- **Auction data** - Historical auction records
+- **Settlement records** - Executed settlements with transaction hashes
+- **On-chain order tracking** - EthFlow and other on-chain order types
+- **JIT orders** - Just-in-time liquidity orders
+- **Metadata tables** - App data, quotes, and presignature events
+
+### Performance Considerations
+
+Important indexes support:
+
+- Order lookups by UID and owner
+- Settlement queries by transaction hash and auction ID
+- Trade history tracking
+
+Production configurations should implement:
+
+- Aggressive autovacuum settings
+- Proper shared buffer allocation (25% of RAM)
+- Effective cache sizing (75% of RAM)
+
+## Operational Tasks
+
+### Backup Strategy
+
+Use `pg_dump` in compressed custom format:
+
+```bash
+pg_dump -Fc cow_mainnet > cow_mainnet_$(date +%Y%m%d).dump
+```
+
+Schedule daily backups to cloud storage and retain backups for extended periods.
+
+### Monitoring
+
+- Track active connections via `pg_stat_activity`
+- Enable slow query logging (>1 second threshold)
+- Regularly analyze table bloat and index usage patterns
+
+### Troubleshooting
+
+**Connection pool exhaustion**: Increase `max_connections` and review connection pool sizing per service.
+
+**Migration failures**: Check `flyway_schema_history` for failed migrations. Resolve manually if needed and re-run.
+
+## Best Practices
+
+- Maintain separate databases per blockchain network
+- Implement automated backup procedures
+- Monitor connection pool utilization
+- Create covering indexes for frequently accessed queries
+- Enable SSL for production connections
+- Regularly test recovery procedures

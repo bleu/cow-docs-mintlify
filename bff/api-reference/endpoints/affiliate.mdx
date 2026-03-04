@@ -1,0 +1,249 @@
+---
+title: "Affiliate Program Endpoints"
+description: "Endpoints for managing affiliate codes, retrieving program details, and accessing performance statistics"
+---
+
+# Affiliate Program Endpoints
+
+Affiliate endpoints enable partners to register affiliate codes, retrieve program details, and access performance statistics.
+
+## Get Affiliate Information
+
+Retrieves the affiliate code and program parameters for a wallet address.
+
+**Endpoint:** `GET /affiliate/{address}`
+
+### Path Parameters
+
+- **address** (string, required): Ethereum wallet address (checksummed or lowercase)
+
+### Response
+
+| Field                    | Type   | Description                                          |
+| ------------------------ | ------ | ---------------------------------------------------- |
+| code                     | string | The affiliate code bound to this wallet              |
+| createdAt                | string | ISO 8601 timestamp when the affiliate was registered |
+| rewardAmount             | number | Fixed reward amount per trigger (in USD)             |
+| triggerVolume            | number | Trading volume required to trigger a reward (in USD) |
+| timeCapDays              | number | Number of days the affiliate link remains active     |
+| volumeCap                | number | Maximum volume that counts toward rewards (in USD)   |
+| revenueSplitAffiliatePct | number | Percentage of fees allocated to the affiliate        |
+| revenueSplitTraderPct    | number | Percentage of fees allocated to the trader           |
+| revenueSplitDaoPct       | number | Percentage of fees allocated to the DAO              |
+
+### Code Examples
+
+```bash
+curl "https://api.cow.fi/affiliate/0x1234567890abcdef1234567890abcdef12345678"
+```
+
+```javascript
+const walletAddress = '0x1234567890abcdef1234567890abcdef12345678';
+const response = await fetch(`https://api.cow.fi/affiliate/${walletAddress}`);
+const affiliate = await response.json();
+console.log(`Affiliate code: ${affiliate.code}`);
+```
+
+### Response Example
+
+```json
+{
+  "code": "MYCOWCODE",
+  "createdAt": "2024-01-15T10:30:00.000Z",
+  "rewardAmount": 10,
+  "triggerVolume": 1000,
+  "timeCapDays": 180,
+  "volumeCap": 100000,
+  "revenueSplitAffiliatePct": 40,
+  "revenueSplitTraderPct": 40,
+  "revenueSplitDaoPct": 20
+}
+```
+
+---
+
+## Register Affiliate Code
+
+Registers a new affiliate code for a wallet address using EIP-712 signature verification.
+
+**Endpoint:** `POST /affiliate/{address}`
+
+### Path Parameters
+
+- **address** (string, required): Ethereum wallet address (must match `walletAddress` in body)
+
+### Request Body
+
+- **walletAddress** (string, required): Ethereum wallet address (must match path parameter)
+- **code** (string, required): Affiliate code to register. Format: 5-20 uppercase characters. Allowed: A-Z, 0-9, hyphens (-), underscores (_)
+- **signedMessage** (string, required): EIP-712 signature of the affiliate code registration message
+
+### Code Examples
+
+```bash
+curl -X POST "https://api.cow.fi/affiliate/0x1234567890abcdef1234567890abcdef12345678" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "walletAddress": "0x1234567890abcdef1234567890abcdef12345678",
+    "code": "MYCOWCODE",
+    "signedMessage": "0xabcdef..."
+  }'
+```
+
+```javascript
+import { ethers } from 'ethers';
+
+const walletAddress = '0x1234567890abcdef1234567890abcdef12345678';
+const code = 'MYCOWCODE';
+
+const domain = { name: 'CoW Swap Affiliate', version: '1' };
+const types = {
+  AffiliateCode: [
+    { name: 'walletAddress', type: 'address' },
+    { name: 'code', type: 'string' },
+    { name: 'chainId', type: 'uint256' }
+  ]
+};
+const message = { walletAddress, code, chainId: 1 };
+
+const signer = await provider.getSigner();
+const signedMessage = await signer.signTypedData(domain, types, message);
+
+const response = await fetch(`https://api.cow.fi/affiliate/${walletAddress}`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ walletAddress, code, signedMessage })
+});
+```
+
+### Response Example
+
+```json
+{
+  "code": "MYCOWCODE",
+  "createdAt": "2024-01-15T10:30:00.000Z"
+}
+```
+
+### Error Responses
+
+| Status | Reason              | Solution                            |
+| ------ | ------------------- | ----------------------------------- |
+| 400    | Invalid code format | Use only A-Z, 0-9, -, _ (5-20 chars) |
+| 401    | Invalid signature   | Re-sign with correct EIP-712 format |
+| 409    | Code already taken  | Choose a different code             |
+
+---
+
+## Get Affiliate Statistics
+
+Retrieves performance statistics for an affiliate from Dune Analytics.
+
+**Endpoint:** `GET /affiliate/affiliate-stats/{address}`
+
+### Path Parameters
+
+- **address** (string, required): Affiliate's Ethereum wallet address
+
+### Response
+
+| Field              | Type   | Description                                     |
+| ------------------ | ------ | ----------------------------------------------- |
+| affiliate_address  | string | Affiliate's wallet address                      |
+| referrer_code      | string | The affiliate's referral code                   |
+| total_volume       | number | Total trading volume from referred traders (USD) |
+| trigger_volume     | number | Volume threshold to trigger rewards (USD)       |
+| total_earned       | number | Total rewards earned (USD)                      |
+| paid_out           | number | Total rewards paid out (USD)                    |
+| next_payout        | number | Amount in next scheduled payout (USD)           |
+| left_to_next_reward| number | Volume remaining until next reward trigger (USD) |
+| active_traders     | number | Number of currently active traders               |
+| total_traders      | number | Total number of traders who have used the code  |
+| lastUpdatedAt      | string | ISO 8601 timestamp of last update               |
+
+### Code Examples
+
+```bash
+curl "https://api.cow.fi/affiliate/affiliate-stats/0x1234567890abcdef1234567890abcdef12345678"
+```
+
+```javascript
+const affiliateAddress = '0x1234567890abcdef1234567890abcdef12345678';
+const response = await fetch(`https://api.cow.fi/affiliate/affiliate-stats/${affiliateAddress}`);
+const stats = await response.json();
+console.log(`Total volume: $${stats.total_volume}`);
+```
+
+---
+
+## Get Trader Statistics
+
+Retrieves statistics for a trader participating in the affiliate program.
+
+**Endpoint:** `GET /affiliate/trader-stats/{address}`
+
+### Path Parameters
+
+- **address** (string, required): Trader's Ethereum wallet address
+
+### Response
+
+| Field               | Type   | Description                                   |
+| ------------------- | ------ | --------------------------------------------- |
+| trader_address      | string | Trader's wallet address                       |
+| bound_referrer_code | string | Affiliate code the trader is linked to        |
+| linked_since        | string | ISO 8601 timestamp when trader linked         |
+| rewards_end         | string | ISO 8601 timestamp when rewards expire        |
+| eligible_volume     | number | Trading volume eligible for rewards (USD)     |
+| left_to_next_rewards| number | Volume remaining until next reward (USD)      |
+| trigger_volume      | number | Volume threshold to trigger rewards (USD)     |
+| total_earned        | number | Total rewards earned by the trader (USD)      |
+| paid_out            | number | Total rewards paid out to the trader (USD)    |
+| next_payout         | number | Amount in next scheduled payout (USD)         |
+| lastUpdatedAt       | string | ISO 8601 timestamp of last update             |
+
+### Code Examples
+
+```bash
+curl "https://api.cow.fi/affiliate/trader-stats/0xabcdef1234567890abcdef1234567890abcdef12"
+```
+
+---
+
+## Notes
+
+### Affiliate Code Requirements
+
+* **Length**: 5-20 characters
+* **Characters**: Uppercase A-Z, digits 0-9, hyphens (-), underscores (_)
+* **Format**: Automatically normalized to uppercase
+* **Uniqueness**: Each code can only be registered once
+
+### Signature Verification
+
+The API uses EIP-712 signatures to verify wallet ownership:
+
+1. **Domain**: `CoW Swap Affiliate` version `1`
+2. **Chain ID**: Always `1` (Ethereum Mainnet) for verification
+3. **Message**: Contains `walletAddress`, `code`, and `chainId`
+
+Supports both EOA wallets (standard ECDSA) and smart contract wallets (ERC-1271).
+
+See [Authentication](/api-reference/authentication) for detailed signing examples.
+
+### Reward Structure
+
+**For Affiliates:**
+* Earn fixed rewards when referred traders hit volume milestones
+* Receive percentage of trading fees based on `revenueSplitAffiliatePct`
+
+**For Traders:**
+* Receive fee discounts based on `revenueSplitTraderPct`
+* Benefits active for `timeCapDays` after first trade
+* Volume capped at `volumeCap` per trader
+
+### CMS Requirement
+
+Affiliate registration and retrieval require CMS integration:
+* Environment variable `CMS_ENABLED` must be set
+* `CMS_API_KEY` must be configured

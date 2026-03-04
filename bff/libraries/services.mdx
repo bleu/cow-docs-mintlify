@@ -1,0 +1,92 @@
+---
+title: "Services"
+description: "Business logic services for the CoW Protocol BFF, implementing clean architecture patterns with dependency injection"
+---
+
+# Services
+
+The services library implements business logic through clean architecture patterns. Services follow dependency injection principles using InversifyJS with Symbol-based identifiers. They orchestrate repositories while maintaining single responsibility and full TypeScript type safety.
+
+## Architecture Principles
+
+Services follow clean architecture patterns with:
+
+* **Single responsibility** - Each service handles one domain
+* **Dependency injection** - Using InversifyJS with Symbol-based identifiers
+* **Repository composition** - Services orchestrate multiple repositories
+* **Full type safety** - Complete TypeScript typing throughout
+
+## Core Services
+
+### USD Service
+
+Retrieves token pricing across chains. Delegates to the `UsdRepository`, which implements fallback strategies across multiple data sources like CoinGecko.
+
+### Slippage Service
+
+Calculates dynamic slippage tolerance based on volatility and market conditions, accepting optional order context for precision. The service returns recommended slippage in basis points plus detailed volatility metrics.
+
+### Simulation Service
+
+Uses Tenderly to simulate transaction bundles before execution, providing gas usage and balance change analysis.
+
+### Token Holder Service
+
+Retrieves top token holders for analytics purposes.
+
+### Token Balances Service
+
+Fetches multiple token balances in a single call.
+
+### Balance Tracking Service
+
+Offers real-time monitoring through Server-Sent Events, emitting balance change and allowance change events.
+
+### SSE Service
+
+Manages Server-Sent Event connections, enabling client registration and event broadcasting.
+
+### Hooks Service
+
+Fetches CoW Hooks execution data from Dune Analytics across multiple blockchains and time periods.
+
+### Affiliate Stats Service
+
+Aggregates affiliate performance metrics. Provides statistics and export functionality for affiliate program data in CSV or JSON formats.
+
+## Setup Pattern
+
+Services utilize factory functions that handle repository configuration automatically:
+
+```typescript
+import {
+  getCacheRepository,
+  getErc20Repository,
+  getUsdRepository,
+} from '@cowprotocol/services';
+
+// Factory functions handle all wiring
+const cache = getCacheRepository();
+const erc20Repo = getErc20Repository(cache);
+const usdRepo = getUsdRepository(cache, erc20Repo);
+```
+
+## Dependency Injection Setup
+
+The dependency injection container binds service interfaces to implementations using exported symbols:
+
+```typescript
+import { Container } from 'inversify';
+
+const container = new Container();
+container.bind(usdServiceSymbol).to(UsdServiceImpl);
+container.bind(slippageServiceSymbol).to(SlippageServiceImpl);
+```
+
+## Best Practices
+
+1. **Inject interfaces rather than implementations** - Enables testing and flexibility
+2. **Handle null responses gracefully** - Repositories may return null for missing data
+3. **Leverage factory functions** - Use provided factory functions for consistent wiring
+4. **Set reasonable timeouts** - For external service calls
+5. **Cache at the repository level** - Not within services themselves

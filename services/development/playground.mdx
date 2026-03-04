@@ -1,0 +1,112 @@
+---
+title: "Playground"
+description: "Docker Compose-based local development environment for the complete CoW Protocol stack"
+---
+
+# Playground
+
+The CoW Protocol Playground is a comprehensive Docker Compose-based local development environment enabling developers to run the complete CoW Protocol stack, including services, a forked blockchain, and testing interfaces.
+
+## Key Components
+
+The playground includes:
+
+- All CoW Protocol services (orderbook, autopilot, driver, baseline solver)
+- Anvil-based forked blockchain
+- CoW Swap UI and CoW Explorer
+- PostgreSQL database with migrations
+- Otterscan block explorer
+- Sourcify contract verification
+- Grafana monitoring
+
+The playground watches your local code and automatically recompiles and restarts services when you make changes.
+
+## Getting Started
+
+### 1. Configure Environment
+
+Copy the environment template and configure your RPC endpoint:
+
+```bash
+cp .env.example .env
+# Edit .env with your RPC endpoint
+```
+
+### 2. Start Services
+
+```bash
+docker compose up
+```
+
+### 3. Wait for Initialization
+
+Initial compilation and service stabilization takes 5-10 minutes.
+
+### 4. Configure Wallet
+
+Connect your wallet to `localhost:8545` and import test accounts from the provided test mnemonic.
+
+## Service Access Points
+
+| Service | URL |
+|---------|-----|
+| CoW Swap UI | [localhost:8000](http://localhost:8000) |
+| CoW Explorer | [localhost:8001](http://localhost:8001) |
+| Orderbook API | [localhost:8080](http://localhost:8080) |
+| Otterscan | [localhost:8003](http://localhost:8003) |
+| Grafana | [localhost:3000](http://localhost:3000) |
+
+## Test Accounts
+
+All test accounts derive from:
+
+```
+test test test test test test test test test test test junk
+```
+
+Each account begins with 10,000 ETH.
+
+<Warning>
+Never use these keys on real networks! They are publicly known test accounts.
+</Warning>
+
+## Advanced Features
+
+### Tokio-console
+
+Runtime debugging and async task inspection is available for development.
+
+### Live Reloading
+
+Services automatically restart on code changes, enabling rapid iteration.
+
+### Network Switching
+
+Support for multiple chains:
+
+- Ethereum Mainnet
+- Gnosis Chain
+- Arbitrum One
+
+Update environment variables and restart to switch networks.
+
+### Contract Verification
+
+Local Sourcify integration for contract verification.
+
+### Service Limiting
+
+Run only necessary components to conserve resources:
+
+```bash
+docker compose up orderbook autopilot
+```
+
+## Important Considerations
+
+- The playground currently supports only **fork mode**. A clean local network mode remains under development.
+- Users on **macOS/Windows** should use the non-interactive compose file for improved performance due to Docker mount limitations:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.noninteractive.yml up
+```

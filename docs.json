@@ -1,0 +1,822 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "sequoia",
+  "name": "CoW DAO Documentation",
+  "description": "Documentation for CoW Protocol, CoW AMM, and CoW DAO \u2014 the most user-protective trading protocol on Ethereum.",
+  "colors": {
+    "primary": "#012F7A",
+    "light": "#3F80FF",
+    "dark": "#012F7A"
+  },
+  "favicon": "/images/cow-dao-favicon.png",
+  "logo": {
+    "light": "/images/cow-dao-logo-dark.svg",
+    "dark": "/images/cow-dao-logo-light.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "type": "github",
+        "href": "https://github.com/cowprotocol"
+      },
+      {
+        "type": "discord",
+        "href": "https://discord.com/invite/cowprotocol"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Launch CoW Swap",
+      "href": "https://swap.cow.fi"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "claude",
+      "chatgpt"
+    ],
+    "display": "toc"
+  },
+  "styling": {
+    "eyebrows": "breadcrumbs"
+  },
+  "background": {
+    "decoration": "gradient"
+  },
+  "interaction": {
+    "drilldown": true
+  },
+  "search": {
+    "prompt": "Search CoW Protocol docs..."
+  },
+  "metadata": {
+    "timestamp": true
+  },
+  "navigation": {
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Home",
+          "icon": "house",
+          "href": "/home"
+        },
+        {
+          "anchor": "CoW Swap",
+          "icon": "arrow-right-arrow-left",
+          "href": "https://swap.cow.fi"
+        }
+      ]
+    },
+    "tabs": [
+      {
+        "tab": "CoW Protocol",
+        "icon": "cow",
+        "groups": [
+          {
+            "group": "Overview",
+            "icon": "book-open",
+            "pages": [
+              "cow-protocol/explanation/introduction/intents",
+              "cow-protocol/explanation/introduction/solvers",
+              "cow-protocol/explanation/introduction/fair-combinatorial-auction",
+              "cow-protocol/explanation/integration-overview",
+              "cow-protocol/explanation/building"
+            ]
+          },
+          {
+            "group": "How It Works",
+            "icon": "circle-info",
+            "pages": [
+              "cow-protocol/explanation/how-it-works/flow-of-an-order",
+              "cow-protocol/explanation/how-it-works/coincidence-of-wants",
+              "cow-protocol/explanation/how-it-works/protocol-vs-swap"
+            ]
+          },
+          {
+            "group": "Benefits",
+            "icon": "shield-check",
+            "pages": [
+              "cow-protocol/explanation/benefits/mev-protection",
+              "cow-protocol/explanation/benefits/price-improvement",
+              "cow-protocol/explanation/benefits/trade-any-intent",
+              "cow-protocol/explanation/benefits/additional-benefits"
+            ]
+          },
+          {
+            "group": "Order Types",
+            "icon": "list-check",
+            "pages": [
+              "cow-protocol/explanation/order-types/market-orders",
+              "cow-protocol/explanation/order-types/limit-orders",
+              "cow-protocol/explanation/order-types/twap-orders",
+              "cow-protocol/explanation/order-types/programmatic-orders",
+              "cow-protocol/explanation/order-types/cow-hooks",
+              "cow-protocol/explanation/order-types/milkman-orders",
+              "cow-protocol/explanation/order-types/pay-debt-flash-loans"
+            ]
+          },
+          {
+            "group": "Flash Loans",
+            "icon": "bolt",
+            "pages": [
+              "cow-protocol/explanation/flash-loans/Introduction",
+              "cow-protocol/explanation/flash-loans/how-it-works",
+              "cow-protocol/explanation/flash-loans/integrators"
+            ]
+          },
+          {
+            "group": "CoW AMM",
+            "icon": "droplet",
+            "pages": [
+              "cow-amm/explanation/the-problem-of-lvr",
+              "cow-amm/explanation/how-cow-amms-work"
+            ]
+          },
+          {
+            "group": "Trading Tutorials",
+            "icon": "graduation-cap",
+            "pages": [
+              {
+                "group": "CoW Swap",
+                "pages": [
+                  "cow-protocol/tutorials/cow-swap/swap",
+                  "cow-protocol/tutorials/cow-swap/limit",
+                  "cow-protocol/tutorials/cow-swap/twap",
+                  "cow-protocol/tutorials/cow-swap/native",
+                  "cow-protocol/tutorials/cow-swap/flash-loans",
+                  "cow-protocol/tutorials/cow-swap/swap-and-bridge"
+                ]
+              },
+              {
+                "group": "CoW Explorer",
+                "pages": [
+                  "cow-protocol/tutorials/cow-explorer/order",
+                  "cow-protocol/tutorials/cow-explorer/batch-auction",
+                  "cow-protocol/tutorials/cow-explorer/address"
+                ]
+              },
+              "cow-protocol/tutorials/swap-in-safe-app",
+              "cow-protocol/tutorials/cow-amm-deployer"
+            ]
+          },
+          {
+            "group": "How-To Guides",
+            "icon": "wrench",
+            "pages": [
+              "cow-protocol/howto/cow-swap",
+              "cow-protocol/howto/cow-explorer",
+              "cow-protocol/howto/integrate/widget",
+              "cow-protocol/howto/integrate/api"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "icon": "sitemap",
+            "pages": [
+              "cow-protocol/explanation/architecture/overview",
+              "cow-protocol/explanation/architecture/autopilot",
+              "cow-protocol/explanation/architecture/orderbook",
+              "cow-protocol/explanation/architecture/driver",
+              "cow-protocol/explanation/architecture/solver-engine"
+            ]
+          },
+          {
+            "group": "API Reference",
+            "icon": "square-terminal",
+            "pages": [
+              "cow-protocol/reference/apis/orderbook",
+              "cow-protocol/reference/apis/solver",
+              "cow-protocol/reference/apis/driver"
+            ]
+          },
+          {
+            "group": "Core Reference",
+            "icon": "file-code",
+            "pages": [
+              "cow-protocol/reference/core/definitions",
+              "cow-protocol/reference/core/tokens",
+              "cow-protocol/reference/core/signing-schemes",
+              {
+                "group": "Intents",
+                "pages": [
+                  "cow-protocol/reference/core/intents",
+                  "cow-protocol/reference/core/intents/app-data",
+                  "cow-protocol/reference/core/intents/hooks"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Auctions",
+            "icon": "gavel",
+            "expanded": false,
+            "pages": [
+              "cow-protocol/reference/core/auctions",
+              "cow-protocol/reference/core/auctions/the-problem",
+              "cow-protocol/reference/core/auctions/schema",
+              "cow-protocol/reference/core/auctions/competition-rules",
+              "cow-protocol/reference/core/auctions/ebbo-rules",
+              "cow-protocol/reference/core/auctions/rewards",
+              "cow-protocol/reference/core/auctions/accounting",
+              "cow-protocol/reference/core/auctions/bonding-pools"
+            ]
+          },
+          {
+            "group": "Contracts",
+            "icon": "file-contract",
+            "expanded": false,
+            "pages": [
+              {
+                "group": "Core",
+                "pages": [
+                  "cow-protocol/reference/contracts/core",
+                  "cow-protocol/reference/contracts/core/settlement",
+                  "cow-protocol/reference/contracts/core/vault-relayer",
+                  "cow-protocol/reference/contracts/core/allowlist"
+                ]
+              },
+              {
+                "group": "Periphery",
+                "pages": [
+                  "cow-protocol/reference/contracts/periphery",
+                  "cow-protocol/reference/contracts/periphery/composable-cow",
+                  "cow-protocol/reference/contracts/periphery/eth-flow",
+                  "cow-protocol/reference/contracts/periphery/hooks-trampoline",
+                  "cow-protocol/reference/contracts/periphery/cow-uid-generator",
+                  "cow-protocol/reference/contracts/periphery/flashloans"
+                ]
+              },
+              "cow-protocol/reference/contracts/programmatic/twap"
+            ]
+          },
+          {
+            "group": "Other Reference",
+            "icon": "ellipsis",
+            "pages": [
+              "cow-protocol/reference/widget-params",
+              "cow-protocol/reference/hook-dapp",
+              "cow-protocol/reference/custom-links",
+              "governance/reference/fees",
+              "governance/reference/partner-fee"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CoW SDK",
+        "icon": "code",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "icon": "rocket",
+            "pages": [
+              "cow-sdk/introduction",
+              "cow-sdk/installation",
+              "cow-sdk/quickstart"
+            ]
+          },
+          {
+            "group": "Concepts",
+            "icon": "book-open",
+            "pages": [
+              "cow-sdk/concepts/adapters",
+              "cow-sdk/concepts/app-data",
+              "cow-sdk/concepts/order-types",
+              "cow-sdk/concepts/signing-schemes"
+            ]
+          },
+          {
+            "group": "Guides",
+            "icon": "graduation-cap",
+            "pages": [
+              "cow-sdk/guides/creating-swap-orders",
+              "cow-sdk/guides/creating-limit-orders",
+              "cow-sdk/guides/native-token-swaps",
+              "cow-sdk/guides/order-management",
+              "cow-sdk/guides/smart-contract-wallets",
+              "cow-sdk/guides/token-approvals"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "icon": "wrench",
+            "pages": [
+              "cow-sdk/advanced/account-abstraction",
+              "cow-sdk/advanced/cross-chain-bridging",
+              "cow-sdk/advanced/hooks",
+              "cow-sdk/advanced/partner-fee",
+              "cow-sdk/advanced/programmatic-orders",
+              "cow-sdk/advanced/twap-orders"
+            ]
+          },
+          {
+            "group": "Examples",
+            "icon": "flask",
+            "pages": [
+              "cow-sdk/examples/basic-swap",
+              "cow-sdk/examples/limit-orders",
+              "cow-sdk/examples/nodejs-usage",
+              "cow-sdk/examples/react-integration",
+              "cow-sdk/examples/wagmi-integration"
+            ]
+          },
+          {
+            "group": "API Reference",
+            "icon": "file-code",
+            "pages": [
+              "cow-sdk/api/trading-sdk",
+              "cow-sdk/api/order-book-api",
+              "cow-sdk/api/order-signing-utils",
+              "cow-sdk/api/metadata-api",
+              "cow-sdk/api/composable-sdk",
+              "cow-sdk/api/bridging-sdk",
+              "cow-sdk/api/cow-shed-sdk",
+              "cow-sdk/api/flash-loans-sdk",
+              "cow-sdk/api/subgraph-sdk",
+              "cow-sdk/api/contracts",
+              "cow-sdk/api/config",
+              "cow-sdk/api/common",
+              {
+                "group": "Adapters",
+                "pages": [
+                  "cow-sdk/api/adapters/viem",
+                  "cow-sdk/api/adapters/ethers-v5",
+                  "cow-sdk/api/adapters/ethers-v6"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Migration",
+            "icon": "arrows-rotate",
+            "pages": [
+              "cow-sdk/migration/v6-to-v7"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Solvers",
+        "icon": "gears",
+        "groups": [
+          {
+            "group": "Tutorials",
+            "icon": "graduation-cap",
+            "pages": [
+              "cow-protocol/tutorials/solvers/create",
+              "cow-protocol/tutorials/solvers/test",
+              "cow-protocol/tutorials/solvers/deploy",
+              "cow-protocol/tutorials/solvers/evaluate",
+              "cow-protocol/tutorials/solvers/local_test",
+              "cow-protocol/tutorials/solvers/from_shadow_to_prod",
+              "cow-protocol/tutorials/solvers/workshop",
+              "cow-amm/tutorials/cow-amm-for-solvers"
+            ]
+          },
+          {
+            "group": "How-To",
+            "icon": "wrench",
+            "pages": [
+              "cow-protocol/howto/solvers/onboard",
+              "cow-protocol/howto/solvers/routes_integration",
+              "cow-protocol/howto/solvers/flashloans_support"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "BFF & Services",
+        "icon": "server",
+        "groups": [
+          {
+            "group": "BFF",
+            "icon": "server",
+            "pages": [
+              "bff/introduction",
+              "bff/architecture",
+              {
+                "group": "Development",
+                "pages": [
+                  "bff/quickstart",
+                  "bff/development/setup",
+                  "bff/development/creating-services",
+                  "bff/development/database-migrations",
+                  "bff/development/testing"
+                ]
+              },
+              {
+                "group": "Services",
+                "pages": [
+                  "bff/services/api",
+                  "bff/services/notification-producer",
+                  "bff/services/telegram",
+                  "bff/services/twap"
+                ]
+              },
+              {
+                "group": "Libraries",
+                "pages": [
+                  "bff/libraries/repositories",
+                  "bff/libraries/services",
+                  "bff/libraries/shared"
+                ]
+              },
+              {
+                "group": "API Reference",
+                "pages": [
+                  "bff/api-reference/introduction",
+                  "bff/api-reference/authentication",
+                  {
+                    "group": "Endpoints",
+                    "expanded": false,
+                    "pages": [
+                      "bff/api-reference/endpoints/accounts",
+                      "bff/api-reference/endpoints/affiliate",
+                      "bff/api-reference/endpoints/hooks",
+                      "bff/api-reference/endpoints/markets",
+                      "bff/api-reference/endpoints/misc",
+                      "bff/api-reference/endpoints/notifications",
+                      "bff/api-reference/endpoints/simulation",
+                      "bff/api-reference/endpoints/tokens",
+                      "bff/api-reference/endpoints/yield"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Deployment",
+                "pages": [
+                  "bff/deployment/docker",
+                  "bff/deployment/environment-variables"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Services",
+            "icon": "gears",
+            "pages": [
+              "services/introduction",
+              "services/architecture",
+              {
+                "group": "Development",
+                "pages": [
+                  "services/quickstart",
+                  "services/development/setup",
+                  "services/development/testing",
+                  "services/development/playground",
+                  "services/development/contributing"
+                ]
+              },
+              {
+                "group": "Core Services",
+                "pages": [
+                  "services/services/orderbook",
+                  "services/services/autopilot",
+                  "services/services/driver",
+                  "services/services/solver"
+                ]
+              },
+              {
+                "group": "API",
+                "pages": [
+                  "services/api/orderbook",
+                  "services/api/autopilot",
+                  "services/api/driver",
+                  "services/api/solver"
+                ]
+              },
+              {
+                "group": "Deployment",
+                "pages": [
+                  "services/deployment/configuration",
+                  "services/deployment/database",
+                  "services/deployment/monitoring"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Governance",
+        "icon": "landmark",
+        "groups": [
+          {
+            "group": "About CoW DAO",
+            "icon": "book-open",
+            "root": "governance",
+            "pages": [
+              "governance/explanation/mission",
+              "governance/explanation/token",
+              "governance/explanation/snapshot",
+              "governance/explanation/process"
+            ]
+          },
+          {
+            "group": "Grants",
+            "icon": "hand-holding-dollar",
+            "pages": [
+              "governance/explanation/grants",
+              "governance/explanation/grants/program-structure",
+              "governance/explanation/grants/grant-types",
+              "governance/howto/how-to-apply"
+            ]
+          },
+          {
+            "group": "Reference",
+            "icon": "file-code",
+            "pages": [
+              "governance/reference/cip-template",
+              "governance/reference/multisigs"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/cowprotocol",
+      "x": "https://twitter.com/CoWSwap",
+      "discord": "https://discord.com/invite/cowprotocol"
+    },
+    "links": [
+      {
+        "header": "Products",
+        "items": [
+          {
+            "label": "CoW Swap",
+            "href": "https://swap.cow.fi"
+          },
+          {
+            "label": "CoW Explorer",
+            "href": "https://explorer.cow.fi"
+          },
+          {
+            "label": "CoW AMM",
+            "href": "https://cow.fi/cow-amm"
+          },
+          {
+            "label": "MEV Blocker",
+            "href": "https://mevblocker.io"
+          }
+        ]
+      },
+      {
+        "header": "Community",
+        "items": [
+          {
+            "label": "Discord",
+            "href": "https://discord.com/invite/cowprotocol"
+          },
+          {
+            "label": "Forum",
+            "href": "https://forum.cow.fi"
+          },
+          {
+            "label": "Grants",
+            "href": "https://grants.cow.fi"
+          },
+          {
+            "label": "Twitter / X",
+            "href": "https://twitter.com/CoWSwap"
+          }
+        ]
+      },
+      {
+        "header": "Developers",
+        "items": [
+          {
+            "label": "GitHub",
+            "href": "https://github.com/cowprotocol"
+          },
+          {
+            "label": "SDK",
+            "href": "/cow-sdk/quickstart"
+          },
+          {
+            "label": "API Reference",
+            "href": "/cow-protocol/reference/apis/orderbook"
+          },
+          {
+            "label": "Contracts",
+            "href": "/cow-protocol/reference/contracts/core"
+          }
+        ]
+      }
+    ]
+  },
+  "redirects": [
+    {
+      "source": "/cow-protocol/concepts/introduction/intents",
+      "destination": "/cow-protocol/explanation/introduction/intents"
+    },
+    {
+      "source": "/cow-protocol/concepts/introduction/solvers",
+      "destination": "/cow-protocol/explanation/introduction/solvers"
+    },
+    {
+      "source": "/cow-protocol/concepts/introduction/fair-combinatorial-auction",
+      "destination": "/cow-protocol/explanation/introduction/fair-combinatorial-auction"
+    },
+    {
+      "source": "/cow-protocol/concepts/how-it-works/flow-of-an-order",
+      "destination": "/cow-protocol/explanation/how-it-works/flow-of-an-order"
+    },
+    {
+      "source": "/cow-protocol/concepts/how-it-works/coincidence-of-wants",
+      "destination": "/cow-protocol/explanation/how-it-works/coincidence-of-wants"
+    },
+    {
+      "source": "/cow-protocol/concepts/how-it-works/protocol-vs-swap",
+      "destination": "/cow-protocol/explanation/how-it-works/protocol-vs-swap"
+    },
+    {
+      "source": "/cow-protocol/concepts/benefits/mev-protection",
+      "destination": "/cow-protocol/explanation/benefits/mev-protection"
+    },
+    {
+      "source": "/cow-protocol/concepts/benefits/price-improvement",
+      "destination": "/cow-protocol/explanation/benefits/price-improvement"
+    },
+    {
+      "source": "/cow-protocol/concepts/benefits/trade-any-intent",
+      "destination": "/cow-protocol/explanation/benefits/trade-any-intent"
+    },
+    {
+      "source": "/cow-protocol/concepts/benefits/additional-benefits",
+      "destination": "/cow-protocol/explanation/benefits/additional-benefits"
+    },
+    {
+      "source": "/cow-protocol/concepts/order-types/market-orders",
+      "destination": "/cow-protocol/explanation/order-types/market-orders"
+    },
+    {
+      "source": "/cow-protocol/concepts/order-types/limit-orders",
+      "destination": "/cow-protocol/explanation/order-types/limit-orders"
+    },
+    {
+      "source": "/cow-protocol/concepts/order-types/twap-orders",
+      "destination": "/cow-protocol/explanation/order-types/twap-orders"
+    },
+    {
+      "source": "/cow-protocol/concepts/order-types/programmatic-orders",
+      "destination": "/cow-protocol/explanation/order-types/programmatic-orders"
+    },
+    {
+      "source": "/cow-protocol/concepts/order-types/cow-hooks",
+      "destination": "/cow-protocol/explanation/order-types/cow-hooks"
+    },
+    {
+      "source": "/cow-protocol/concepts/order-types/milkman-orders",
+      "destination": "/cow-protocol/explanation/order-types/milkman-orders"
+    },
+    {
+      "source": "/cow-protocol/concepts/order-types/pay-debt-flash-loans",
+      "destination": "/cow-protocol/explanation/order-types/pay-debt-flash-loans"
+    },
+    {
+      "source": "/cow-protocol/concepts/flash-loans/Introduction",
+      "destination": "/cow-protocol/explanation/flash-loans/Introduction"
+    },
+    {
+      "source": "/cow-protocol/concepts/flash-loans/how-it-works",
+      "destination": "/cow-protocol/explanation/flash-loans/how-it-works"
+    },
+    {
+      "source": "/cow-protocol/concepts/flash-loans/integrators",
+      "destination": "/cow-protocol/explanation/flash-loans/integrators"
+    },
+    {
+      "source": "/cow-protocol/tutorials/building",
+      "destination": "/cow-protocol/explanation/building"
+    },
+    {
+      "source": "/cow-protocol/tutorials/arbitrate",
+      "destination": "/cow-protocol/explanation/architecture/overview"
+    },
+    {
+      "source": "/cow-protocol/tutorials/arbitrate/autopilot",
+      "destination": "/cow-protocol/explanation/architecture/autopilot"
+    },
+    {
+      "source": "/cow-protocol/tutorials/arbitrate/orderbook",
+      "destination": "/cow-protocol/explanation/architecture/orderbook"
+    },
+    {
+      "source": "/cow-protocol/tutorials/arbitrate/solver/driver",
+      "destination": "/cow-protocol/explanation/architecture/driver"
+    },
+    {
+      "source": "/cow-protocol/tutorials/arbitrate/solver/solver-engine",
+      "destination": "/cow-protocol/explanation/architecture/solver-engine"
+    },
+    {
+      "source": "/cow-protocol/integrate",
+      "destination": "/cow-protocol/explanation/integration-overview"
+    },
+    {
+      "source": "/cow-protocol/integrate/widget",
+      "destination": "/cow-protocol/howto/integrate/widget"
+    },
+    {
+      "source": "/cow-protocol/integrate/sdk",
+      "destination": "/cow-protocol/howto/integrate/sdk"
+    },
+    {
+      "source": "/cow-protocol/integrate/api",
+      "destination": "/cow-protocol/howto/integrate/api"
+    },
+    {
+      "source": "/cow-protocol/tutorials/cow-swap",
+      "destination": "/cow-protocol/howto/cow-swap"
+    },
+    {
+      "source": "/cow-protocol/tutorials/cow-explorer",
+      "destination": "/cow-protocol/howto/cow-explorer"
+    },
+    {
+      "source": "/cow-protocol/tutorials/solvers/onboard",
+      "destination": "/cow-protocol/howto/solvers/onboard"
+    },
+    {
+      "source": "/cow-protocol/tutorials/solvers/routes_integration",
+      "destination": "/cow-protocol/howto/solvers/routes_integration"
+    },
+    {
+      "source": "/cow-protocol/tutorials/solvers/flashloans_support",
+      "destination": "/cow-protocol/howto/solvers/flashloans_support"
+    },
+    {
+      "source": "/cow-protocol/tutorials/widget",
+      "destination": "/cow-protocol/reference/widget-params"
+    },
+    {
+      "source": "/cow-protocol/tutorials/cow-swap/custom-links",
+      "destination": "/cow-protocol/reference/custom-links"
+    },
+    {
+      "source": "/cow-protocol/tutorials/hook-dapp",
+      "destination": "/cow-protocol/reference/hook-dapp"
+    },
+    {
+      "source": "/cow-amm/concepts/the-problem-of-lvr",
+      "destination": "/cow-amm/explanation/the-problem-of-lvr"
+    },
+    {
+      "source": "/cow-amm/concepts/how-cow-amms-work",
+      "destination": "/cow-amm/explanation/how-cow-amms-work"
+    },
+    {
+      "source": "/governance/mission",
+      "destination": "/governance/explanation/mission"
+    },
+    {
+      "source": "/governance/token",
+      "destination": "/governance/explanation/token"
+    },
+    {
+      "source": "/governance/snapshot",
+      "destination": "/governance/explanation/snapshot"
+    },
+    {
+      "source": "/governance/process",
+      "destination": "/governance/explanation/process"
+    },
+    {
+      "source": "/governance/grants",
+      "destination": "/governance/explanation/grants"
+    },
+    {
+      "source": "/governance/grants/program-structure",
+      "destination": "/governance/explanation/grants/program-structure"
+    },
+    {
+      "source": "/governance/grants/grant-types",
+      "destination": "/governance/explanation/grants/grant-types"
+    },
+    {
+      "source": "/governance/grants/how-to-apply",
+      "destination": "/governance/howto/how-to-apply"
+    },
+    {
+      "source": "/governance/fees",
+      "destination": "/governance/reference/fees"
+    },
+    {
+      "source": "/governance/fees/partner-fee",
+      "destination": "/governance/reference/partner-fee"
+    },
+    {
+      "source": "/governance/process/template",
+      "destination": "/governance/reference/cip-template"
+    },
+    {
+      "source": "/governance/multisigs",
+      "destination": "/governance/reference/multisigs"
+    }
+  ]
+}

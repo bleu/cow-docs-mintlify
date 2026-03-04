@@ -1,0 +1,60 @@
+---
+title: "Bridging SDK"
+description: "Cross-chain token swaps by integrating CoW Protocol with bridge providers like Across and Bungee"
+---
+
+# Bridging SDK
+
+## Overview
+
+The Bridging SDK facilitates cross-chain token swaps by integrating CoW Protocol with bridge providers like Across and Bungee. It automatically routes trades through optimal paths and manages the bridging process.
+
+## Installation
+
+```bash
+npm install @cowprotocol/sdk-bridging
+```
+
+## Core Components
+
+### BridgingSdk Class
+
+The main SDK class accepts configuration options including bridge providers, optional trading and order book APIs, logging preferences, and cache settings with configurable TTLs for intermediate tokens (default 5 minutes) and buy tokens (default 2 minutes).
+
+### Primary Methods
+
+**getQuote()** - Retrieves cross-chain quotes with order posting capability. Requires quote parameters including order kind, amounts, source/destination chain IDs, token addresses, decimals, and a signer.
+
+**getMultiQuotes()** - Get quotes from multiple bridge providers in parallel with progressive results. Supports callbacks for handling individual provider responses and configurable timeout settings.
+
+**getBestQuote()** - Returns the highest-value quote across multiple providers based on post-slippage buy amounts.
+
+### Network & Token Discovery
+
+- `getSourceNetworks()` - Lists supported CoW Protocol chains
+- `getTargetNetworks()` - Lists destination chains across all providers
+- `getBuyTokens()` - Retrieves available tokens for destination chains with optional filtering
+
+**getOrder()** - Retrieves cross-chain order details including bridge status.
+
+### Cache Management
+
+The SDK provides `clearCache()`, `cleanupExpiredCache()`, and `getCacheStats()` methods for managing internal caches.
+
+## Bridge Providers
+
+Three provider implementations are available:
+
+- **AcrossBridgeProvider** - Uses Across Protocol
+- **BungeeBridgeProvider** - Uses Bungee/Socket with API key requirement
+- **NearIntentsBridgeProvider** - NEAR Protocol integration
+
+## Key Types
+
+**QuoteBridgeRequest** contains order parameters, chain and token information, signer, and optional slippage tolerances.
+
+**BridgeQuoteAndPost** combines swap results with bridge quote details and includes a `postSwapOrderFromQuote()` method for execution.
+
+## Usage Examples
+
+Basic implementation involves instantiating BridgingSdk with providers, calling `getQuote()` with swap parameters, then posting via the returned quote object. Multi-provider comparison uses `getMultiQuotes()` with provider filtering and callbacks for real-time result handling.

@@ -1,0 +1,41 @@
+---
+title: "Viem Adapter"
+description: "Integration between the CoW Protocol SDK and the Viem library"
+---
+
+# Viem Adapter
+
+The Viem Adapter enables integration between the CoW Protocol SDK and the Viem library.
+
+## Installation & Setup
+
+```bash
+npm install @cowprotocol/sdk-viem-adapter
+```
+
+The adapter requires a Viem PublicClient instance and optionally accepts a signer (Account, PrivateKey, or WalletClient).
+
+## Core Functionality
+
+The adapter provides methods for blockchain interaction including:
+
+- **Chain operations**: `getChainId()`, `getBlock()`
+- **Contract interactions**: `readContract()`, `call()`, `getContract()`
+- **State queries**: `getCode()`, `getStorageAt()`, `getTransactionReceipt()`
+- **Signer management**: `setSigner()`, `signerOrNull()`, `createSigner()`
+
+## Key Properties
+
+- `signer` - Returns the ViemSignerAdapter instance
+- `utils` - Provides utility methods for Viem types
+- Multiple typed data signers for EIP-712 support (V3, V4, and versioned)
+
+## Integration Patterns
+
+The documentation demonstrates three primary use cases:
+
+1. **Wagmi integration** - Using `useWalletClient` hook
+2. **Direct private key usage** - Standalone Viem clients
+3. **CoW SDK integration** - Executing swap orders
+
+The adapter supports both wagmi's useWalletClient hook and standalone Viem clients for flexible wallet integration.

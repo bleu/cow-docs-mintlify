@@ -1,0 +1,114 @@
+---
+title: "Telegram Bot Service"
+description: "A consumer application that listens to notification queues and delivers push notifications to users via Telegram"
+---
+
+# Telegram Bot Service
+
+The Telegram Bot Service functions as a message consumer that processes notifications from RabbitMQ and routes them to subscribed Telegram users. The system handles formatting conversions, maintains subscription caches, and implements automatic retry mechanisms for failed deliveries.
+
+## Core Responsibilities
+
+The service manages three primary functions:
+
+* Consuming notifications from message queues
+* Converting notification content into Telegram-compatible HTML format
+* Distributing messages to all users subscribed to each account
+
+It additionally caches subscription data to minimize database queries.
+
+## How to Run
+
+### Development
+
+```bash
+# Start RabbitMQ and PostgreSQL containers
+docker-compose up -d queue db
+
+# Set the Telegram bot token
+export TELEGRAM_SECRET=your_bot_token
+
+# Start the Telegram service
+yarn telegram
+```
+
+### Production
+
+```bash
+# Build the application
+yarn build telegram
+
+# Start the service
+TELEGRAM_SECRET=your_bot_token node dist/apps/telegram/main.js
+```
+
+### Docker
+
+```bash
+# Build the Docker image
+docker build -f apps/telegram/Dockerfile . -t telegram
+
+# Run the container
+docker run \
+  -e TELEGRAM_SECRET=your_bot_token \
+  -e QUEUE_HOST=rabbitmq \
+  -e DATABASE_HOST=postgres \
+  telegram
+```
+
+## Configuration
+
+| Setting          | Purpose                  | Mandatory |
+| ---------------- | ------------------------ | --------- |
+| TELEGRAM_SECRET  | Bot authentication token | Yes       |
+| QUEUE_HOST       | RabbitMQ hostname        | No        |
+| DATABASE_HOST    | PostgreSQL location      | No        |
+
+Obtain bot tokens by messaging @BotFather on Telegram and running `/newbot`.
+
+## Operational Architecture
+
+The service operates through an infinite loop that establishes RabbitMQ connections and processes incoming notifications. When connection losses occur, automatic reconnection attempts trigger after 10-second intervals.
+
+Subscription caching reduces database strain: subscription data refreshes every 5 minutes, with lookups using account addresses as cache keys.
+
+## Message Transformation Process
+
+Notifications undergo multi-step conversion:
+
+1. Markdown formatting
+2. HTML parsing via the `marked` library
+3. Sanitization with DOMPurify (preserving only Telegram-supported tags)
+4. Delivery via Telegram Bot API
+
+Permitted HTML elements include `<b>`, `<i>`, `<u>`, `<s>`, `<a>`, `<code>`, and `<pre>` tags.
+
+## Delivery Workflow
+
+1. Blockchain events trigger notification generation
+2. Notification enters the RabbitMQ queue
+3. The Telegram service retrieves subscribed chat IDs
+4. Content is formatted as HTML
+5. Messages are dispatched
+6. Successful processing is acknowledged back to the queue
+
+## Error Management
+
+* Connection interruptions trigger automatic reconnection cycles
+* Message delivery errors are logged without crashing the service
+* Failed sanitization attempts include source markdown and problematic HTML in error reports
+
+## Subscription Operations
+
+Subscriptions map Ethereum addresses to Telegram chat IDs. Users authenticate via wallet before providing chat IDs through the API service (not through the bot directly). The system automatically incorporates new subscriptions after cache expiration.
+
+## Monitoring Output
+
+Structured logging includes notifications about:
+
+* Consumer initialization
+* Subscription lookups
+* Message dispatching
+* Connection status changes
+
+Across debug, info, warning, and error severity levels.

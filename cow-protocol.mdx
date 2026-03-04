@@ -1,0 +1,28 @@
+---
+title: "CoW Protocol"
+description: "CoW Protocol is a meta-DEX aggregation protocol that leverages batch auctions and Coincidence of Wants to find users better prices for trading crypto assets."
+hidden: true
+---
+
+![What is CoW Protocol](/images/assets/images/what-is-cow-protocol-a732c45cc7af6565c820fb1ba5168d18.png)
+
+The protocol relies on third parties known as "[solvers](/cow-protocol/explanation/introduction/solvers)" to find the best execution paths for trade intents — signed messages that specify conditions for executing transaction on Ethereum and EVM-compatible chains.
+
+Upon first receiving a user intent, the protocol groups it alongside other intents in a [batch](/cow-protocol/explanation/introduction/fair-combinatorial-auction). When executing trade intents, solvers first try to find a [*Coincidence of Wants (CoW)*](/cow-protocol/explanation/how-it-works/coincidence-of-wants) within the existing batch to offer an optimal price over any on-chain liquidity. If the protocol does not find a CoW, the solvers search all available on-chain and off-chain liquidity to find the best price for a set of trade intents within a batch.
+
+Liquidity sources include:
+
+* AMMs (e.g. Uniswap, Sushiswap, Balancer, Curve, etc.)
+* DEX Aggregators (e.g. 1inch, Paraswap, Matcha, etc.)
+* Private Market Makers
+
+The wide range of liquidity that solvers tap into makes CoW Protocol a meta-DEX aggregator, or an aggregator of aggregators.
+
+**To understand the concepts behind CoW Protocol, see [Explanation](/cow-protocol/explanation/introduction/intents).**
+
+**To learn by doing, see [Tutorials](/cow-protocol/tutorials/cow-swap/swap).**
+
+**For task-oriented instructions, see [How-To Guides](/cow-protocol/howto/integrate/widget).**
+
+**To dive into the technical details, see [Reference](/cow-protocol/reference/core/definitions).**
+

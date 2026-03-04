@@ -1,0 +1,36 @@
+---
+title: "Introduction"
+description: "CoW Protocol Services overview - the backend infrastructure powering decentralized trading with batch auctions"
+---
+
+# CoW Protocol Services Overview
+
+CoW Protocol Services is the backend infrastructure powering CoW Protocol, a decentralized trading system using batch auctions. The services handle order validation, auction management, solution computation, and settlement across multiple EVM networks.
+
+## Key Capabilities
+
+The system offers several important features:
+
+- **MEV Protection**: Batch auctions protect traders from frontrunning and sandwich attacks by executing all orders at uniform clearing prices
+- **Best Execution**: Competition between solvers sources liquidity from multiple venues
+- **Gasless Trading**: Solvers cover gas costs upfront, enabling efficient batching
+- **CoW Matches**: Direct peer-to-peer settlement when buy and sell orders overlap
+
+## Multi-Chain Operations
+
+The services operate on Ethereum Mainnet, Gnosis Chain, Arbitrum One, Base, Polygon, BNB Chain, and additional networks including testnets. Each deployment operates independently with its own orderbook and settlement infrastructure.
+
+## Core Components
+
+Four main service modules coordinate the system:
+
+1. **Orderbook** - HTTP API for order submission and status queries
+2. **Autopilot** - Manages auction lifecycle and solution ranking
+3. **Driver** - Handles liquidity collection and on-chain submission
+4. **Solver** - Computes optimal routing and order matching
+
+## Technical Foundation
+
+The services use Rust with Tokio for asynchronous operations, PostgreSQL for storage, and Alloy for blockchain interactions. The system is licensed under GPL-3.0-or-later.
+
+For detailed information, explore the rest of this documentation to learn about the architecture, individual services, APIs, development setup, and deployment configuration.

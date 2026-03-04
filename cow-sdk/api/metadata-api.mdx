@@ -1,0 +1,70 @@
+---
+title: "Metadata API"
+description: "Utility for managing CoW Protocol order metadata (app-data) including schema validation and IPFS hashing"
+---
+
+# MetadataApi
+
+## Overview
+
+The `MetadataApi` class is a utility for managing CoW Protocol order metadata (app-data). It handles schema validation, document generation, IPFS hashing, and format conversions.
+
+## Installation
+
+```bash
+npm install @cowprotocol/sdk-app-data
+```
+
+## Key Methods
+
+### generateAppDataDoc
+
+Creates an app-data document using the current schema version, accepting parameters like `appCode`, `environment`, and nested metadata properties (referrer, quote, orderClass, hooks, partnerFee).
+
+### getAppDataInfo
+
+Processes an app-data document to return three outputs:
+- `appDataHex` - the hex representation for use in orders
+- `appDataContent` - the original JSON content
+- `cid` - the IPFS identifier
+
+### validateAppDataDoc
+
+Checks whether a document complies with its corresponding schema, returning a success boolean and any error descriptions.
+
+### getAppDataSchema
+
+Retrieves the JSON schema definition for a specified version, useful for custom validation workflows.
+
+## Conversion Utilities
+
+- `appDataHexToCid` / `cidToAppDataHex` - Bidirectional conversion between hex and IPFS identifiers
+- `fetchDocFromAppDataHex` - Retrieves a stored document from IPFS using its hex representation
+
+## Practical Example
+
+To create an order with metadata, generate a document, extract its hex value, and pass it to the trading SDK:
+
+```typescript
+const appDataDoc = await metadataApi.generateAppDataDoc({
+  appCode: 'My Trading App',
+  metadata: {
+    referrer: { address: '0x...' },
+    quote: { slippageBips: 50 },
+  },
+})
+
+const { appDataHex } = await metadataApi.getAppDataInfo(appDataDoc)
+```
+
+## Supported Features
+
+The API supports order hooks (pre/post interactions), partner fee configurations, order classification (market/limit/liquidity), and referrer tracking.
+
+## Best Practices
+
+- Always validate documents before use
+- Leverage the latest schema automatically
+- Cache identical metadata results
+- Include referrer information for tracking
+- Document any hooks for security purposes

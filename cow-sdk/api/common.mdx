@@ -1,0 +1,331 @@
+---
+title: "Common"
+description: "Foundational utilities for the CoW Protocol SDK ecosystem including address validation, token operations, and math helpers"
+---
+
+# @cowprotocol/sdk-common
+
+Common utilities and types for CoW Protocol SDK
+
+The `@cowprotocol/sdk-common` package provides shared utilities, types, and helper functions used across the CoW Protocol SDK.
+
+## Installation
+
+```bash
+npm install @cowprotocol/sdk-common
+```
+
+## Address Utilities
+
+### Type Definitions
+
+```typescript
+export type EvmAddressKey = `0x${string}`
+export type BtcAddressKey = string
+export type SolAddressKey = string
+export type AddressKey = EvmAddressKey | BtcAddressKey | SolAddressKey
+```
+
+### isEvmAddress
+
+Validates if a string is a valid EVM address.
+
+```typescript
+function isEvmAddress(
+  address: string | null | undefined
+): address is EvmAddressKey
+```
+
+**Parameters:**
+- `address` - The address string to validate
+
+**Returns:** Type guard indicating if the address is a valid EVM address
+
+**Example:**
+
+```typescript
+import { isEvmAddress } from '@cowprotocol/sdk-common'
+
+if (isEvmAddress('0x1234...')) {
+  // Address is valid EVM format
+}
+```
+
+### isBtcAddress
+
+Validates if a string is a valid Bitcoin address (supports legacy P2PKH/P2SH and Bech32 formats).
+
+```typescript
+function isBtcAddress(
+  address: string | null | undefined
+): address is BtcAddressKey
+```
+
+**Parameters:**
+- `address` - The address string to validate
+
+**Returns:** Type guard indicating if the address is a valid Bitcoin address
+
+### isSolanaAddress
+
+Validates if a string is a valid Solana address (Base58-encoded Ed25519 public keys).
+
+```typescript
+function isSolanaAddress(
+  address: string | null | undefined
+): address is SolAddressKey
+```
+
+**Parameters:**
+- `address` - The address string to validate
+
+**Returns:** Type guard indicating if the address is a valid Solana address
+
+### getEvmAddressKey
+
+Normalizes an EVM address to lowercase with 0x prefix.
+
+```typescript
+function getEvmAddressKey(address: string): EvmAddressKey
+```
+
+**Example:**
+
+```typescript
+import { getEvmAddressKey } from '@cowprotocol/sdk-common'
+
+const key = getEvmAddressKey('0xABC...')
+// Returns: '0xabc...'
+```
+
+### getAddressKey
+
+Gets an address key for any supported blockchain address type.
+
+```typescript
+function getAddressKey(address: string): AddressKey
+```
+
+**Parameters:**
+- `address` - The address to convert to a key
+
+**Returns:** Normalized address key based on the detected address type
+
+## Token Utilities
+
+### TokenIdentifier
+
+```typescript
+interface TokenIdentifier {
+  address: string
+  chainId: ChainId
+}
+
+type TokenId = `${ChainId}:${AddressKey}`
+```
+
+### getTokenId
+
+Generates a unique token identifier from chain ID and address.
+
+```typescript
+function getTokenId(token: TokenIdentifier): TokenId
+```
+
+**Example:**
+
+```typescript
+import { getTokenId } from '@cowprotocol/sdk-common'
+
+const tokenId = getTokenId({
+  chainId: 1,
+  address: '0x...'
+})
+// Returns: '1:0x...'
+```
+
+### areTokensEqual
+
+Compares two tokens for equality based on chain ID and address.
+
+```typescript
+function areTokensEqual(
+  a: TokenLike | undefined | null,
+  b: TokenLike | undefined | null
+): boolean
+```
+
+### areAddressesEqual
+
+Compares two addresses for equality, handling different blockchain formats.
+
+```typescript
+function areAddressesEqual(
+  a: Nullish<string>,
+  b: Nullish<string>
+): boolean
+```
+
+### isNativeToken
+
+Checks if a token is the native currency for its chain.
+
+```typescript
+function isNativeToken(token: TokenLike): boolean
+```
+
+### isWrappedNativeToken
+
+Checks if a token is the wrapped native currency (e.g., WETH on Ethereum).
+
+```typescript
+function isWrappedNativeToken(token: TokenLike): boolean
+```
+
+## Math Utilities
+
+### percentageToBps
+
+Converts a percentage to basis points (bps).
+
+```typescript
+function percentageToBps(percentage: number | bigint): number
+```
+
+**Parameters:**
+- `percentage` - The percentage to convert (e.g., 0.5 for 50%)
+
+**Returns:** The basis points value (e.g., 5000 for 50%)
+
+**Example:**
+
+```typescript
+import { percentageToBps } from '@cowprotocol/sdk-common'
+
+const bps = percentageToBps(0.5)
+// Returns: 5000
+```
+
+### bpsToPercentage
+
+Converts basis points to a percentage.
+
+```typescript
+function bpsToPercentage(bps: number): number
+```
+
+**Parameters:**
+- `bps` - The basis points value
+
+**Returns:** The percentage value
+
+### applyPercentage
+
+Applies a percentage to a bigint value.
+
+```typescript
+function applyPercentage(value: bigint, percentage: number): bigint
+```
+
+**Parameters:**
+- `value` - The value to apply the percentage to
+- `percentage` - The percentage to apply (e.g., 1.1 for 110%)
+
+**Returns:** The value after applying the percentage
+
+**Example:**
+
+```typescript
+import { applyPercentage } from '@cowprotocol/sdk-common'
+
+const increased = applyPercentage(100n, 1.1)
+// Returns: 110n
+```
+
+## Logging
+
+### enableLogging
+
+Enables or disables SDK logging.
+
+```typescript
+function enableLogging(enabled: boolean): void
+```
+
+**Example:**
+
+```typescript
+import { enableLogging } from '@cowprotocol/sdk-common'
+
+// Enable debug logging
+enableLogging(true)
+```
+
+### log
+
+Logs a message if logging is enabled.
+
+```typescript
+function log(text: string): void
+```
+
+## Type Utilities
+
+### Nullish
+
+Utility type for nullable values.
+
+```typescript
+type Nullish<T> = T | null | undefined
+```
+
+## ABIs
+
+The package exports contract ABIs for CoW Protocol:
+
+```typescript
+import {
+  GPV2SettlementAbi,
+  EthFlowAbi,
+  Erc20Abi
+} from '@cowprotocol/sdk-common'
+```
+
+### GPV2SettlementAbi
+
+ABI for the GPv2 Settlement contract, including:
+
+- `Trade` event
+- `setPreSignature()` function
+- `invalidateOrder()` function
+- `domainSeparator()` function
+
+### EthFlowAbi
+
+ABI for ETH flow contracts.
+
+### Erc20Abi
+
+Standard ERC20 token ABI.
+
+## Common Types
+
+```typescript
+// Ethereum-compatible types
+type BigIntish = string | number | bigint
+type Bytes = unknown
+type Address = string
+
+// EIP-712 Typed Data
+interface TypedDataDomain {
+  name?: string
+  version?: string
+  chainId?: number
+  verifyingContract?: string
+  salt?: string | Uint8Array
+}
+
+type TypedDataTypes = Record<string, Array<{ name: string; type: string }>>
+```
+
+These types provide compatibility across different Ethereum libraries (ethers.js, viem, etc.).

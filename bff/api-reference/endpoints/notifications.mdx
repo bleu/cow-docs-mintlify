@@ -1,0 +1,208 @@
+---
+title: "Notification Endpoints"
+description: "Endpoints for managing push notification subscriptions and retrieving notification history"
+---
+
+# Notification Endpoints
+
+Notification endpoints allow users to retrieve notifications for their accounts, enabling push notification features in frontend applications.
+
+## Get Account Notifications
+
+Retrieves all notifications for a given account address.
+
+**Endpoint:** `GET /accounts/{account}/notifications`
+
+### Path Parameters
+
+- **account** (string, required): Ethereum wallet address to retrieve notifications for
+
+### Response
+
+Returns an array of notification objects. Typical notification fields:
+
+| Field     | Type   | Description                                           |
+| --------- | ------ | ----------------------------------------------------- |
+| id        | string | Unique notification identifier                        |
+| account   | string | The account address this notification is for          |
+| type      | string | Type of notification (e.g., "order_filled")           |
+| message   | string | Human-readable notification message                   |
+| timestamp | string | ISO 8601 timestamp when the notification was created  |
+| metadata  | object | Additional notification-specific data                 |
+
+### Code Examples
+
+```bash
+curl "https://api.cow.fi/accounts/0x1234567890abcdef1234567890abcdef12345678/notifications"
+```
+
+```javascript
+const accountAddress = '0x1234567890abcdef1234567890abcdef12345678';
+const response = await fetch(`https://api.cow.fi/accounts/${accountAddress}/notifications`);
+const notifications = await response.json();
+console.log(`Found ${notifications.length} notifications`);
+```
+
+```python
+import requests
+
+account_address = '0x1234567890abcdef1234567890abcdef12345678'
+response = requests.get(f'https://api.cow.fi/accounts/{account_address}/notifications')
+notifications = response.json()
+print(f"Found {len(notifications)} notifications")
+```
+
+### Response Example
+
+```json
+[
+  {
+    "id": "notif_abc123",
+    "account": "0x1234567890abcdef1234567890abcdef12345678",
+    "type": "order_filled",
+    "message": "Your order has been filled",
+    "timestamp": "2024-01-15T10:30:00.000Z",
+    "metadata": {
+      "orderId": "0xabc...",
+      "executedAmount": "1000000000000000000"
+    }
+  },
+  {
+    "id": "notif_def456",
+    "account": "0x1234567890abcdef1234567890abcdef12345678",
+    "type": "order_expired",
+    "message": "Your order has expired",
+    "timestamp": "2024-01-14T08:15:00.000Z",
+    "metadata": {
+      "orderId": "0xdef..."
+    }
+  }
+]
+```
+
+Empty array if no notifications:
+
+```json
+[]
+```
+
+---
+
+## Notes
+
+### CMS Requirement
+
+The notifications endpoint requires CMS integration:
+
+* Environment variable `CMS_ENABLED` must be set to `true`
+* `CMS_API_KEY` must be configured
+
+### Supported Notification Types
+
+| Type                     | Description                     | Trigger                     |
+| ------------------------ | ------------------------------- | --------------------------- |
+| `order_filled`           | Order successfully executed     | Settlement event detected   |
+| `order_expired`          | Order expired without execution | Order validity period ended |
+| `order_cancelled`        | Order cancelled by user         | Cancellation transaction    |
+| `order_partially_filled` | Partial fill occurred           | Partial settlement          |
+| `insufficient_balance`   | Insufficient balance for order  | Pre-execution check         |
+| `price_improvement`      | Better price achieved           | Surplus detected            |
+
+### Notification Channels
+
+Users can subscribe to receive notifications via:
+
+* **Telegram Bot**: Real-time messages via Telegram
+* **Web Push**: Browser push notifications
+* **Email**: Email alerts (if configured)
+* **Webhook**: Custom webhook integrations
+
+### Caching
+
+Notification responses are cached for **5 minutes** (300 seconds):
+
+```
+Cache-Control: public, max-age=300
+```
+
+### Testing Locally
+
+```bash
+# Start required services
+docker-compose up -d queue db
+
+# Run migrations
+yarn migration:run
+
+# Start notification producer
+yarn producer
+
+# In another terminal, start the API
+yarn start
+
+# Query notifications
+curl http://localhost:3001/accounts/0x.../notifications
+```
+
+### Sending Test Notifications
+
+```bash
+# Set your test account address
+export POST_TO_QUEUE_ACCOUNT=0x79063d9173C09887d536924E2F6eADbaBAc099f5
+
+# Run the test that sends a notification
+nx test notification-producer --testFile=src/sendPush.test.ts --skip-nx-cache
+```
+
+### Integration with Frontend
+
+**Polling Pattern:**
+
+```javascript
+// Poll for new notifications every 30 seconds
+setInterval(async () => {
+  const notifications = await fetch(
+    `/accounts/${account}/notifications`
+  ).then(r => r.json());
+  displayNotifications(notifications);
+}, 30000);
+```
+
+**With Caching:**
+
+```javascript
+let lastFetch = 0;
+let cachedNotifications = [];
+
+async function getNotifications() {
+  const now = Date.now();
+  if (now - lastFetch < 300000) {
+    return cachedNotifications;
+  }
+  cachedNotifications = await fetch(
+    `/accounts/${account}/notifications`
+  ).then(r => r.json());
+  lastFetch = now;
+  return cachedNotifications;
+}
+```
+
+### Error Handling
+
+| Scenario         | Response            | Solution                       |
+| ---------------- | ------------------- | ------------------------------ |
+| CMS disabled     | Service unavailable | Enable CMS configuration       |
+| Invalid address  | 400 Bad Request     | Verify address format          |
+| Database error   | 500 Internal Error  | Retry with exponential backoff |
+| No notifications | Empty array `[]`    | Normal response, no error      |
+
+### Best Practices
+
+1. **Cache locally**: Store notifications in frontend state to reduce requests
+2. **Respect cache headers**: Honor the 5-minute cache period
+3. **Handle empty responses**: Empty arrays are normal for accounts without notifications
+4. **Display timestamps**: Show when notifications were created
+5. **Group by type**: Consider grouping notifications by type in the UI
+6. **Mark as read**: Implement local read/unread state on the frontend
+7. **Pagination**: Implement client-side pagination for large notification lists
+8. **Error handling**: Gracefully handle API errors without breaking the UI

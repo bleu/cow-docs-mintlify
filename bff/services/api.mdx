@@ -1,0 +1,239 @@
+---
+title: "API Service"
+description: "Documentation for the BFF API service, a Fastify-based HTTP server that aggregates data from multiple sources to provide unified endpoints for trading, tokens, and balances"
+---
+
+# API Service
+
+The API service is the main HTTP API server that provides a unified interface for CoW Protocol frontend applications. Built with Fastify, it aggregates data from multiple sources and provides RESTful endpoints for trading, tokens, balances, and more.
+
+## Purpose and Responsibilities
+
+The API service serves as the Backend For Frontend (BFF) layer with the following responsibilities:
+
+* **Unified API Gateway**: Aggregates data from CoW Protocol APIs, blockchain nodes, and external services
+* **Token Information**: Provides token prices, balances, and metadata
+* **Trading Data**: Exposes yield pool information, market slippage, and trade simulations
+* **Affiliate Program**: Manages affiliate program data and exports
+* **Hooks Integration**: Provides access to hooks data from Dune Analytics
+* **Proxy Services**: Proxies requests to TWAP and other backend services
+* **Caching Layer**: Implements Redis-based caching for performance optimization
+
+## How to Run
+
+### Development
+
+```bash
+# Start dependencies (Redis, Database)
+yarn compose:up
+
+# Start the API service in development mode
+yarn start
+
+# The API will be available at http://localhost:3001
+```
+
+### Production
+
+```bash
+# Build the application
+yarn build api
+
+# Start the production server
+VERSION=1.0.0 node dist/apps/api/main.js
+```
+
+### Docker
+
+```bash
+# Build the Docker image
+yarn docker-build api
+
+# Run the container
+docker run -p 3001:1500 \
+  -e COW_API_BASE_URL=https://api.cow.fi \
+  -e REDIS_HOST=redis \
+  api
+```
+
+## Key Configuration Options
+
+The API service is configured through environment variables. See `apps/api/src/app/plugins/env.ts:1` for the complete schema.
+
+### Server Configuration
+
+| Variable    | Description                     | Default     |
+| ----------- | ------------------------------- | ----------- |
+| `HOST`      | Server host address             | `localhost` |
+| `PORT`      | Server port                     | `3001`      |
+| `LOG_LEVEL` | Logging level                   | `info`      |
+| `VERSION`   | API version for /about endpoint | `UNKNOWN`   |
+
+### External Services
+
+| Variable           | Description                   | Required |
+| ------------------ | ----------------------------- | -------- |
+| `COW_API_BASE_URL` | Base URL for CoW Protocol API | No       |
+| `TWAP_BASE_URL`    | URL for TWAP service proxy    | No       |
+| `SOCKET_BASE_URL`  | Socket.tech API URL           | No       |
+| `SOCKET_API_KEY`   | Socket.tech API key           | No       |
+
+### Data Providers
+
+| Variable                | Description                      |
+| ----------------------- | -------------------------------- |
+| `COINGECKO_API_KEY`     | CoinGecko API key for price data |
+| `GOLD_RUSH_API_KEY`     | Covalent GoldRush API key        |
+| `ETHPLORER_API_KEY`     | Ethplorer API key for token data |
+| `MORALIS_API_KEY`       | Moralis API key                  |
+| `TENDERLY_API_KEY`      | Tenderly API key for simulations |
+| `TENDERLY_PROJECT_NAME` | Tenderly project name            |
+| `TENDERLY_ORG_NAME`     | Tenderly organization name       |
+
+### Database Configuration
+
+```bash
+# CoW Analytics Database (Read-only)
+COW_ANALYTICS_DATABASE_NAME=cow_analytics
+COW_ANALYTICS_DATABASE_HOST=localhost
+COW_ANALYTICS_DATABASE_PORT=5432
+COW_ANALYTICS_DATABASE_USERNAME=analytics_user
+COW_ANALYTICS_DATABASE_PASSWORD=password
+```
+
+## Main Endpoints
+
+The API provides numerous endpoints organized by functionality.
+
+### Health & Information
+
+* **GET /about** - API version and build information
+  * Returns: `{ name, version, gitCommitHash }`
+
+### Token Endpoints
+
+* **GET /:chainId/tokens/:tokenAddress/usdPrice** - Get USD price for a token
+  * Example: `GET /1/tokens/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2/usdPrice`
+  * Returns: `{ price: number }`
+
+* **GET /:chainId/tokens/:tokenAddress/topHolders** - Get top token holders
+
+### Account & Balance Endpoints
+
+* **GET /:chainId/accounts/:userAddress/balances** - Get token balances for an account
+* **GET /:chainId/accounts/:userAddress/balances/sse** - Server-sent events for real-time balance updates
+* **GET /:chainId/address/:address/balances** - Get balances for any address
+
+### Market & Trading Endpoints
+
+* **GET /:chainId/markets/:baseToken-:quoteToken/slippageTolerance** - Get recommended slippage tolerance
+* **POST /:chainId/simulation/simulateBundle** - Simulate transaction bundles with Tenderly
+
+### Yield Endpoints
+
+* **GET /:chainId/yield** - Get pool information and average APR data
+
+### Hooks & Analytics
+
+* **GET /hooks** - Get hooks data from Dune Analytics
+  * Query params: `blockchain`, `period`, `limit`, `offset`
+
+### Notifications
+
+* **GET /accounts/:account/notifications** - Get push notifications for an account
+
+### TWAP Proxy
+
+* **ALL /twap/\*** - Proxies requests to the TWAP service
+
+## Dependencies
+
+### Required Services
+
+- **Redis** - Optional but recommended for caching. The API will work without Redis but with reduced performance. Configuration: `REDIS_HOST`, `REDIS_PORT`, `REDIS_USER`, `REDIS_PASSWORD`
+
+- **CoW Analytics Database** - PostgreSQL database for analytics data (read-only access). Configuration: `COW_ANALYTICS_DATABASE_*` variables
+
+- **Blockchain RPC Nodes** - HTTP or WebSocket endpoints for supported chains (Ethereum, Gnosis, etc.). Configuration: `RPC_URL_1`, `RPC_URL_100`, etc.
+
+### External APIs
+
+* **CoW Protocol API** - Order book and trading data
+* **Socket.tech** - Cross-chain bridge data
+* **CoinGecko** - Token price feeds
+* **Tenderly** - Transaction simulation
+* **Moralis/Ethplorer** - Token metadata and holder information
+
+## Architecture Details
+
+### Plugin System
+
+The API uses Fastify's plugin system to organize functionality:
+
+* **env.ts** - Environment variable validation
+* **cors.ts** - CORS configuration
+* **redis.ts** - Redis connection and caching
+* **orm-analytics.ts** - Analytics database ORM
+* **orm-repositories.ts** - Main database ORM
+* **swagger.ts** - OpenAPI/Swagger documentation
+* **bffAuth.ts** - Authentication middleware
+* **bffCache.ts** - Response caching
+
+Plugins are auto-loaded from `apps/api/src/app/plugins/`.
+
+### Route Organization
+
+Routes are organized hierarchically and auto-loaded:
+
+```
+routes/
+├── about.ts              # Health/version endpoint
+├── hooks.ts              # Dune Analytics hooks
+├── __chainId/            # Chain-specific routes
+│   ├── tokens/           # Token endpoints
+│   ├── accounts/         # Account/balance endpoints
+│   ├── markets/          # Market data endpoints
+│   └── yield/            # Yield pool endpoints
+├── accounts/             # Cross-chain account endpoints
+├── affiliate/            # Affiliate program endpoints
+└── twap/                 # TWAP service proxy
+```
+
+### Background Jobs
+
+The API runs background jobs for data synchronization:
+
+* **Affiliate Program Export Poller** - Periodically exports affiliate program data
+
+## Nx Commands
+
+```bash
+# Development server
+nx start api
+
+# Build for production
+nx build api
+
+# Run tests
+nx test api
+
+# Lint
+nx lint api
+
+# Docker build
+nx docker-build api
+```
+
+## Swagger Documentation
+
+When running locally, interactive API documentation is available at:
+
+* **Swagger UI**: `http://localhost:3001/documentation`
+
+The Swagger plugin automatically generates OpenAPI documentation from route schemas.
+
+## Related Services
+
+* [TWAP Service](/services/twap) - Time-weighted average price orders
+* [Notification Producer](/services/notification-producer) - Push notification generation
+* [Telegram Bot](/services/telegram) - Telegram notification delivery

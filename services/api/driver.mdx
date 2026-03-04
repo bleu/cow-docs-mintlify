@@ -1,0 +1,82 @@
+---
+title: "Driver API"
+description: "API reference for the Driver service bridging Autopilot and solver engines"
+---
+
+# Driver API
+
+The Driver service acts as a bridge between Autopilot and solver engines, handling liquidity aggregation, solution transformation, simulation, and on-chain settlement for CoW Protocol auctions.
+
+## Primary Responsibilities
+
+The Driver manages several critical functions:
+
+- **Liquidity Collection**: Fetches AMM pools, limit orders, and other liquidity sources
+- **Auction Translation**: Converts autopilot auction format to solver-compatible format
+- **Solution Encoding**: Transforms solver solutions into settlement calldata
+- **Simulation**: Validates solutions before on-chain submission
+- **Gas Estimation**: Computes accurate gas costs for solutions
+- **Settlement Submission**: Broadcasts winning solutions to the blockchain
+- **Monitoring**: Tracks transaction status and settlement outcomes
+
+## API Endpoints
+
+### POST /solve
+
+Accepts auction requests from Autopilot and returns computed solutions with scoring details, execution specifications, and gas estimates.
+
+### POST /reveal
+
+Exposes settlement calldata for shadow competition verification, providing both "internalized" (on-chain version) and "uninternalized" (simulation-ready) variants.
+
+### POST /settle
+
+Instructs the Driver to submit winning solutions on-chain, executing encoding, simulation, signing, and broadcast operations.
+
+### GET /quote
+
+Delivers price estimations for individual orders, supporting both legacy and JIT-enabled response formats.
+
+### POST /notify
+
+Receives solver status change notifications from Autopilot.
+
+## Solution Architecture
+
+Solutions contain:
+
+- Identifiers and objective scores
+- Submission addresses
+- Order execution mappings
+- Mapping of token address to uniform clearing price
+- Gas cost projections
+- Detailed per-order execution information
+
+## Liquidity Sources
+
+The system integrates five primary liquidity categories:
+
+1. **Constant product pools** (Uniswap V2-style)
+2. **Weighted product pools** (Balancer)
+3. **Stable pools** (Curve)
+4. **Concentrated liquidity** (Uniswap V3)
+5. **Foreign limit orders** (0x-style)
+
+## Internalization Feature (CIP-2)
+
+Solvers optimize costs by utilizing settlement contract token buffers rather than routing through AMMs. This results in two calldata versions:
+
+- **Internalized**: The on-chain version that uses buffers
+- **Uninternalized**: The simulation version with full AMM routing
+
+## Configuration and Best Practices
+
+The Driver operates through TOML-based configuration managing solver engines, liquidity sources, and settlement parameters.
+
+For production reliability:
+
+- Ensure accurate gas estimation
+- Comply with deadlines
+- Perform thorough pre-submission simulation
+- Maintain detailed error logging
+- Monitor performance metrics continuously

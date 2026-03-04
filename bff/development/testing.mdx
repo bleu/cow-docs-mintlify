@@ -1,0 +1,239 @@
+---
+title: "Testing Guide"
+description: "Guide to writing and running tests in the CoW Protocol BFF using Jest and NX"
+---
+
+# Testing Guide
+
+The CoW Protocol BFF uses **Jest v29** as its testing framework, integrated with **NX** for efficient test execution. The setup includes TypeScript support via ts-jest and runs in a Node.js environment.
+
+## Running Tests
+
+### Basic Commands
+
+```bash
+# Run all tests across the monorepo
+yarn test
+
+# Run tests for a specific project
+nx run repositories:test
+nx run services:test
+nx run api:test
+
+# Watch mode for active development
+nx run repositories:test --watch
+
+# Generate coverage reports
+nx run repositories:test --coverage
+```
+
+### Targeting Specific Files
+
+```bash
+# Run tests matching a pattern
+nx run repositories:test --testPathPattern=usd
+
+# Skip NX cache for fresh execution
+nx run repositories:test --skip-nx-cache
+```
+
+## Test Organization
+
+### File Naming Conventions
+
+- Unit tests: `*.spec.ts`
+- E2E tests: `*.e2e-spec.ts`
+
+Test files should be colocated with the code they test:
+
+```
+libs/repositories/src/
+├── usd/
+│   ├── UsdRepository.ts
+│   ├── UsdRepository.spec.ts
+│   ├── UsdRepositoryCache.ts
+│   └── UsdRepositoryCache.spec.ts
+```
+
+## Test Structure
+
+Tests follow the **Given-When-Then** pattern:
+
+```typescript
+describe('UsdRepository', () => {
+  describe('getUsdPrice', () => {
+    it('should return the price for a valid token', async () => {
+      // GIVEN - Setup
+      const repository = new UsdRepositoryImpl(mockClient);
+      const chainId = SupportedChainId.MAINNET;
+      const tokenAddress = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
+
+      // WHEN - Execute
+      const price = await repository.getUsdPrice(chainId, tokenAddress);
+
+      // THEN - Assert
+      expect(price).toBeDefined();
+      expect(typeof price).toBe('number');
+      expect(price).toBeGreaterThan(0);
+    });
+
+    it('should return null for an unknown token', async () => {
+      // GIVEN
+      const repository = new UsdRepositoryImpl(mockClient);
+
+      // WHEN
+      const price = await repository.getUsdPrice(
+        SupportedChainId.MAINNET,
+        '0x0000000000000000000000000000000000000000'
+      );
+
+      // THEN
+      expect(price).toBeNull();
+    });
+  });
+});
+```
+
+## Mocking
+
+### Module Mocking
+
+```typescript
+jest.mock('@cowprotocol/shared', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+```
+
+### Dependency Mocking
+
+```typescript
+const mockCacheRepository = {
+  get: jest.fn(),
+  set: jest.fn(),
+};
+
+const mockUsdRepository = {
+  getUsdPrice: jest.fn(),
+  getUsdPrices: jest.fn(),
+};
+```
+
+### Method Spying
+
+```typescript
+const spy = jest.spyOn(repository, 'getUsdPrice');
+await service.calculateSlippage(chainId, baseToken, quoteToken);
+expect(spy).toHaveBeenCalledWith(chainId, baseToken);
+```
+
+**Note**: Mocks must be "hoisted" (placed at the top level before relevant imports).
+
+## Coverage
+
+Generate coverage reports:
+
+```bash
+nx run repositories:test --coverage
+```
+
+Coverage results are output to project-specific directories.
+
+## NX Caching
+
+NX provides intelligent caching to avoid re-running unchanged tests:
+
+```bash
+# Force fresh test execution (skip cache)
+nx run repositories:test --skip-nx-cache
+
+# Clear all NX cache
+nx reset
+```
+
+## Integration Testing
+
+### Testing with Database (TypeORM)
+
+```typescript
+describe('IndexerStateRepository', () => {
+  let dataSource: DataSource;
+
+  beforeAll(async () => {
+    dataSource = await createTestDataSource();
+    await dataSource.runMigrations();
+  });
+
+  afterAll(async () => {
+    await dataSource.destroy();
+  });
+
+  it('should persist and retrieve state', async () => {
+    const repo = new IndexerStateRepositoryOrm(dataSource);
+    await repo.save('test-key', 1, { lastBlock: '100' });
+    const state = await repo.get('test-key', 1);
+    expect(state).toEqual({ lastBlock: '100' });
+  });
+});
+```
+
+### Testing API Endpoints (Fastify)
+
+```typescript
+describe('GET /about', () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = await buildApp();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('should return version information', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/about',
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body).toHaveProperty('name');
+    expect(body).toHaveProperty('version');
+  });
+});
+```
+
+### Testing Notifications
+
+Send test notifications to verify the full pipeline:
+
+```bash
+POST_TO_QUEUE_ACCOUNT=0x79063d9173C09887d536924E2F6eADbaBAc099f5 \
+  nx test notification-producer \
+  --testFile=src/sendPush.test.ts \
+  --skip-nx-cache
+```
+
+## CI Integration
+
+GitHub Actions automatically runs tests on commits. The CI configuration uses NX's affected command to only test changed projects:
+
+```bash
+nx affected --target=test
+```
+
+## Best Practices
+
+1. **Test behavior, not implementation** - Focus on inputs and outputs
+2. **Use descriptive test names** - Describe the scenario being tested
+3. **One assertion concept per test** - Keep tests focused
+4. **Follow Given-When-Then** - Structure tests clearly
+5. **Colocate tests with code** - Keep test files next to implementation
+6. **Use factory functions** for test data creation
+7. **Clean up resources** in `afterAll`/`afterEach` hooks
+8. **Avoid testing private methods** - Test through public interfaces

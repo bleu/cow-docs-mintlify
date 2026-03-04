@@ -1,0 +1,118 @@
+---
+title: "Ethers v6 Adapter"
+description: "Integration between the CoW Protocol SDK and ethers.js v6"
+---
+
+# Ethers v6 Adapter
+
+## Overview
+
+The Ethers v6 Adapter integrates the CoW Protocol SDK with ethers.js v6, enabling usage of all SDK packages with ethers v6 providers and signers.
+
+## Installation
+
+```bash
+npm install @cowprotocol/sdk-ethers-v6-adapter
+```
+
+## Initialization
+
+Create an adapter instance by providing a provider and optional signer:
+
+```typescript
+import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter'
+import { JsonRpcProvider, Wallet } from 'ethers'
+
+const provider = new JsonRpcProvider('YOUR_RPC_URL')
+const wallet = new Wallet('YOUR_PRIVATE_KEY', provider)
+const adapter = new EthersV6Adapter({ provider, signer: wallet })
+```
+
+**Constructor Parameters:**
+- `provider`: An ethers v6 Provider instance or RPC URL string (automatically creates JsonRpcProvider)
+- `signer`: Optional ethers v6 Signer instance or private key string
+
+## Core Properties
+
+- **signer**: Returns the EthersV6SignerAdapter instance; throws error if unavailable
+- **utils**: Utility methods for working with ethers v6 types and contracts
+- **TypedDataVersionedSigner**: EIP-712 signer with version support
+- **TypedDataV3Signer**: EIP-712 version 3 legacy signer
+- **IntChainIdTypedDataV4Signer**: EIP-712 version 4 signer with MetaMask compatibility fixes
+
+## Available Methods
+
+### Chain & State Methods
+
+- `getChainId()`: Returns promise resolving to chain ID number
+- `getCode(address)`: Retrieves bytecode at specified address
+- `getTransactionReceipt(hash)`: Fetches transaction receipt or null
+- `getStorageAt(address, slot)`: Returns storage value at position
+- `getBlock(blockTag, provider?)`: Retrieves block information
+
+### Contract Interaction
+
+- `call(txParams, provider?)`: Executes read-only contract call
+- `readContract({address, abi, functionName, args, provider?})`: Reads contract function
+- `getContract(address, abi)`: Creates compatible contract instance
+
+### Signer & Provider Management
+
+- `setSigner(signer)`: Updates the signer
+- `setProvider(provider)`: Updates the provider
+- `signerOrNull()`: Returns signer adapter or null
+- `createSigner(signerOrPrivateKey)`: Creates new signer adapter
+
+## Implementation Examples
+
+### Basic Setup with RPC String
+
+```typescript
+const adapter = new EthersV6Adapter({
+  provider: 'https://eth.llamarpc.com',
+  signer: '0x...'
+})
+```
+
+### Integration with CoW SDK
+
+```typescript
+import { CowSdk, SupportedChainId } from '@cowprotocol/cow-sdk'
+import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter'
+import { JsonRpcProvider, Wallet } from 'ethers'
+
+const provider = new JsonRpcProvider('YOUR_RPC_URL')
+const wallet = new Wallet('YOUR_PRIVATE_KEY', provider)
+const adapter = new EthersV6Adapter({ provider, signer: wallet })
+
+const sdk = new CowSdk({
+  chainId: SupportedChainId.SEPOLIA,
+  adapter,
+  tradingOptions: {
+    traderParams: { appCode: 'YOUR_APP_CODE' },
+    options: { chainId: SupportedChainId.SEPOLIA }
+  }
+})
+
+const orderId = await sdk.trading.postSwapOrder(parameters)
+```
+
+### MetaMask Browser Integration
+
+```typescript
+import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter'
+import { BrowserProvider } from 'ethers'
+
+const provider = new BrowserProvider(window.ethereum)
+const signer = await provider.getSigner()
+const adapter = new EthersV6Adapter({ provider, signer })
+
+// Use IntChainIdTypedDataV4Signer for improved MetaMask compatibility
+const v4Signer = new adapter.IntChainIdTypedDataV4Signer(signer)
+```
+
+## Related Resources
+
+- [Ethers.js v6 Documentation](https://docs.ethers.org/v6/)
+- [Viem Adapter](/cow-sdk/api/adapters/viem)
+- [Ethers v5 Adapter](/cow-sdk/api/adapters/ethers-v5)

@@ -1,0 +1,226 @@
+---
+title: "Account Endpoints"
+description: "Endpoints for retrieving user token balances and allowances, including REST and Server-Sent Events streaming"
+---
+
+# Account Endpoints
+
+Account endpoints deliver current information about user token holdings and approvals for the CoW Protocol.
+
+## Get Account Balances
+
+**Endpoint:** `GET /{chainId}/accounts/{userAddress}/balances`
+
+Retrieves token balances and approvals for a specified user address.
+
+### Parameters
+
+| Type  | Name        | Required | Details                                           |
+| ----- | ----------- | -------- | ------------------------------------------------- |
+| Path  | chainId     | Yes      | Network identifier (e.g., `1`, `100`, `11155111`) |
+| Path  | userAddress | Yes      | User's wallet address                             |
+| Query | tokens      | Yes      | Comma-separated token contract addresses          |
+
+### Response Fields
+
+- **balance**: Token quantity in base units (wei-like format)
+- **allowance**: CoW Protocol vault relayer approval amount
+- **token**: Object containing token metadata
+  - **address**: Contract address
+  - **decimals**: Decimal places (typically 18)
+  - **symbol**: Short identifier (e.g., "WETH")
+  - **name**: Full token name
+
+### Example Success Response
+
+```json
+[
+  {
+    "balance": "5000000000000000000",
+    "allowance": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+    "token": {
+      "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+      "decimals": 18,
+      "symbol": "WETH",
+      "name": "Wrapped Ether"
+    }
+  }
+]
+```
+
+### Code Examples
+
+**cURL:**
+```bash
+curl "https://api.cow.fi/1/accounts/0x1234567890abcdef1234567890abcdef12345678/balances?tokens=0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+```
+
+**JavaScript:**
+```javascript
+const userAddress = '0x1234567890abcdef1234567890abcdef12345678';
+const tokens = ['0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'];
+
+const response = await fetch(
+  `https://api.cow.fi/1/accounts/${userAddress}/balances?tokens=${tokens.join(',')}`
+);
+const balances = await response.json();
+```
+
+**Python:**
+```python
+import requests
+
+user_address = '0x1234567890abcdef1234567890abcdef12345678'
+tokens = ['0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48']
+
+response = requests.get(
+  f'https://api.cow.fi/1/accounts/{user_address}/balances',
+  params={'tokens': ','.join(tokens)}
+)
+balances = response.json()
+```
+
+### Error Responses
+
+| Code | Message                                   | Solution                           |
+| ---- | ----------------------------------------- | ---------------------------------- |
+| 400  | "At least one token address is required"  | Include token addresses in query   |
+| 500  | "Internal server error"                   | Verify server/database status      |
+
+---
+
+## Stream Account Balances (SSE)
+
+**Endpoint:** `GET /{chainId}/accounts/{userAddress}/balances/sse`
+
+Provides real-time streaming updates via Server-Sent Events for balance and allowance changes.
+
+### Parameters
+
+| Type  | Name        | Required | Details                                  |
+| ----- | ----------- | -------- | ---------------------------------------- |
+| Path  | chainId     | Yes      | Network identifier                       |
+| Path  | userAddress | Yes      | User's wallet address                    |
+| Query | tokens      | Yes      | Comma-separated token addresses to monitor |
+
+### Response Behavior
+
+- **Initial Event**: Current balances sent immediately upon connection
+- **Update Events**: Transmitted when balance or allowance changes
+- **Ping Events**: Keep-alive messages every 20 seconds
+
+### Event Examples
+
+**Balance Update:**
+```
+event: message
+data: [{"balance":"5000000000000000000","allowance":"115792089237316195423570985008687907853269984665640564039457584007913129639935","token":{"address":"0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","decimals":18,"symbol":"WETH","name":"Wrapped Ether"}}]
+```
+
+**Keep-Alive Ping:**
+```
+event: ping
+data: {}
+```
+
+### Response Headers
+
+```
+Content-Type: text/event-stream
+Cache-Control: no-cache
+Connection: keep-alive
+Access-Control-Allow-Origin: *
+X-Accel-Buffering: no
+```
+
+### Code Examples
+
+**cURL:**
+```bash
+curl -N "https://api.cow.fi/1/accounts/0x1234567890abcdef1234567890abcdef12345678/balances/sse?tokens=0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+```
+
+**JavaScript:**
+```javascript
+const userAddress = '0x1234567890abcdef1234567890abcdef12345678';
+const tokens = ['0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'];
+
+const eventSource = new EventSource(
+  `https://api.cow.fi/1/accounts/${userAddress}/balances/sse?tokens=${tokens.join(',')}`
+);
+
+eventSource.onmessage = (event) => {
+  const balances = JSON.parse(event.data);
+  console.log('Balance update:', balances);
+};
+
+eventSource.addEventListener('ping', (event) => {
+  console.log('Keep-alive ping received');
+});
+
+eventSource.onerror = (error) => {
+  console.error('SSE error:', error);
+  eventSource.close();
+};
+```
+
+**Python:**
+```python
+import requests
+import json
+
+user_address = '0x1234567890abcdef1234567890abcdef12345678'
+tokens = ['0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48']
+
+url = f'https://api.cow.fi/1/accounts/{user_address}/balances/sse'
+params = {'tokens': ','.join(tokens)}
+
+with requests.get(url, params=params, stream=True) as response:
+  for line in response.iter_lines():
+    if line:
+      decoded = line.decode('utf-8')
+      if decoded.startswith('data: '):
+        data = json.loads(decoded[6:])
+        print('Balance update:', data)
+```
+
+---
+
+## Important Notes
+
+### Allowance Context
+
+The allowance returned is specifically for the CoW Protocol vault relayer contract. This represents the approval amount verified during order placement. A typical maximum approval value is `115792089237316195423570985008687907853269984665640564039457584007913129639935`.
+
+### Balance Format Details
+
+Balances use token base units:
+- 18-decimal tokens: `1000000000000000000` equals 1 token
+- 6-decimal tokens (USDC): `1000000` equals 1 token
+
+Convert to human-readable format:
+```javascript
+const humanReadable = balance / (10 ** decimals);
+```
+
+### SSE Connection Guidelines
+
+1. Keep-alive pings maintain connection every 20 seconds
+2. Server automatically stops tracking when all clients disconnect
+3. Multiple clients can monitor the same user; the server combines tracked tokens
+4. Be aware of concurrent connection limits
+
+### Local Testing
+
+Test the SSE endpoint locally:
+```bash
+yarn start
+open http://localhost:3001/tests/balances
+```
+
+### Performance Tips
+
+- Query multiple tokens in single requests for efficiency
+- SSE connections only transmit when changes occur
+- REST responses may cache for several seconds
+- Batch requests where possible

@@ -1,0 +1,97 @@
+---
+title: "Hooks Endpoints"
+description: "API endpoints for retrieving CoW Hooks analytics data from Dune Analytics"
+---
+
+# Hooks Endpoints
+
+CoW Hooks analytics and data from Dune Analytics.
+
+## GET /hooks
+
+Retrieves CoW Hooks data from Dune Analytics. This endpoint requires the `DUNE_API_KEY` environment variable to be configured.
+
+### Query Parameters
+
+| Parameter      | Type   | Required | Description                                         |
+| -------------- | ------ | -------- | --------------------------------------------------- |
+| blockchain     | string | Yes      | The blockchain to query hooks for                   |
+| period         | string | Yes      | Time period for the hooks data query                |
+| maxWaitTimeMs  | number | No       | Maximum time to wait for Dune query results (ms)    |
+| limit          | number | No       | Maximum number of hooks to return                   |
+| offset         | number | No       | Offset for pagination                               |
+
+### Response
+
+| Field | Type   | Description                                            |
+| ----- | ------ | ------------------------------------------------------ |
+| hooks | array  | Array of hook data objects from Dune Analytics          |
+| count | number | Number of hooks returned in the response               |
+| error | string | Error message if the request failed (only on errors)   |
+
+### Code Examples
+
+**cURL:**
+```bash
+curl -X GET "http://localhost:3001/hooks?blockchain=ethereum&period=30d&limit=10"
+```
+
+**JavaScript:**
+```javascript
+const response = await fetch(
+  'http://localhost:3001/hooks?blockchain=ethereum&period=30d&limit=10'
+);
+const data = await response.json();
+console.log(data.hooks);
+```
+
+**Python:**
+```python
+import requests
+
+response = requests.get(
+    "http://localhost:3001/hooks",
+    params={
+        "blockchain": "ethereum",
+        "period": "30d",
+        "limit": 10
+    }
+)
+data = response.json()
+print(data["hooks"])
+```
+
+### Example Response
+
+```json
+{
+  "hooks": [
+    {
+      // Hook data structure from Dune Analytics
+    }
+  ],
+  "count": 10
+}
+```
+
+### Error Response
+
+```json
+{
+  "hooks": [],
+  "count": 0,
+  "error": "Internal server error while fetching hooks"
+}
+```
+
+### Notes
+
+- This endpoint requires the `DUNE_API_KEY` environment variable to be set. If not configured, the endpoint will not be available.
+- Responses are cached for 5 minutes to optimize performance and reduce Dune API usage.
+
+## Related Services
+
+The hooks endpoint uses the `HooksService` from the services library. For implementation details, see:
+
+* [Services Library](/libraries/services)
+* [Dune Repository](/libraries/repositories#dune-repository)

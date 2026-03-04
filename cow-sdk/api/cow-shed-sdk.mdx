@@ -1,0 +1,589 @@
+---
+title: "CoW Shed SDK"
+description: "Pre-authorization of hook calls using deterministic smart accounts for account abstraction"
+---
+
+# CoW Shed SDK
+
+Pre-authorized hooks and smart account management
+
+## Overview
+
+The CoW Shed SDK enables pre-authorization of hook calls using a deterministic smart account (cow-shed account). This allows users to sign hook calls off-chain that execute during order settlement without requiring on-chain approvals.
+
+## Installation
+
+```bash
+npm install @cowprotocol/sdk-cow-shed
+```
+
+## CowShedSdk
+
+Main SDK class for managing cow-shed accounts and signing hook calls.
+
+### Constructor
+
+```typescript
+import { CowShedSdk } from '@cowprotocol/sdk-cow-shed'
+
+const cowShedSdk = new CowShedSdk(
+  adapter, // Optional provider adapter
+  {
+    factoryAddress: '0x...',
+    implementationAddress: '0x...',
+  }, // Optional custom factory options
+  '1.0.0', // Optional version
+)
+```
+
+<ParamField path="adapter" type="AbstractProviderAdapter">
+  Optional provider adapter (ethers v5, ethers v6, or viem). Uses global adapter if not provided.
+</ParamField>
+
+<ParamField path="factoryOptions" type="ICoWShedOptions">
+  Optional custom CoW Shed factory configuration
+
+  <ParamField path="factoryOptions.factoryAddress" type="string" required>
+    CoW Shed factory contract address
+  </ParamField>
+
+  <ParamField path="factoryOptions.implementationAddress" type="string" required>
+    CoW Shed implementation contract address
+  </ParamField>
+
+  <ParamField path="factoryOptions.proxyCreationCode" type="string">
+    Optional proxy creation code
+  </ParamField>
+</ParamField>
+
+<ParamField path="version" type="CoWShedVersion" default="latest">
+  CoW Shed version to use
+</ParamField>
+
+### getCowShedAccount()
+
+Get the deterministic cow-shed account address for an owner.
+
+```typescript
+const cowShedAccount = cowShedSdk.getCowShedAccount(
+  SupportedChainId.MAINNET,
+  '0x...', // Owner address
+)
+
+console.log('CoW Shed account:', cowShedAccount)
+```
+
+<ParamField path="chainId" type="SupportedChainId" required>
+  Chain ID
+</ParamField>
+
+<ParamField path="ownerAddress" type="string" required>
+  Owner wallet address
+</ParamField>
+
+<ResponseField name="address" type="string">
+  Deterministic cow-shed account address
+</ResponseField>
+
+### signCalls()
+
+Sign multiple calls and encode them into a single pre-authorized transaction.
+
+```typescript
+const calls: ICoWShedCall[] = [
+  {
+    target: tokenAddress,
+    value: 0n,
+    callData: approveCalldata,
+    allowFailure: false,
+    isDelegateCall: false,
+  },
+  {
+    target: bridgeAddress,
+    value: 0n,
+    callData: depositCalldata,
+    allowFailure: false,
+    isDelegateCall: false,
+  },
+]
+
+const result = await cowShedSdk.signCalls({
+  calls,
+  signer: userSigner,
+  chainId: SupportedChainId.MAINNET,
+  nonce: CowShedSdk.getNonce(),
+  deadline: BigInt(Math.floor(Date.now() / 1000) + 3600), // 1 hour
+  gasLimit: 500000n,
+})
+
+console.log('CoW Shed account:', result.cowShedAccount)
+console.log('Factory call:', result.signedMulticall)
+console.log('Gas limit:', result.gasLimit)
+```
+
+<ParamField path="args" type="SignAndEncodeTxArgs" required>
+  <ParamField path="args.calls" type="ICoWShedCall[]" required>
+    Array of calls to pre-authorize
+
+    <ParamField path="args.calls[].target" type="string" required>
+      Target contract address
+    </ParamField>
+
+    <ParamField path="args.calls[].value" type="bigint" required>
+      ETH value to send with the call
+    </ParamField>
+
+    <ParamField path="args.calls[].callData" type="string" required>
+      Encoded call data
+    </ParamField>
+
+    <ParamField path="args.calls[].allowFailure" type="boolean" required>
+      Whether the call is allowed to fail
+    </ParamField>
+
+    <ParamField path="args.calls[].isDelegateCall" type="boolean" required>
+      Whether to use delegatecall
+    </ParamField>
+  </ParamField>
+
+  <ParamField path="args.signer" type="SignerLike">
+    Signer for the cow-shed owner account. Uses global signer if not provided.
+  </ParamField>
+
+  <ParamField path="args.chainId" type="SupportedChainId" required>
+    Chain ID for the transaction
+  </ParamField>
+
+  <ParamField path="args.nonce" type="string">
+    Transaction nonce. Uses current timestamp if not provided.
+  </ParamField>
+
+  <ParamField path="args.deadline" type="bigint">
+    Transaction deadline as Unix timestamp. Uses max uint256 if not provided.
+  </ParamField>
+
+  <ParamField path="args.gasLimit" type="bigint">
+    Gas limit override. Estimates gas if not provided.
+  </ParamField>
+
+  <ParamField path="args.defaultGasLimit" type="bigint">
+    Default gas limit to use if estimation fails
+  </ParamField>
+
+  <ParamField path="args.signingScheme" type="EcdsaSigningScheme" default="EIP712">
+    Signing scheme to use
+  </ParamField>
+</ParamField>
+
+<ResponseField name="result" type="CowShedCall">
+  <ResponseField name="cowShedAccount" type="string">
+    Address of the cow-shed account
+  </ResponseField>
+
+  <ResponseField name="signedMulticall" type="EvmCall">
+    Signed transaction ready to be executed
+
+    <ResponseField name="to" type="string">
+      CoW Shed factory address
+    </ResponseField>
+
+    <ResponseField name="data" type="string">
+      Encoded call data including signature
+    </ResponseField>
+
+    <ResponseField name="value" type="bigint">
+      ETH value (typically 0)
+    </ResponseField>
+  </ResponseField>
+
+  <ResponseField name="gasLimit" type="bigint">
+    Estimated gas limit for the transaction
+  </ResponseField>
+</ResponseField>
+
+## CoWShedHooks
+
+Lower-level class for working with CoW Shed hooks.
+
+```typescript
+import { CowShedHooks } from '@cowprotocol/sdk-cow-shed'
+
+const hooks = new CowShedHooks(
+  SupportedChainId.MAINNET,
+  {
+    factoryAddress: '0x...',
+    implementationAddress: '0x...',
+  },
+)
+```
+
+### Methods
+
+#### proxyOf()
+
+Compute the cow-shed proxy address for an owner.
+
+```typescript
+const proxyAddress = hooks.proxyOf(ownerAddress)
+```
+
+#### signCalls()
+
+Sign hook calls.
+
+```typescript
+const signature = await hooks.signCalls(
+  calls,
+  nonce,
+  deadline,
+  SigningScheme.EIP712,
+  signer,
+)
+```
+
+#### encodeExecuteHooksForFactory()
+
+Encode hook execution for the factory contract.
+
+```typescript
+const calldata = hooks.encodeExecuteHooksForFactory(
+  calls,
+  nonce,
+  deadline,
+  ownerAddress,
+  signature,
+)
+```
+
+## Types
+
+### ICoWShedCall
+
+Parameters for a single hook call.
+
+```typescript
+interface ICoWShedCall {
+  target: string
+  value: bigint
+  callData: string
+  allowFailure: boolean
+  isDelegateCall: boolean
+}
+```
+
+### ICoWShedOptions
+
+Configuration for CoW Shed factory.
+
+```typescript
+interface ICoWShedOptions {
+  factoryAddress: string
+  proxyCreationCode?: string
+  implementationAddress: string
+}
+```
+
+### CowShedCall
+
+Result from signing calls.
+
+```typescript
+interface CowShedCall {
+  cowShedAccount: string
+  signedMulticall: EvmCall
+  gasLimit: bigint
+}
+```
+
+### SignAndEncodeTxArgs
+
+Arguments for signing calls.
+
+```typescript
+interface SignAndEncodeTxArgs {
+  calls: ICoWShedCall[]
+  signer?: SignerLike
+  chainId: SupportedChainId
+  nonce?: string
+  deadline?: bigint
+  gasLimit?: bigint
+  defaultGasLimit?: bigint
+  signingScheme?: EcdsaSigningScheme
+}
+```
+
+## Constants
+
+```typescript
+import { COW_SHED_LATEST_VERSION } from '@cowprotocol/sdk-cow-shed'
+
+console.log('Latest version:', COW_SHED_LATEST_VERSION)
+```
+
+## Examples
+
+### Basic Hook Signing
+
+```typescript
+import { CowShedSdk } from '@cowprotocol/sdk-cow-shed'
+import { SupportedChainId } from '@cowprotocol/sdk-config'
+
+const sdk = new CowShedSdk()
+
+// Prepare hook calls
+const calls = [
+  {
+    target: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
+    value: 0n,
+    callData: approveCalldata,
+    allowFailure: false,
+    isDelegateCall: false,
+  },
+]
+
+// Sign the calls
+const result = await sdk.signCalls({
+  calls,
+  signer: userWallet,
+  chainId: SupportedChainId.MAINNET,
+  deadline: BigInt(Math.floor(Date.now() / 1000) + 1800), // 30 min
+  defaultGasLimit: 500000n,
+})
+
+console.log('CoW Shed account:', result.cowShedAccount)
+console.log('Gas limit:', result.gasLimit)
+
+// Use result.signedMulticall in your CoW Protocol order hook
+```
+
+### Bridge Hook Integration
+
+```typescript
+import { CowShedSdk } from '@cowprotocol/sdk-cow-shed'
+import { parseUnits } from 'viem'
+
+const sdk = new CowShedSdk()
+
+// Get cow-shed account address
+const ownerAddress = await signer.getAddress()
+const cowShedAccount = sdk.getCowShedAccount(
+  SupportedChainId.MAINNET,
+  ownerAddress,
+)
+
+console.log('Tokens will be sent to:', cowShedAccount)
+
+// Prepare bridge deposit call
+const bridgeDepositCall = {
+  target: acrossHubPoolAddress,
+  value: 0n,
+  callData: encodeAcrossDeposit({
+    recipient: userAddress,
+    inputToken: usdcAddress,
+    outputToken: usdcAddress,
+    inputAmount: parseUnits('1000', 6),
+    outputAmount: parseUnits('995', 6),
+    destinationChainId: 8453, // Base
+    exclusiveRelayer: '0x0000000000000000000000000000000000000000',
+    quoteTimestamp: Math.floor(Date.now() / 1000),
+    fillDeadline: Math.floor(Date.now() / 1000) + 3600,
+    exclusivityDeadline: 0,
+    message: '0x',
+  }),
+  allowFailure: false,
+  isDelegateCall: false,
+}
+
+// Sign the bridge hook
+const hookResult = await sdk.signCalls({
+  calls: [bridgeDepositCall],
+  signer,
+  chainId: SupportedChainId.MAINNET,
+  nonce: Date.now().toString(),
+  deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
+})
+
+// Use hookResult.signedMulticall as the post-hook in your order
+const order = {
+  // ... order parameters
+  receiver: cowShedAccount, // Send tokens to cow-shed account
+  // ... other parameters
+}
+
+const appData = {
+  // ... app data
+  hooks: {
+    post: [{
+      target: hookResult.signedMulticall.to,
+      callData: hookResult.signedMulticall.data,
+      gasLimit: hookResult.gasLimit.toString(),
+    }],
+  },
+}
+```
+
+### Multi-Call Hook
+
+```typescript
+import { CowShedSdk } from '@cowprotocol/sdk-cow-shed'
+
+const sdk = new CowShedSdk()
+
+// Multiple operations in one hook
+const calls = [
+  // 1. Approve token
+  {
+    target: tokenAddress,
+    value: 0n,
+    callData: encodeApprove(spenderAddress, maxAmount),
+    allowFailure: false,
+    isDelegateCall: false,
+  },
+  // 2. Deposit to protocol
+  {
+    target: protocolAddress,
+    value: 0n,
+    callData: encodeDeposit(amount),
+    allowFailure: false,
+    isDelegateCall: false,
+  },
+  // 3. Claim rewards (can fail)
+  {
+    target: rewardsAddress,
+    value: 0n,
+    callData: encodeClaimRewards(),
+    allowFailure: true, // Won't revert entire hook if no rewards
+    isDelegateCall: false,
+  },
+]
+
+const result = await sdk.signCalls({
+  calls,
+  signer: userSigner,
+  chainId: SupportedChainId.MAINNET,
+  deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
+  defaultGasLimit: 800000n, // Higher limit for multiple calls
+})
+
+console.log('Multi-call hook prepared')
+console.log('Total gas limit:', result.gasLimit)
+```
+
+### Custom Nonce Management
+
+```typescript
+import { CowShedSdk } from '@cowprotocol/sdk-cow-shed'
+
+const sdk = new CowShedSdk()
+
+// Use custom nonce for replay protection
+const customNonce = keccak256(
+  encodePacked(
+    ['address', 'uint256'],
+    [userAddress, BigInt(Date.now())],
+  ),
+)
+
+const result = await sdk.signCalls({
+  calls: myCalls,
+  signer: userSigner,
+  chainId: SupportedChainId.MAINNET,
+  nonce: customNonce,
+  deadline: BigInt(Math.floor(Date.now() / 1000) + 1800),
+})
+```
+
+### Gas Estimation
+
+```typescript
+import { CowShedSdk } from '@cowprotocol/sdk-cow-shed'
+
+const sdk = new CowShedSdk()
+
+try {
+  // Let SDK estimate gas
+  const result = await sdk.signCalls({
+    calls: myCalls,
+    signer: signerWithProvider, // Signer must have provider for estimation
+    chainId: SupportedChainId.MAINNET,
+  })
+
+  console.log('Estimated gas:', result.gasLimit)
+} catch (error) {
+  console.error('Gas estimation failed:', error)
+
+  // Retry with default gas limit
+  const result = await sdk.signCalls({
+    calls: myCalls,
+    signer: signerWithProvider,
+    chainId: SupportedChainId.MAINNET,
+    defaultGasLimit: 500000n,
+  })
+
+  console.log('Using default gas limit:', result.gasLimit)
+}
+```
+
+### Getting CoW Shed Address
+
+```typescript
+import { CowShedSdk } from '@cowprotocol/sdk-cow-shed'
+import { SupportedChainId } from '@cowprotocol/sdk-config'
+
+const sdk = new CowShedSdk()
+
+// Get cow-shed address for any owner
+const ownerAddress = '0x1234567890123456789012345678901234567890'
+const cowShedAddress = sdk.getCowShedAccount(
+  SupportedChainId.MAINNET,
+  ownerAddress,
+)
+
+console.log(`Owner: ${ownerAddress}`)
+console.log(`CoW Shed: ${cowShedAddress}`)
+
+// The cow-shed address is deterministic and can be computed off-chain
+// It will be the same for the same owner on the same chain
+
+// Check if cow-shed account exists on-chain
+const code = await provider.getCode(cowShedAddress)
+const exists = code !== '0x'
+
+if (!exists) {
+  console.log('CoW Shed account will be created on first use')
+}
+```
+
+## Integration with Trading SDK
+
+The CoW Shed SDK is typically used together with the Trading SDK for creating orders with hooks:
+
+```typescript
+import { TradingSdk } from '@cowprotocol/sdk-trading'
+import { CowShedSdk } from '@cowprotocol/sdk-cow-shed'
+
+const tradingSdk = new TradingSdk()
+const cowShedSdk = new CowShedSdk()
+
+// 1. Prepare hook
+const hookResult = await cowShedSdk.signCalls({
+  calls: bridgeCalls,
+  signer,
+  chainId: SupportedChainId.MAINNET,
+})
+
+// 2. Create order with hook
+const order = await tradingSdk.postOrder({
+  kind: OrderKind.SELL,
+  sellToken: usdcAddress,
+  buyToken: wethAddress,
+  sellAmount: parseUnits('1000', 6),
+  receiver: hookResult.cowShedAccount, // Important: send to cow-shed
+  signer,
+  postHooks: [{
+    target: hookResult.signedMulticall.to,
+    callData: hookResult.signedMulticall.data,
+    gasLimit: hookResult.gasLimit,
+  }],
+})
+```

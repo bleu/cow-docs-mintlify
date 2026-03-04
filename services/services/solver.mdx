@@ -1,0 +1,52 @@
+---
+title: "Solver Service"
+description: "The mathematical brain of CoW Protocol, focused on route-finding optimization and order matching"
+---
+
+# Solver Service
+
+The Solver service acts as the mathematical brain of the trading system, focusing exclusively on route-finding optimization. It receives auctions and computes optimal trading paths to settle orders at the best possible prices.
+
+## Key Responsibilities
+
+The solver handles:
+
+- **Route Discovery** through DEX liquidity
+- **Order Matching** including Coincidence of Wants (CoWs)
+- **Solution Scoring** for evaluating proposed solutions
+- **Partial Fills** for limit orders
+- **Multi-hop Routing** through intermediate tokens
+
+Notably, the solver does **not** fetch liquidity, encode settlements, submit transactions, or manage gas prices -- these are handled by the Driver service.
+
+## Primary Strategies
+
+The baseline solver implements four main approaches:
+
+1. **Direct Matching (CoW)** - Overlapping orders trade directly
+2. **Single-Hop Routing** - One liquidity source connection
+3. **Multi-Hop Routing** - Paths through intermediate tokens
+4. **Partial Fill Optimization** - Finding optimal fill amounts for limit orders
+
+## Configuration
+
+Key parameters include:
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `max-hops` | Route length (0 = direct only) | 1 |
+| `max-partial-attempts` | Fill amounts to evaluate | 5 |
+| `base-tokens` | High-liquidity intermediaries (WETH, USDC, DAI) | - |
+| `solution-gas-offset` | Gas overhead | ~106,391 gas |
+
+## Deployment Options
+
+The service can run standalone via HTTP API or integrate with the Driver.
+
+External solvers must implement a `/solve` endpoint accepting orders and liquidity data, returning optimized solution proposals.
+
+## Performance Tuning
+
+Route exploration grows exponentially with hops. The recommended starting point is `max-hops = 1` with adjustments based on liquidity patterns and latency requirements.
+
+**Source**: `crates/solvers/`

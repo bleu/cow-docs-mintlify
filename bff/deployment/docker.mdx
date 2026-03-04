@@ -1,0 +1,193 @@
+---
+title: "Docker Deployment"
+description: "Guide for deploying CoW Protocol BFF services using Docker and Docker Compose"
+---
+
+# Docker Deployment
+
+Comprehensive guide for deploying CoW Protocol BFF services using Docker and Docker Compose.
+
+## Service Architecture
+
+The BFF comprises seven containerized services:
+
+| Service               | Port(s)      | Description                |
+| --------------------- | ------------ | -------------------------- |
+| API                   | 1500         | API gateway                |
+| TWAP                  | 3000         | Time-weighted average price |
+| Notification Producer | -            | Event monitoring           |
+| Telegram              | -            | Bot message delivery       |
+| PostgreSQL            | 5432         | Database                   |
+| RabbitMQ              | 5672, 15672  | Message queue              |
+| Redis                 | 6379         | Cache                      |
+
+## Building Images
+
+Services utilize NX build targets with multi-stage Dockerfiles based on Alpine Linux:
+
+```bash
+# Build individual services
+nx run api:docker-build
+nx run twap:docker-build
+nx run notification-producer:docker-build
+nx run telegram:docker-build
+
+# Build only modified services
+yarn docker-build:affected
+```
+
+All services use a similar multi-stage Dockerfile pattern:
+
+- Based on Alpine Linux with Node.js LTS
+- Non-root users for enhanced security
+- Production dependencies from built artifacts
+
+## Local Development
+
+### Environment Setup
+
+```bash
+# Copy environment file
+cp .env.example .env.docker
+
+# Launch the complete stack
+yarn compose:up
+
+# Or start individual services
+docker-compose up -d db
+docker-compose up -d queue
+docker-compose up -d redis
+```
+
+### Service Dependencies
+
+The Docker Compose configuration defines service dependencies, ensuring proper startup sequencing. For example, the API service depends on the database being available first.
+
+## Production Deployment
+
+### Building for Production
+
+```bash
+# Build the image
+nx run api:docker-build
+
+# Tag for registry
+docker tag api:latest your-registry.io/cow-bff/api:v0.24.0
+
+# Push to registry
+docker push your-registry.io/cow-bff/api:v0.24.0
+```
+
+### Multi-Platform Builds
+
+```bash
+docker buildx build --platform linux/amd64,linux/arm64 -t your-registry.io/cow-bff/api:v0.24.0 .
+```
+
+Most services specify `platform: linux/amd64`, though the queue service omits this for Apple Silicon support.
+
+### Running Migrations
+
+Run migrations before deploying new versions:
+
+```bash
+docker-compose exec api yarn migration:run
+```
+
+## Resource Requirements
+
+### Minimum Deployment
+
+| Service    | RAM     |
+| ---------- | ------- |
+| API        | 512MB   |
+| TWAP       | 256MB   |
+| Producer   | 256MB   |
+| Telegram   | 128MB   |
+| PostgreSQL | 1GB     |
+| RabbitMQ   | 512MB   |
+| Redis      | 256MB   |
+| **Total**  | ~3.3GB  |
+
+### Recommended Production
+
+Total recommended: ~10GB RAM across services for optimal performance.
+
+## Health Monitoring
+
+- **RabbitMQ and Redis**: Built-in health checks with 30-second intervals
+- **API**: Exposes status information at the `/about` endpoint
+
+```bash
+# Check API health
+curl http://localhost:1500/about
+
+# View service logs
+docker-compose logs api
+docker-compose logs -f notification-producer
+```
+
+## Data Persistence
+
+Three named volumes maintain state across container restarts:
+
+- `data-postgres` - Database storage
+- `data-rabbitmq` - Message queue state
+- `data-redis` - Cache data
+
+### Database Backup/Restore
+
+```bash
+# Backup
+docker-compose exec db pg_dump -U bff-db-user bff-db > backup.sql
+
+# Restore
+docker-compose exec -T db psql -U bff-db-user bff-db < backup.sql
+```
+
+## Troubleshooting
+
+### Port Conflicts
+
+Modify port mappings in `docker-compose.yml` if ports are already in use:
+
+```yaml
+ports:
+  - "5433:5432"  # Map to different host port
+```
+
+### Permission Errors
+
+Ensure Docker has proper file system permissions. On Linux, you may need to adjust volume ownership.
+
+### Startup Failures
+
+Database connection errors typically require ensuring PostgreSQL initialization completes before dependent services start:
+
+```bash
+# Check container status
+docker-compose ps
+
+# View specific service logs
+docker-compose logs db
+
+# Restart a specific service
+docker-compose restart api
+```
+
+### Container Shell Access
+
+```bash
+docker-compose exec api sh
+docker-compose exec db psql -U bff-db-user bff-db
+```
+
+### Full Reset
+
+```bash
+# Remove all containers and volumes
+docker-compose down -v
+
+# Rebuild and start fresh
+docker-compose up -d --build
+```

@@ -1,0 +1,52 @@
+---
+title: "Programmatic Orders"
+description: "Build sophisticated trading strategies through conditional orders that execute automatically"
+---
+
+# Programmatic Orders
+
+The CoW Protocol Composable SDK enables developers to build sophisticated trading strategies through conditional orders that execute automatically based on specified conditions.
+
+## Key Components
+
+The SDK provides three primary tools:
+
+1. **ConditionalOrderFactory** - Registry-based factory for creating different types of conditional orders
+2. **Multiplexer** - Manages batches of orders using merkle trees for efficient on-chain verification
+3. **ConditionalOrder** - Base class for implementing custom conditional order types
+
+## Supported Order Types
+
+The documentation covers four main order categories:
+
+- **Stop-Loss Orders** - Automatically sell when price drops below a threshold
+- **Limit Orders** - Execute trades at specific price points
+- **DCA Orders** - Regular buying or selling at predetermined intervals
+- **TWAP Orders** - Time-weighted average price orders (detailed on a [separate page](/cow-sdk/advanced/twap-orders))
+
+## Installation & Setup
+
+Installation requires a single npm command:
+
+```bash
+npm install @cowprotocol/sdk-composable
+```
+
+The SDK supports two implementation approaches: standalone usage or integration with the unified CowSdk. Both require configuring an adapter (like EthersV6Adapter) with a provider and signer.
+
+## Core Workflow
+
+The typical implementation involves:
+
+1. Creating orders through the factory
+2. Organizing them with a multiplexer
+3. Generating merkle proofs for off-chain storage
+4. Setting the root on the ComposableCoW contract for on-chain execution
+
+## Best Practices
+
+The documentation emphasizes three key recommendations:
+
+- Validate orders before submission using the `isValid()` method
+- Store merkle proofs off-chain to enable watchtower execution
+- Use appropriate context factories for orders requiring on-chain data

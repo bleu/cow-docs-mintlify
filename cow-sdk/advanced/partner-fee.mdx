@@ -1,0 +1,418 @@
+---
+title: "Partner Fee"
+description: "Collect fees on orders through partner and integrator applications on CoW Protocol"
+---
+
+# Partner Fee
+
+CoW Protocol allows partners and integrators to collect fees on orders placed through their applications. Partner fees can be configured as a percentage of volume, surplus, or price improvement.
+
+## Overview
+
+Partner fees enable:
+
+- **Revenue sharing**: Collect fees from orders placed through your app
+- **Flexible fee structures**: Choose from volume-based, surplus-based, or price improvement fees
+- **Transparent fee collection**: Fees are automatically calculated and deducted
+- **Multiple fee tiers**: Support different fee levels for different user segments
+
+## Fee Types
+
+### Volume-Based Fee (volumeBps)
+
+A fixed percentage of the order's sell or buy amount:
+
+```typescript
+const partnerFee = {
+  volumeBps: 50, // 0.5% of order volume
+  recipient: '0xPartnerAddress',
+}
+```
+
+<Info>
+  Volume-based fees are capped at 100 BPS (1%) at the protocol level.
+</Info>
+
+### Surplus-Based Fee (surplusBps)
+
+A percentage of the order's surplus (the difference between limit price and execution price):
+
+```typescript
+const partnerFee = {
+  surplusBps: 5000, // 50% of surplus
+  maxVolumeBps: 100, // Maximum 1% of volume
+  recipient: '0xPartnerAddress',
+}
+```
+
+### Price Improvement Fee (priceImprovementBps)
+
+A percentage of the price improvement over the best available market price:
+
+```typescript
+const partnerFee = {
+  priceImprovementBps: 5000, // 50% of price improvement
+  maxVolumeBps: 100, // Maximum 1% of volume
+  recipient: '0xPartnerAddress',
+}
+```
+
+## Configuration
+
+### Single Fee Structure
+
+```typescript
+import { CowSdk, OrderKind } from '@cowprotocol/cow-sdk'
+
+const sdk = new CowSdk({ chainId, adapter })
+
+// Create order with partner fee
+const { quote } = await sdk.trading.getQuote({
+  kind: OrderKind.SELL,
+  sellToken: '0xTokenAddress',
+  buyToken: '0xAnotherTokenAddress',
+  sellAmount: '1000000000000000000',
+  partnerFee: {
+    volumeBps: 50, // 0.5%
+    recipient: '0xPartnerAddress',
+  },
+})
+```
+
+### Multiple Fee Tiers
+
+You can specify multiple fee structures, and the protocol will choose the most beneficial one:
+
+```typescript
+const partnerFee = [
+  // Primary: Take 50% of surplus, capped at 1% volume
+  {
+    surplusBps: 5000,
+    maxVolumeBps: 100,
+    recipient: '0xPartnerAddress',
+  },
+  // Fallback: If no surplus, take 0.5% of volume
+  {
+    volumeBps: 50,
+    recipient: '0xPartnerAddress',
+  },
+]
+
+const { quote } = await sdk.trading.getQuote({
+  kind: OrderKind.SELL,
+  sellToken: WETH_ADDRESS,
+  buyToken: USDC_ADDRESS,
+  sellAmount: parseEther('1'),
+  partnerFee,
+})
+```
+
+## Usage with TradingSdk
+
+### Get Quote with Partner Fee
+
+```typescript
+import { CowSdk, OrderKind } from '@cowprotocol/cow-sdk'
+import { parseEther } from 'viem'
+
+const sdk = new CowSdk({ chainId: 1, adapter })
+
+// Request quote with partner fee
+const { quote } = await sdk.trading.getQuote({
+  kind: OrderKind.SELL,
+  sellToken: WETH_ADDRESS,
+  buyToken: USDC_ADDRESS,
+  sellAmount: parseEther('10'),
+  partnerFee: {
+    volumeBps: 50, // 0.5% fee
+    recipient: '0xYourPartnerAddress',
+  },
+})
+
+// The quote already includes the partner fee deduction
+console.log('Buy amount after fees:', quote.buyAmount)
+console.log('Partner fee amount:', quote.feeAmount)
+```
+
+### Post Order with Partner Fee
+
+```typescript
+// Partner fee is included in the quote
+const orderId = await sdk.trading.postSwapOrder({
+  quote: quote.quote,
+  // Partner fee is automatically included from the quote
+})
+
+console.log('Order placed with partner fee:', orderId)
+```
+
+### Limit Orders with Partner Fee
+
+```typescript
+const orderId = await sdk.trading.postLimitOrder({
+  chainId: 1,
+  sellToken: WETH_ADDRESS,
+  buyToken: USDC_ADDRESS,
+  sellAmount: parseEther('5'),
+  buyAmount: parseUnits('10000', 6),
+  partnerFee: {
+    volumeBps: 50,
+    recipient: '0xPartnerAddress',
+  },
+})
+```
+
+## Partner Fee in App Data
+
+Partner fees are stored in the order's app data:
+
+```typescript
+import { generateAppDataDoc } from '@cowprotocol/sdk-app-data'
+
+const appDataDoc = await generateAppDataDoc({
+  appCode: 'my-app',
+  metadata: {
+    partnerFee: {
+      volumeBps: 50,
+      recipient: '0xPartnerAddress',
+    },
+  },
+})
+
+// Use in order
+const { quote } = await sdk.trading.getQuote({
+  kind: OrderKind.SELL,
+  sellToken: WETH_ADDRESS,
+  buyToken: USDC_ADDRESS,
+  sellAmount: parseEther('1'),
+  appData: appDataDoc.fullAppData,
+})
+```
+
+## Fee Calculation
+
+### For Sell Orders
+
+Partner fee is deducted from the buy amount:
+
+```typescript
+// Before partner fee
+const buyAmountBeforeFee = quote.buyAmount
+
+// Partner fee calculation (0.5% of volume)
+const volumeBps = 50
+const partnerFeeAmount = (buyAmountBeforeFee * BigInt(volumeBps)) / BigInt(10000)
+
+// After partner fee
+const buyAmountAfterFee = buyAmountBeforeFee - partnerFeeAmount
+
+console.log('Buy amount (before fee):', buyAmountBeforeFee)
+console.log('Partner fee:', partnerFeeAmount)
+console.log('Buy amount (after fee):', buyAmountAfterFee)
+```
+
+### For Buy Orders
+
+Partner fee is added to the sell amount:
+
+```typescript
+// Before partner fee
+const sellAmountBeforeFee = quote.sellAmount
+
+// Partner fee calculation (0.5% of volume)
+const volumeBps = 50
+const partnerFeeAmount = (sellAmountBeforeFee * BigInt(volumeBps)) / BigInt(10000)
+
+// After partner fee
+const sellAmountAfterFee = sellAmountBeforeFee + partnerFeeAmount
+
+console.log('Sell amount (before fee):', sellAmountBeforeFee)
+console.log('Partner fee:', partnerFeeAmount)
+console.log('Sell amount (after fee):', sellAmountAfterFee)
+```
+
+## Extracting Partner Fee from Quote
+
+Use the utility function to get partner fee BPS:
+
+```typescript
+import { getPartnerFeeBps } from '@cowprotocol/sdk-trading'
+
+const partnerFee = {
+  volumeBps: 50,
+  recipient: '0xPartnerAddress',
+}
+
+const feeBps = getPartnerFeeBps(partnerFee)
+console.log('Partner fee in BPS:', feeBps) // 50
+
+// For multiple fee structures, it returns the first volumeBps found
+const multiPartnerFee = [
+  { surplusBps: 5000, maxVolumeBps: 100, recipient: '0x...' },
+  { volumeBps: 50, recipient: '0x...' },
+]
+
+const feeBps2 = getPartnerFeeBps(multiPartnerFee)
+console.log('Partner fee in BPS:', feeBps2) // 50
+```
+
+## Complete Example
+
+```typescript
+import { CowSdk, OrderKind } from '@cowprotocol/cow-sdk'
+import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter'
+import { parseEther, parseUnits } from 'viem'
+import { JsonRpcProvider, Wallet } from 'ethers'
+
+// Initialize
+const provider = new JsonRpcProvider('YOUR_RPC_URL')
+const wallet = new Wallet('YOUR_PRIVATE_KEY', provider)
+const adapter = new EthersV6Adapter({ provider, signer: wallet })
+
+const sdk = new CowSdk({
+  chainId: 1,
+  adapter,
+})
+
+// Define partner fee structure
+const partnerFee = {
+  volumeBps: 50, // 0.5% fee
+  recipient: '0xYourPartnerFeeRecipient',
+}
+
+// Get quote with partner fee
+const { quote } = await sdk.trading.getQuote({
+  kind: OrderKind.SELL,
+  sellToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
+  buyToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
+  sellAmount: parseEther('10'),
+  partnerFee,
+})
+
+console.log('Quote buy amount (after partner fee):', quote.buyAmount)
+console.log('Partner fee amount:', quote.feeAmount)
+
+// Post order (partner fee automatically included)
+const orderId = await sdk.trading.postSwapOrder({
+  quote: quote.quote,
+})
+
+console.log('Order with partner fee placed:', orderId)
+
+// Track fee collection
+const order = await sdk.orderBook.getOrder(orderId)
+console.log('Order status:', order.status)
+console.log('Executed buy amount:', order.executedBuyAmount)
+```
+
+## Best Practices
+
+### Choose appropriate fee type
+
+- Use **volumeBps** for predictable, transparent fees
+- Use **surplusBps** to share in the value created
+- Use **priceImprovementBps** to incentivize better execution
+- Combine multiple types for optimal fee capture
+
+### Set reasonable fee rates
+
+```typescript
+// Good: Competitive rates
+const partnerFee = { volumeBps: 25, recipient } // 0.25%
+
+// Avoid: Excessive fees that hurt user experience
+const partnerFee = { volumeBps: 100, recipient } // 1% (maximum)
+```
+
+### Display fees to users
+
+Always show users the fee they're paying:
+
+```typescript
+const feeBps = getPartnerFeeBps(partnerFee)
+const feePercent = feeBps / 100
+console.log(`Partner fee: ${feePercent}%`)
+
+// Calculate fee amount
+const feeAmount = (sellAmount * BigInt(feeBps)) / BigInt(10000)
+console.log(`Fee amount: ${formatUnits(feeAmount, decimals)}`)
+```
+
+### Use surplus-based fees wisely
+
+Surplus-based fees can be zero if there's no positive slippage:
+
+```typescript
+// Provide fallback for guaranteed minimum fee
+const partnerFee = [
+  { surplusBps: 5000, maxVolumeBps: 100, recipient },
+  { volumeBps: 25, recipient }, // Fallback
+]
+```
+
+## Fee Recipient Management
+
+### Multiple Recipients
+
+Support different fee recipients for different user tiers:
+
+```typescript
+const getFeeRecipient = (userTier: string) => {
+  switch (userTier) {
+    case 'premium':
+      return '0xPremiumFeeRecipient'
+    case 'standard':
+      return '0xStandardFeeRecipient'
+    default:
+      return '0xDefaultFeeRecipient'
+  }
+}
+
+const partnerFee = {
+  volumeBps: 50,
+  recipient: getFeeRecipient(user.tier),
+}
+```
+
+### Fee Splitter Contract
+
+Use a fee splitter to distribute fees:
+
+```typescript
+// Deploy or use existing fee splitter
+const FEE_SPLITTER = '0xFeeSplitterContractAddress'
+
+const partnerFee = {
+  volumeBps: 50,
+  recipient: FEE_SPLITTER, // Automatically splits among recipients
+}
+```
+
+## Monitoring Fee Collection
+
+```typescript
+// Track total fees collected
+let totalFeesCollected = 0n
+
+const orders = await sdk.orderBook.getOrders({
+  owner: userAddress,
+})
+
+for (const order of orders) {
+  if (order.status === 'fulfilled') {
+    const appData = await fetchDocFromAppData(order.appData)
+    if (appData.metadata.partnerFee) {
+      const feeBps = getPartnerFeeBps(appData.metadata.partnerFee)
+      const feeAmount = (BigInt(order.executedBuyAmount) * BigInt(feeBps)) / BigInt(10000)
+      totalFeesCollected += feeAmount
+    }
+  }
+}
+
+console.log('Total fees collected:', formatUnits(totalFeesCollected, 6), 'USDC')
+```
+
+## Next Steps
+
+- [Hooks](/cow-sdk/advanced/hooks) - Execute custom logic before and after orders
+- TWAP Orders - Split large orders over time

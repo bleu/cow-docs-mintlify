@@ -1,0 +1,494 @@
+---
+title: "Hooks"
+description: "Custom smart contract calls that execute before or after order settlement in CoW Protocol"
+---
+
+# Hooks
+
+CoW Protocol supports order hooks - custom smart contract calls that execute before (pre-hooks) or after (post-hooks) your order settlement. This enables advanced use cases like token approvals, flash loans, and complex DeFi interactions.
+
+## Overview
+
+Hooks allow you to:
+
+- **Execute pre-order logic**: Approve tokens, wrap/unwrap assets, or setup flash loans
+- **Execute post-order logic**: Stake tokens, compound yields, or trigger other contracts
+- **Chain complex operations**: Combine multiple DeFi protocols in a single transaction
+- **Integrate with dApps**: Enable seamless integration with other protocols
+
+## Hook Structure
+
+Hooks are defined in the order's app data and consist of:
+
+```typescript
+interface CoWHook {
+  target: string      // Contract address to call
+  callData: string    // Encoded function call data
+  gasLimit: string    // Gas limit for the hook execution
+  dappId?: string     // Optional identifier for the dApp that built the hook
+}
+
+interface OrderInteractionHooks {
+  version?: string    // Hooks schema version
+  pre?: CoWHook[]    // Hooks executed before the order
+  post?: CoWHook[]   // Hooks executed after the order
+}
+```
+
+## Adding Hooks to Orders
+
+### Basic Hook Setup
+
+```typescript
+import { generateAppDataDoc } from '@cowprotocol/sdk-app-data'
+import { OrderKind } from '@cowprotocol/sdk-common'
+
+const appData = await generateAppDataDoc({
+  appCode: 'YOUR_APP_CODE',
+  metadata: {
+    hooks: {
+      version: '1.0.0',
+      pre: [
+        {
+          target: '0xTokenAddress',
+          callData: '0x095ea7b3...', // approve(spender, amount)
+          gasLimit: '50000',
+          dappId: 'my-dapp',
+        },
+      ],
+      post: [
+        {
+          target: '0xStakingContract',
+          callData: '0xa694fc3a...', // stake(amount)
+          gasLimit: '100000',
+          dappId: 'my-dapp',
+        },
+      ],
+    },
+  },
+})
+
+const orderParams = {
+  kind: OrderKind.SELL,
+  sellToken: '0xTokenAddress',
+  buyToken: '0xAnotherTokenAddress',
+  sellAmount: '1000000000000000000',
+  // ... other parameters
+  appData: appData.fullAppData,
+}
+```
+
+### Using TradingSdk with Hooks
+
+```typescript
+import { CowSdk } from '@cowprotocol/cow-sdk'
+import { encodeFunctionData } from 'viem'
+
+// Initialize SDK
+const sdk = new CowSdk({ chainId, adapter })
+
+// Create hook calldata
+const approveCallData = encodeFunctionData({
+  abi: ERC20_ABI,
+  functionName: 'approve',
+  args: [spenderAddress, maxAmount],
+})
+
+// Get quote with hooks in app data
+const { quote } = await sdk.trading.getQuote({
+  kind: OrderKind.SELL,
+  sellToken: WETH_ADDRESS,
+  buyToken: USDC_ADDRESS,
+  sellAmount: parseEther('1'),
+  appDataOverride: {
+    metadata: {
+      hooks: {
+        pre: [{
+          target: WETH_ADDRESS,
+          callData: approveCallData,
+          gasLimit: '50000',
+        }],
+      },
+    },
+  },
+})
+```
+
+## Pre-Hooks
+
+Pre-hooks execute before the order settlement.
+
+### Token Approval
+
+```typescript
+import { encodeFunctionData } from 'viem'
+
+const approveHook = {
+  target: '0xTokenAddress',
+  callData: encodeFunctionData({
+    abi: [{
+      name: 'approve',
+      type: 'function',
+      inputs: [
+        { name: 'spender', type: 'address' },
+        { name: 'amount', type: 'uint256' },
+      ],
+      outputs: [{ type: 'bool' }],
+    }],
+    functionName: 'approve',
+    args: ['0xSpenderAddress', BigInt('1000000000000000000')],
+  }),
+  gasLimit: '50000',
+  dappId: 'token-approval',
+}
+```
+
+### Wrap Native Token
+
+```typescript
+const wrapETHHook = {
+  target: WETH_ADDRESS,
+  callData: encodeFunctionData({
+    abi: [{
+      name: 'deposit',
+      type: 'function',
+      inputs: [],
+      outputs: [],
+      payable: true,
+    }],
+    functionName: 'deposit',
+    args: [],
+  }),
+  gasLimit: '30000',
+  dappId: 'wrap-eth',
+}
+```
+
+### Flash Loan Setup
+
+```typescript
+const flashLoanHook = {
+  target: '0xFlashLoanProvider',
+  callData: encodeFunctionData({
+    abi: FLASH_LOAN_ABI,
+    functionName: 'flashLoan',
+    args: [
+      receiverAddress,
+      tokenAddress,
+      amount,
+      encodedParams,
+    ],
+  }),
+  gasLimit: '300000',
+  dappId: 'flash-loan',
+}
+```
+
+## Post-Hooks
+
+Post-hooks execute after the order settlement.
+
+### Stake Tokens
+
+```typescript
+const stakeHook = {
+  target: '0xStakingContract',
+  callData: encodeFunctionData({
+    abi: [{
+      name: 'stake',
+      type: 'function',
+      inputs: [{ name: 'amount', type: 'uint256' }],
+      outputs: [],
+    }],
+    functionName: 'stake',
+    args: [stakeAmount],
+  }),
+  gasLimit: '100000',
+  dappId: 'staking-protocol',
+}
+```
+
+### Deposit to Yield Protocol
+
+```typescript
+const depositHook = {
+  target: '0xYieldProtocol',
+  callData: encodeFunctionData({
+    abi: YIELD_PROTOCOL_ABI,
+    functionName: 'deposit',
+    args: [tokenAddress, depositAmount, userAddress],
+  }),
+  gasLimit: '150000',
+  dappId: 'yield-protocol',
+}
+```
+
+### Unwrap Wrapped Token
+
+```typescript
+const unwrapHook = {
+  target: WETH_ADDRESS,
+  callData: encodeFunctionData({
+    abi: [{
+      name: 'withdraw',
+      type: 'function',
+      inputs: [{ name: 'amount', type: 'uint256' }],
+      outputs: [],
+    }],
+    functionName: 'withdraw',
+    args: [withdrawAmount],
+  }),
+  gasLimit: '30000',
+  dappId: 'unwrap-eth',
+}
+```
+
+## Complete Example
+
+Here's a complete example with pre and post hooks:
+
+```typescript
+import { CowSdk, OrderKind } from '@cowprotocol/cow-sdk'
+import { generateAppDataDoc } from '@cowprotocol/sdk-app-data'
+import { encodeFunctionData, parseEther } from 'viem'
+
+// Initialize SDK
+const sdk = new CowSdk({ chainId: 1, adapter })
+
+// Define hooks
+const hooks = {
+  version: '1.0.0',
+  pre: [
+    // Approve WETH for settlement
+    {
+      target: WETH_ADDRESS,
+      callData: encodeFunctionData({
+        abi: ERC20_ABI,
+        functionName: 'approve',
+        args: [SETTLEMENT_ADDRESS, parseEther('10')],
+      }),
+      gasLimit: '50000',
+      dappId: 'cow-swap',
+    },
+  ],
+  post: [
+    // Stake received tokens
+    {
+      target: STAKING_CONTRACT,
+      callData: encodeFunctionData({
+        abi: STAKING_ABI,
+        functionName: 'stake',
+        args: [parseEther('10000')],
+      }),
+      gasLimit: '100000',
+      dappId: 'staking-protocol',
+    },
+  ],
+}
+
+// Generate app data with hooks
+const appDataDoc = await generateAppDataDoc({
+  appCode: 'my-app',
+  metadata: { hooks },
+})
+
+// Create order with hooks
+const { quote } = await sdk.trading.getQuote({
+  kind: OrderKind.SELL,
+  sellToken: WETH_ADDRESS,
+  buyToken: REWARD_TOKEN,
+  sellAmount: parseEther('10'),
+  appData: appDataDoc.fullAppData,
+})
+
+// Post order
+const orderId = await sdk.trading.postSwapOrder({
+  quote: quote.quote,
+  appData: appDataDoc.fullAppData,
+})
+
+console.log('Order with hooks created:', orderId)
+```
+
+## Gas Limit Considerations
+
+<Warning>
+  Set appropriate gas limits for hooks. If a hook runs out of gas, the entire order transaction will fail.
+</Warning>
+
+### Recommended Gas Limits
+
+| Operation        | Typical Gas | Recommended Limit |
+| ---------------- | ----------- | ----------------- |
+| ERC20 Approve    | 45,000      | 50,000            |
+| WETH Wrap/Unwrap | 25,000      | 30,000            |
+| Token Transfer   | 50,000      | 65,000            |
+| Staking          | 80,000      | 100,000           |
+| Flash Loan       | 250,000     | 300,000           |
+| Complex DeFi     | 200,000+    | 250,000+          |
+
+### Estimating Gas
+
+```typescript
+import { estimateGas } from 'viem'
+
+// Estimate gas for your hook call
+const estimatedGas = await publicClient.estimateGas({
+  account: userAddress,
+  to: hookTarget,
+  data: hookCallData,
+})
+
+// Add 20% buffer for safety
+const gasLimit = (estimatedGas * BigInt(120)) / BigInt(100)
+
+const hook = {
+  target: hookTarget,
+  callData: hookCallData,
+  gasLimit: gasLimit.toString(),
+}
+```
+
+## Hook Best Practices
+
+<AccordionGroup>
+  <Accordion title="Test hooks thoroughly">
+    Always test your hooks on testnets before production:
+
+    ```typescript
+    // Test on Sepolia first
+    const sdk = new CowSdk({
+      chainId: SupportedChainId.SEPOLIA,
+      adapter
+    })
+
+    // Test with small amounts
+    const testAmount = parseEther('0.01')
+    ```
+  </Accordion>
+
+  <Accordion title="Handle failures gracefully">
+    Consider whether your hook should fail the entire order:
+
+    - Critical hooks (approvals): Must succeed
+    - Optional hooks (staking): Can fail without breaking order
+  </Accordion>
+
+  <Accordion title="Minimize hook complexity">
+    Keep hooks simple to reduce gas costs and failure risk:
+
+    ```typescript
+    // Good: Simple single-purpose hook
+    const hook = { target: token, callData: approve, gasLimit: '50000' }
+
+    // Avoid: Complex multi-step operations in hooks
+    ```
+  </Accordion>
+
+  <Accordion title="Use dappId for tracking">
+    Always include a `dappId` to identify your hooks:
+
+    ```typescript
+    const hook = {
+      target: '0x...',
+      callData: '0x...',
+      gasLimit: '50000',
+      dappId: 'my-protocol-v1', // Helps with debugging and analytics
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Use Cases
+
+### 1. Automated Yield Farming
+
+Swap and immediately deposit into yield protocol:
+
+```typescript
+const hooks = {
+  post: [{
+    target: YIELD_VAULT,
+    callData: encodeDeposit(receivedTokens),
+    gasLimit: '120000',
+    dappId: 'yield-farmer',
+  }],
+}
+```
+
+### 2. Leveraged Trading
+
+Flash loan, swap, and repay:
+
+```typescript
+const hooks = {
+  pre: [{
+    target: FLASH_LOAN_PROVIDER,
+    callData: encodeFlashLoan(params),
+    gasLimit: '300000',
+    dappId: 'leverage-trader',
+  }],
+  post: [{
+    target: FLASH_LOAN_PROVIDER,
+    callData: encodeRepay(amount),
+    gasLimit: '150000',
+    dappId: 'leverage-trader',
+  }],
+}
+```
+
+### 3. Cross-Chain Preparation
+
+Prepare tokens for bridging:
+
+```typescript
+const hooks = {
+  post: [{
+    target: BRIDGE_CONTRACT,
+    callData: encodeInitiateBridge(destChain, destAddress),
+    gasLimit: '200000',
+    dappId: 'bridge-protocol',
+  }],
+}
+```
+
+## Debugging Hooks
+
+### Check Hook Execution
+
+```typescript
+// Get order details including hook execution
+const order = await sdk.orderBook.getOrder(orderId)
+
+// Check if hooks were included in app data
+const appData = await fetchDocFromAppData(order.appData)
+if (appData.metadata.hooks) {
+  console.log('Pre-hooks:', appData.metadata.hooks.pre)
+  console.log('Post-hooks:', appData.metadata.hooks.post)
+}
+
+// Check transaction logs for hook execution
+const tx = await provider.getTransaction(order.executionTx)
+const receipt = await tx.wait()
+console.log('Gas used:', receipt.gasUsed)
+```
+
+## Limitations
+
+- Hooks must complete within their specified gas limit
+- Hooks are executed in order (pre-hooks -> order -> post-hooks)
+- Failed hooks will cause the entire transaction to revert
+- Hooks cannot be updated after order submission
+- Maximum gas for all hooks combined is subject to block gas limit
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Partner Fee" icon="coins" href="/advanced/partner-fee">
+    Configure partner fee collection
+  </Card>
+
+  <Card title="Cross-Chain Bridging" icon="bridge" href="/advanced/cross-chain-bridging">
+    Execute cross-chain swaps
+  </Card>
+</CardGroup>

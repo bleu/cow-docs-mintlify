@@ -1,0 +1,67 @@
+---
+title: "Node.js Usage"
+description: "Integrate decentralized trading functionality into Node.js applications, backend services, and automation tools"
+---
+
+# Node.js Usage
+
+## Overview
+
+The CoW Protocol SDK enables developers to integrate decentralized trading functionality into Node.js applications, backend services, and automation tools.
+
+## Installation
+
+Three Ethereum library options are available:
+
+```bash
+# Ethers v6
+npm install @cowprotocol/cow-sdk @cowprotocol/sdk-ethers-v6-adapter ethers dotenv
+
+# Ethers v5
+npm install @cowprotocol/cow-sdk @cowprotocol/sdk-ethers-v5-adapter ethers@5 dotenv
+
+# Viem
+npm install @cowprotocol/cow-sdk @cowprotocol/sdk-viem-adapter viem dotenv
+```
+
+## Setup Requirements
+
+Store configuration in a `.env` file containing `RPC_URL`, `PRIVATE_KEY`, and `CHAIN_ID` values.
+
+## Implementation Patterns
+
+### Basic Trading Script
+
+The documentation provides working examples for both Ethers v6 and Viem implementations. Both follow this workflow: initialize provider/wallet, establish adapter, create SDK instance, fetch quotes, and post orders to the network.
+
+### Advanced Use Cases
+
+**Automated Trading Bot**: Monitor market conditions at regular intervals and execute trades when specified price thresholds are met.
+
+**Batch Processing**: Execute multiple orders concurrently using `Promise.allSettled()` to handle both successful and failed order submissions.
+
+**Order Monitoring**: Poll order status until fulfillment or timeout using the OrderBookApi, checking results every 10 seconds.
+
+**Error Handling**: Implement exponential backoff retry logic with configurable attempt limits.
+
+**Logging**: Enable SDK logging through configuration options and create custom logging functions for order details.
+
+## Production Best Practices
+
+- Use environment variables for sensitive data
+- Implement rate limiting
+- Monitor bot health status
+- Maintain comprehensive logs
+- Handle errors with retry mechanisms
+- Optimize for gas prices
+- Employ secure key management systems
+
+## Testing
+
+The documentation references Vitest for unit testing quote generation and validation with assertions on expected output values.
+
+## Additional Resources
+
+- [Limit Orders](/cow-sdk/examples/limit-orders)
+- [Order Management](/cow-sdk/guides/order-management)
+- [Trading SDK API](/cow-sdk/api/trading-sdk)

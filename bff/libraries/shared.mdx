@@ -1,0 +1,444 @@
+---
+title: "Shared"
+description: "Shared utilities, types, and constants for the CoW Protocol BFF"
+---
+
+# Shared
+
+The shared library provides common utilities, type definitions, constants, and helper functions used across the entire CoW Protocol BFF application. This library has no dependencies on other internal libraries, making it the foundation layer.
+
+## Type Definitions
+
+### Logger
+
+Standardized logging interface using Pino.
+
+```typescript
+import { Logger } from '@cowprotocol/shared';
+
+type Logger = pino.Logger;
+```
+
+The logger is configured and exported as a singleton:
+
+```typescript
+import { logger } from '@cowprotocol/shared';
+
+logger.info('Application started');
+logger.error({ err }, 'Error processing request');
+logger.debug({ userId: '123' }, 'User data retrieved');
+```
+
+## Constants
+
+### Chain Identifiers
+
+Supported blockchain networks from CoW Protocol SDK:
+
+```typescript
+import { AllChainIds, SupportedChainId } from '@cowprotocol/shared';
+
+// All supported chain IDs as an array
+const chains: SupportedChainId[] = AllChainIds;
+// [1, 100, 42161, 8453, 137, 43114, ...]
+```
+
+### Native Currency Address
+
+Standardized address representing native currencies (ETH, xDAI, etc.):
+
+```typescript
+import { NativeCurrencyAddress } from '@cowprotocol/shared';
+
+// 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+const isNative = tokenAddress.toLowerCase() === NativeCurrencyAddress;
+```
+
+### Wrapped Native Token Addresses
+
+Mapping of chain IDs to their wrapped native token addresses (WETH, wxDAI, etc.):
+
+```typescript
+import { WrappedNativeTokenAddress } from '@cowprotocol/shared';
+import { SupportedChainId } from '@cowprotocol/cow-sdk';
+
+const wethAddress = WrappedNativeTokenAddress[SupportedChainId.MAINNET];
+// 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
+
+const wxdaiAddress = WrappedNativeTokenAddress[SupportedChainId.GNOSIS_CHAIN];
+// 0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d
+```
+
+### Chain Names
+
+Human-readable chain names:
+
+```typescript
+import { ChainNames } from '@cowprotocol/shared';
+import { SupportedChainId } from '@cowprotocol/cow-sdk';
+
+const name = ChainNames[SupportedChainId.MAINNET];
+// "Ethereum"
+
+const gnosisName = ChainNames[SupportedChainId.GNOSIS_CHAIN];
+// "Gnosis Chain"
+```
+
+### Explorer Network Names
+
+Network identifiers for CoW Protocol Explorer URLs:
+
+```typescript
+import { EXPLORER_NETWORK_NAMES } from '@cowprotocol/shared';
+import { SupportedChainId } from '@cowprotocol/cow-sdk';
+
+const explorerSlug = EXPLORER_NETWORK_NAMES[SupportedChainId.MAINNET];
+// "mainnet"
+
+const gnosisSlug = EXPLORER_NETWORK_NAMES[SupportedChainId.GNOSIS_CHAIN];
+// "gc"
+```
+
+Supported values:
+
+* `mainnet` - Ethereum Mainnet
+* `gc` - Gnosis Chain
+* `arb1` - Arbitrum One
+* `base` - Base
+* `pol` - Polygon
+* `avax` - Avalanche
+* `lens` - Lens Network
+* `bnb` - BNB Chain
+* `linea` - Linea
+* `plasma` - Plasma
+* `ink` - Ink
+* `sepolia` - Sepolia Testnet
+
+### CoW API Network Names
+
+Network identifiers for CoW Protocol API endpoints:
+
+```typescript
+import { COW_API_NETWORK_NAMES } from '@cowprotocol/shared';
+import { SupportedChainId } from '@cowprotocol/cow-sdk';
+
+const apiSlug = COW_API_NETWORK_NAMES[SupportedChainId.MAINNET];
+// "mainnet"
+
+const gnosisApiSlug = COW_API_NETWORK_NAMES[SupportedChainId.GNOSIS_CHAIN];
+// "xdai"
+```
+
+## Address Utilities
+
+### toTokenAddress
+
+Converts any token address to its canonical form, handling native currency conversion:
+
+```typescript
+import { toTokenAddress } from '@cowprotocol/shared';
+import { SupportedChainId } from '@cowprotocol/cow-sdk';
+
+// Native currency gets converted to wrapped token
+const weth = toTokenAddress(
+  '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+  SupportedChainId.MAINNET
+);
+// Returns: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 (WETH)
+
+// Regular token addresses are checksummed
+const usdc = toTokenAddress(
+  '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+  SupportedChainId.MAINNET
+);
+// Returns: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+```
+
+### isSupportedChain
+
+Type guard to check if a chain ID is supported:
+
+```typescript
+import { isSupportedChain } from '@cowprotocol/shared';
+
+if (isSupportedChain(chainId)) {
+  // TypeScript now knows chainId is SupportedChainId
+  const name = ChainNames[chainId];
+}
+```
+
+### toSupportedChainId
+
+Converts a string or number to SupportedChainId, throwing if unsupported:
+
+```typescript
+import { toSupportedChainId } from '@cowprotocol/shared';
+
+try {
+  const chainId = toSupportedChainId('1');        // SupportedChainId.MAINNET
+  const chainId2 = toSupportedChainId(100);       // SupportedChainId.GNOSIS_CHAIN
+  const invalid = toSupportedChainId(999);        // Throws error
+} catch (error) {
+  console.error('Unsupported chain:', error.message);
+}
+```
+
+## Formatting Utilities
+
+### getExplorerUrl
+
+Generates CoW Explorer URL for an order:
+
+```typescript
+import { getExplorerUrl } from '@cowprotocol/shared';
+import { SupportedChainId } from '@cowprotocol/cow-sdk';
+
+const url = getExplorerUrl(
+  SupportedChainId.MAINNET,
+  '0x1234...'
+);
+// "https://explorer.cow.fi/orders/0x1234..."
+
+const gnosisUrl = getExplorerUrl(
+  SupportedChainId.GNOSIS_CHAIN,
+  '0x5678...'
+);
+// "https://explorer.cow.fi/gc/orders/0x5678..."
+```
+
+### getExplorerBaseUrl
+
+Generates base CoW Explorer URL for a chain:
+
+```typescript
+import { getExplorerBaseUrl } from '@cowprotocol/shared';
+import { SupportedChainId } from '@cowprotocol/cow-sdk';
+
+const baseUrl = getExplorerBaseUrl(SupportedChainId.MAINNET);
+// "https://explorer.cow.fi"
+
+const arbitrumUrl = getExplorerBaseUrl(SupportedChainId.ARBITRUM_ONE);
+// "https://explorer.cow.fi/arb1"
+```
+
+### formatAmount
+
+Formats a token amount from base units to human-readable form:
+
+```typescript
+import { formatAmount } from '@cowprotocol/shared';
+
+// Format USDC (6 decimals)
+const usdcAmount = formatAmount(1000000n, 6);
+// "1.0"
+
+// Format ETH (18 decimals)
+const ethAmount = formatAmount(1500000000000000000n, 18);
+// "1.5"
+
+// Without decimals, returns raw string
+const raw = formatAmount(123456n, undefined);
+// "123456"
+```
+
+### formatTokenName
+
+Formats a token name, preferring symbol over address:
+
+```typescript
+import { formatTokenName } from '@cowprotocol/shared';
+
+const name1 = formatTokenName({
+  symbol: 'USDC',
+  address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+});
+// "USDC"
+
+const name2 = formatTokenName({
+  address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+});
+// "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+
+const name3 = formatTokenName(null);
+// undefined
+```
+
+## Transformers
+
+### BigInt Serialization
+
+Helpers for JSON serialization of BigInt values:
+
+```typescript
+import { bigIntReplacer, bigIntReviver } from '@cowprotocol/shared';
+
+const data = {
+  balance: 1000000000000000000n,
+  allowance: 999999999999999999n
+};
+
+// Serialize with BigInt support
+const json = JSON.stringify(data, bigIntReplacer);
+// '{"balance":"1000000000000000000n","allowance":"999999999999999999n"}'
+
+// Deserialize with BigInt support
+const parsed = JSON.parse(json, bigIntReviver);
+// { balance: 1000000000000000000n, allowance: 999999999999999999n }
+```
+
+### String to BigInt Conversion
+
+```typescript
+import { stringToBigInt, bigIntToString } from '@cowprotocol/shared';
+
+const value = stringToBigInt('1000000000000000000');
+// 1000000000000000000n
+
+const str = bigIntToString(1000000000000000000n);
+// "1000000000000000000"
+```
+
+### Buffer and Hex String Conversion
+
+```typescript
+import { bufferToString, stringToBuffer } from '@cowprotocol/shared';
+
+const hex = bufferToString(Buffer.from([0x12, 0x34, 0x56]));
+// "0x123456"
+
+const buffer = stringToBuffer('0x123456');
+// Buffer<12 34 56>
+```
+
+## Miscellaneous Utilities
+
+### sleep
+
+Async delay utility:
+
+```typescript
+import { sleep } from '@cowprotocol/shared';
+
+async function retry() {
+  for (let i = 0; i < 3; i++) {
+    try {
+      return await fetchData();
+    } catch (error) {
+      if (i < 2) {
+        await sleep(1000 * Math.pow(2, i)); // Exponential backoff
+      }
+    }
+  }
+  throw new Error('Max retries exceeded');
+}
+```
+
+### ensureEnvs
+
+Validates required environment variables are set:
+
+```typescript
+import { ensureEnvs } from '@cowprotocol/shared';
+
+// Throws if any are missing
+ensureEnvs([
+  'DATABASE_URL',
+  'REDIS_URL',
+  'COW_API_KEY'
+]);
+
+// Use at application startup
+try {
+  ensureEnvs(['PORT', 'NODE_ENV', 'DATABASE_URL']);
+  console.log('All required environment variables are set');
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}
+```
+
+### doForever
+
+Runs an async function repeatedly with error handling:
+
+```typescript
+import { doForever } from '@cowprotocol/shared';
+import { logger } from '@cowprotocol/shared';
+
+// Run a background task forever
+doForever(
+  async () => {
+    await syncBlockchainData();
+    await sleep(10000); // Wait 10 seconds
+  },
+  logger,
+  'blockchain-sync'
+);
+```
+
+The function will:
+
+* Catch and log errors without crashing
+* Automatically restart after errors
+* Include context in error logs
+
+## Logger Configuration
+
+The shared library provides a pre-configured Pino logger:
+
+```typescript
+import { logger } from '@cowprotocol/shared';
+
+// Structured logging
+logger.info({ userId: '123', action: 'login' }, 'User logged in');
+
+// Error logging with stack traces
+try {
+  await riskyOperation();
+} catch (error) {
+  logger.error({ err: error, context: 'riskyOperation' }, 'Operation failed');
+}
+
+// Debug logging (filtered by LOG_LEVEL env var)
+logger.debug({ query: 'SELECT * FROM users' }, 'Executing query');
+
+// Child loggers for context
+const requestLogger = logger.child({ requestId: '456' });
+requestLogger.info('Processing request');
+requestLogger.error('Request failed');
+```
+
+## Best Practices
+
+1. **Import from @cowprotocol/shared** for all utilities to avoid duplication
+2. **Use type guards** like `isSupportedChain()` for safe type narrowing
+3. **Always handle BigInt serialization** when sending JSON responses
+4. **Validate environment variables early** using `ensureEnvs()` at startup
+5. **Use structured logging** with context objects rather than string concatenation
+6. **Convert native addresses** using `toTokenAddress()` for consistency
+7. **Format user-facing amounts** with `formatAmount()` for readability
+8. **Use constants** instead of hardcoding addresses or chain IDs
+9. **Prefer type-safe helpers** over manual address manipulation
+10. **Leverage async utilities** like `sleep()` and `doForever()` for common patterns
+
+## Type Safety
+
+The shared library is fully typed with TypeScript and exports all necessary types:
+
+```typescript
+import type {
+  Logger,
+  SupportedChainId,
+  Address
+} from '@cowprotocol/shared';
+
+function processOrder(
+  chainId: SupportedChainId,
+  tokenAddress: Address,
+  logger: Logger
+): void {
+  logger.info({ chainId, tokenAddress }, 'Processing order');
+}
+```
+
+All constants, utilities, and transformers include full TypeScript definitions for compile-time safety.

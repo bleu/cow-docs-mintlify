@@ -1,0 +1,53 @@
+---
+title: "Trading SDK"
+description: "Comprehensive interface for interacting with CoW Protocol's trading functionality"
+---
+
+# TradingSdk
+
+## Overview
+
+The `TradingSdk` class serves as a comprehensive interface for interacting with CoW Protocol's trading functionality, streamlining order management and token approvals.
+
+## Installation
+
+```bash
+npm install @cowprotocol/sdk-trading
+```
+
+## Core Methods
+
+### postSwapOrder
+
+Creates market orders by fetching quotes and posting simultaneously. Accepts trade parameters including order type (SELL/BUY), token addresses, amounts, and slippage tolerance.
+
+### getQuote
+
+Retrieves pricing information with optional deferred posting capability. Returns detailed breakdowns of amounts, network costs, and slippage impacts before execution.
+
+### getQuoteOnly
+
+Enables quote retrieval without requiring a wallet connection, useful for displaying pricing before user wallet integration.
+
+### postLimitOrder
+
+Creates orders with specific buy/sell amounts at predetermined rates.
+
+### postSellNativeCurrencyOrder
+
+Manages native currency trades (ETH, xDAI) via EthFlow using the special address `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`.
+
+## Order Management
+
+- **getOrder**: Retrieves existing order details and status
+- **offChainCancelOrder**: Fast cancellation without gas costs
+- **onChainCancelOrder**: Guaranteed cancellation via blockchain transaction
+
+## Token Approvals
+
+- **getCowProtocolAllowance**: Checks current spending permissions
+- **approveCowProtocol**: Grants token spending authorization
+
+## Advanced Features
+
+Supports smart contract wallets via `PRESIGN` signing schemes and includes Partner API integration for enhanced rate limits through custom `OrderBookApi` instances.

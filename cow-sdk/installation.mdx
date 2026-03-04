@@ -1,0 +1,48 @@
+---
+title: "Installation"
+description: "How to install the CoW Protocol SDK and choose the right adapter for your Web3 library"
+---
+
+# CoW Protocol SDK Installation Guide
+
+## Quick Overview
+
+The CoW Protocol SDK enables blockchain interaction through three adapter options. Installation involves the main package plus your chosen adapter framework.
+
+## Core Installation
+
+Install the primary package via npm, pnpm, or yarn:
+
+```bash
+npm install @cowprotocol/cow-sdk
+```
+
+## Adapter Selection
+
+You must choose one of three adapters based on your Web3 library:
+
+**Viem** - Modern, lightweight TypeScript library requiring viem 1.x+
+
+**Ethers v6** - The current ethers.js version (recommended for ethers users)
+
+**Ethers v5** - Legacy version; consider upgrading to v6 or using Viem
+
+Each adapter installation differs slightly. For Viem, you'd run:
+
+```bash
+npm install @cowprotocol/sdk-viem-adapter viem
+```
+
+## Essential Dependencies
+
+The SDK requires `cross-fetch` (^3.x). Optional packages include `ipfs-only-hash`, `multiformats`, and `@openzeppelin/merkle-tree` for specialized features like app-data metadata and merkle operations.
+
+## Environment Requirements
+
+Node.js 16+ is mandatory. TypeScript support includes built-in type definitions with standard `tsconfig.json` settings (moduleResolution: "node", esModuleInterop: true).
+
+## Framework Integration
+
+React/Next.js users typically integrate via wagmi, while Node.js backends use direct Viem initialization with environment variables for sensitive credentials.
+
+The current SDK version is **v7.4.1**, with migration guidance available for v6 upgrades.

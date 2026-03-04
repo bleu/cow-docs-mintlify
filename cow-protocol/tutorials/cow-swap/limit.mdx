@@ -1,0 +1,83 @@
+---
+title: "Limit orders"
+description: "CoW Protocol supports limit orders, where users are able to buy or sell tokens at a specified price or better."
+---
+
+A buy limit order allows a trader to specify the maximum price they are willing to pay for a token, while a sell limit order allows a trader to specify the minimum price they are willing to sell a token for.
+
+CoW Swap provides an intuitive interface in which one may place their limit orders.
+
+## Place a limit order[​](#place-a-limit-order "Direct link to Place a limit order")
+
+For example, let's say we want to sell `COW`. We can set the limit price at which we want to sell, and the duration over which the limit order is valid:
+
+![Limit orders](/images/cow-protocol/tutorials/cow-swap/assets/images/limit_place_order-a9672500dfb263100936c061f14aee46.png)
+
+<Info>
+  CoW Protocol does not charge a fee for placing limit orders. Instead, the protocol covers the fees by executing your order at a better price than your limit price. CoW Protocol will wait until the market price is sufficient to cover both your limit price and the network fees - which means that, in practice, your order may not execute exactly when the market price hits your limit price.
+</Info>
+
+At this point, CoW Swap will prompt you to review your limit order:
+
+![Review limit order](/images/cow-protocol/tutorials/cow-swap/assets/images/limit_review_order-c8819b7cdf967952db174e203b5af9a9.png)
+
+<Check>
+  By default, CoW Swap sets your limit order to *partially fillable*. This allows your order to fill gradually as liquidity comes available. Partially fillable orders usually complete faster than *fill or kill* orders and also provide better prices, so they are the default mechanism used to execute limit orders. However, your order may not end up being filled completely, if the remaining fill amount is small compared to the required network fees of settling it. This can cause leftover amounts of sell tokens in your account. You can turn off partially fillable limit orders and revert back to *fill or kill* through the swap panel settings.
+</Check>
+
+Once the limit order has been reviewed, click "Place limit order" to proceed with order signing:
+
+![Sign order](/images/cow-protocol/tutorials/cow-swap/assets/images/limit_sign-b29e27930d0cbad4db528cdc2a34fe1e.png)
+
+Upon signing the order with your wallet, the limit order will now appear in open orders:
+
+![View orders](/images/cow-protocol/tutorials/cow-swap/assets/images/limit_view_orders-d77fa13c828bfebd9472b49655601624.png)
+
+## Track a limit order[​](#track-a-limit-order "Direct link to Track a limit order")
+
+As mentioned above, limit orders on CoW Protocol don't always execute exactly when the limit price is reached. This is because the protocol waits for an even better price in order to cover the order's network fees.
+
+The CoW Swap UI makes this explicit by showing an open order's current *execution price* in addition to its *limit price*. Check the "Executes at" column in the open orders panel to see, based on current network conditions, what price your tokens would have to reach for the order to execute.
+
+![Traffic lights on limit orders UI](/images/cow-protocol/tutorials/cow-swap/assets/images/limit_traffic-lights-cdc9cc892b3841c035af93d8e0dc09d4.png)
+
+The "Executes at" column has a "traffic light" system to give an estimation of how far the order is from being executed. It takes into the account current network fees, the size of the order and current market (spot) price.
+
+Hovering the mouse pointer over the column will give an indication of how far the price has to move for the order to enter the execution range.
+
+![Traffic lights on limit orders UI](/images/cow-protocol/tutorials/cow-swap/assets/images/limit_executes-at-go-down-ac47a383faee30b74f6758272ec89c8d.png)
+
+Clicking on that field will invert the price display for the individual order, and the hover text will also reflect the change in direction.
+
+![Traffic lights on limit orders UI](/images/cow-protocol/tutorials/cow-swap/assets/images/limit_executes-at-go-up-b029ce060ea02cb7e8cc88742b96fd14.png)
+
+## Cancel a limit order[​](#cancel-a-limit-order "Direct link to Cancel a limit order")
+
+Now we've been doing some thinking and realised we shouldn't be selling `COW`, so we want to cancel our limit order. We can do this by clicking the context menu on the order and selecting "Cancel order":
+
+![Cancel context menu](/images/cow-protocol/tutorials/cow-swap/assets/images/limit_cancel_context-50f59335abbfd7217478413f0d2a9cb5.png)
+
+After selecting "Cancel order", you will be prompted to confirm this action.
+
+Cancelling orders `off-chain` is free and does *not* require a transaction. However, there is a risk that the order is matched between the time you cancel it and the time the cancellation is processed `off-chain`.
+
+<Note>
+  Cancellations are not immediate, and your order may settle before the cancellation goes through.
+</Note>
+
+To proceed with an `off-chain` cancellation, click "Request cancellation" as shown below.
+
+![](/images/cow-protocol/tutorials/cow-swap/assets/ideal-img/limit_cancel_confirm.08b0533.3840.png)
+
+If you do not want to place trust in the API to cancel your order, you may wish to cancel your order via an `on-chain` cancellation transaction. This will cost gas. To do so, toggle the type of cancellation to `on-chain` by clicking on `off-chain`.
+
+<Note>
+  Even with `on-chain` cancellations, there is still a risk that the order is matched before the `on-chain` cancellation transaction is confirmed. Make sure to set a high priority fee and sign swiftly.
+</Note>
+
+Cancelling limit orders is free as it's an `off-chain` transaction. So feel free to place and cancel limit orders as many times as you want! (Alternatively, if you want a limit order to be canceled as quickly as possible, you can choose to do the cancellation `on-chain` instead.)
+
+Once the order has been cancelled, it will be removed from the open orders list and move to the orders history:
+
+![Cancel confirmed](/images/cow-protocol/tutorials/cow-swap/assets/images/limit_cancel_confirmed-61e4202309dc18c7fd6419b1baee9213.png)
+

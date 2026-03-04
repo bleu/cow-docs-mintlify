@@ -1,0 +1,377 @@
+---
+title: "Order Signing Utils"
+description: "Cryptographic tools for signing CoW Protocol orders and cancellations using EIP-712 standards"
+---
+
+# OrderSigningUtils
+
+EIP-712 order signing and cancellation utilities for CoW Protocol
+
+## Overview
+
+The `OrderSigningUtils` class provides static methods for signing CoW Protocol orders and cancellations using EIP-712 standards. It supports multiple signing schemes including standard EOA wallets and smart contract wallets.
+
+## Installation
+
+```bash
+npm install @cowprotocol/sdk-order-signing
+# or
+pnpm add @cowprotocol/sdk-order-signing
+# or
+yarn add @cowprotocol/sdk-order-signing
+```
+
+## Usage
+
+All methods are static and can be called directly on the class.
+
+```typescript
+import { OrderSigningUtils, SupportedChainId } from '@cowprotocol/sdk-order-signing'
+import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter'
+import { JsonRpcProvider, Wallet } from 'ethers'
+import { setGlobalAdapter } from '@cowprotocol/sdk-common'
+
+const provider = new JsonRpcProvider('YOUR_RPC_URL')
+const wallet = new Wallet('YOUR_PRIVATE_KEY', provider)
+const adapter = new EthersV6Adapter({ provider, signer: wallet })
+
+// Set global adapter for utilities to use
+setGlobalAdapter(adapter)
+```
+
+## Methods
+
+### signOrder
+
+Signs an order using EIP-712 typed data signing.
+
+#### Example
+
+```typescript
+import { OrderSigningUtils } from '@cowprotocol/sdk-order-signing'
+
+const orderToSign = {
+  sellToken: '0xA0b86a33E6417b528874E10EB3a95beb4F25A0E3',
+  buyToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+  sellAmount: '1000000000000000000',
+  buyAmount: '1000000000000000000',
+  validTo: Math.floor(Date.now() / 1000) + 3600, // 1 hour
+  appData: '0x0000000000000000000000000000000000000000000000000000000000000000',
+  feeAmount: '0',
+  kind: 'sell',
+  partiallyFillable: false,
+  sellTokenBalance: 'erc20',
+  buyTokenBalance: 'erc20',
+  receiver: '0x0000000000000000000000000000000000000000',
+}
+
+const signingResult = await OrderSigningUtils.signOrder(
+  orderToSign,
+  1, // Mainnet
+  adapter.signer
+)
+
+console.log('Signature:', signingResult.signature)
+console.log('Scheme:', signingResult.signingScheme)
+```
+
+<Warning>
+Ensure the chainId is correct for your network. An incorrect chainId will result in an invalid signature.
+</Warning>
+
+---
+
+### signOrderCancellation
+
+Signs a cancellation for a single order.
+
+#### Example
+
+```typescript
+const orderId = '0xd64389693b6cf89ad6c140a113b10df08073e5ef...'
+
+const cancellationResult = await OrderSigningUtils.signOrderCancellation(
+  orderId,
+  1,
+  adapter.signer
+)
+
+console.log('Cancellation signature:', cancellationResult.signature)
+```
+
+---
+
+### signOrderCancellations
+
+Signs a cancellation for multiple orders at once.
+
+<Note>
+More gas-efficient than signing cancellations individually when cancelling multiple orders.
+</Note>
+
+#### Example
+
+```typescript
+const orderIds = [
+  '0xd64389693b6cf89ad6c140a113b10df08073e5ef...',
+  '0xa12345678b6cf89ad6c140a113b10df08073e5ef...',
+]
+
+const cancellationResult = await OrderSigningUtils.signOrderCancellations(
+  orderIds,
+  1,
+  adapter.signer
+)
+
+// Use with OrderBookApi
+await orderBookApi.sendSignedOrderCancellations({
+  ...cancellationResult,
+  orderUids: orderIds,
+})
+```
+
+---
+
+### getDomain
+
+Retrieves the EIP-712 typed domain data for a given chain.
+
+#### Example
+
+```typescript
+const domain = await OrderSigningUtils.getDomain(1)
+
+console.log('Domain:', domain)
+// {
+//   name: 'Gnosis Protocol',
+//   version: 'v2',
+//   chainId: 1,
+//   verifyingContract: '0x9008D19f58AAbD9eD0D60971565AA8510560ab41'
+// }
+```
+
+---
+
+### getDomainSeparator
+
+Returns the domain separator hash for a given chain.
+
+#### Example
+
+```typescript
+const separator = await OrderSigningUtils.getDomainSeparator(1)
+console.log('Domain separator:', separator)
+```
+
+---
+
+### generateOrderId
+
+Creates a deterministic order ID from order data and owner address.
+
+#### Example
+
+```typescript
+const { orderId, orderDigest } = await OrderSigningUtils.generateOrderId(
+  1,
+  orderData,
+  { owner: '0x123...' }
+)
+
+console.log('Order ID:', orderId)
+console.log('Order digest:', orderDigest)
+```
+
+---
+
+### getEIP712Types
+
+Returns the EIP-712 type definitions for CoW Protocol orders.
+
+#### Example
+
+```typescript
+const types = OrderSigningUtils.getEIP712Types()
+console.log('Order types:', types)
+// {
+//   Order: [
+//     { name: 'sellToken', type: 'address' },
+//     { name: 'buyToken', type: 'address' },
+//     ...
+//   ]
+// }
+```
+
+---
+
+### getEip1271Signature
+
+Encodes an order and ECDSA signature for EIP-1271 smart contract verification.
+
+<Info>
+Useful for smart contract wallets that implement EIP-1271 signature verification.
+</Info>
+
+#### Example
+
+```typescript
+const ecdsaSignature = '0x...' // 65 bytes from signing
+
+const eip1271Signature = OrderSigningUtils.getEip1271Signature(
+  orderToSign,
+  ecdsaSignature
+)
+
+// Use with smart contract wallet
+```
+
+---
+
+### encodeUnsignedOrder
+
+Encodes an unsigned order for hashing.
+
+#### Example
+
+```typescript
+const encoded = OrderSigningUtils.encodeUnsignedOrder(orderToSign)
+console.log('Encoded order:', encoded)
+```
+
+## Signing Schemes
+
+### EIP-712 (Default)
+
+Standard EIP-712 typed data signing. Provides the best user experience with human-readable signing prompts.
+
+```typescript
+const result = await OrderSigningUtils.signOrder(order, chainId, signer)
+// result.signingScheme === 'eip712'
+```
+
+### EthSign (EIP-191)
+
+Legacy signing method. Automatically used as fallback if EIP-712 is not supported by the wallet.
+
+```typescript
+// Automatically used as fallback if EIP-712 is not supported
+```
+
+### Pre-sign
+
+For smart contracts that cannot sign directly. Orders are approved on-chain via `setPreSignature()`.
+
+```typescript
+import { SigningScheme } from '@cowprotocol/sdk-order-book'
+
+// Order is created with PRESIGN scheme
+// Then execute pre-sign transaction on-chain
+// See TradingSdk.getPreSignTransaction()
+```
+
+### EIP-1271
+
+For smart contract wallets implementing the EIP-1271 signature verification standard.
+
+```typescript
+const ecdsaSignature = await signer.signMessage(orderHash)
+const eip1271Signature = OrderSigningUtils.getEip1271Signature(
+  order,
+  ecdsaSignature
+)
+```
+
+## Integration Examples
+
+### With OrderBookApi
+
+```typescript
+import { OrderBookApi } from '@cowprotocol/sdk-order-book'
+import { OrderSigningUtils } from '@cowprotocol/sdk-order-signing'
+
+const orderBookApi = new OrderBookApi({ chainId: 1 })
+
+// 1. Get quote
+const { quote } = await orderBookApi.getQuote(quoteRequest)
+
+// 2. Sign order
+const signingResult = await OrderSigningUtils.signOrder(
+  quote,
+  1,
+  signer
+)
+
+// 3. Submit order
+const orderId = await orderBookApi.sendOrder({
+  ...quote,
+  ...signingResult,
+})
+
+console.log('Order submitted:', orderId)
+```
+
+### With TradingSdk
+
+```typescript
+import { TradingSdk } from '@cowprotocol/sdk-trading'
+
+// TradingSdk handles signing internally
+const sdk = new TradingSdk(
+  { chainId: 1, appCode: 'My App' },
+  {},
+  adapter
+)
+
+const { orderId } = await sdk.postSwapOrder(params)
+// Signing happens automatically
+```
+
+### Cancelling Orders
+
+```typescript
+// Sign cancellation
+const cancellation = await OrderSigningUtils.signOrderCancellations(
+  [orderId1, orderId2],
+  1,
+  signer
+)
+
+// Submit to API
+await orderBookApi.sendSignedOrderCancellations({
+  ...cancellation,
+  orderUids: [orderId1, orderId2],
+})
+```
+
+## Error Handling
+
+```typescript
+try {
+  const result = await OrderSigningUtils.signOrder(order, chainId, signer)
+  console.log('Signature:', result.signature)
+} catch (error) {
+  if (error.message.includes('User denied')) {
+    console.error('User rejected signature request')
+  } else if (error.message.includes('chainId')) {
+    console.error('Chain ID mismatch')
+  } else {
+    console.error('Signing failed:', error)
+  }
+}
+```
+
+## Best Practices
+
+1. **Always verify chain ID** - Ensure the chainId matches the network you're operating on. Incorrect chain IDs produce invalid signatures.
+2. **Set global adapter** - Call `setGlobalAdapter()` before using `OrderSigningUtils` to ensure the correct provider is available.
+3. **Use typed data (EIP-712)** - Prefer EIP-712 signing for the best security and user experience. The SDK handles fallback automatically.
+4. **Batch cancellations** - Use `signOrderCancellations()` instead of multiple `signOrderCancellation()` calls for efficiency.
+5. **Handle rejections** - Always handle the case where users reject signature requests in their wallet.
+
+## See Also
+
+- [TradingSdk](/api/trading-sdk) - High-level trading interface with built-in signing
+- [OrderBookApi](/api/order-book-api) - Order submission and management
+- [MetadataApi](/api/metadata-api) - Order metadata utilities
+- [EIP-712 Specification](https://eips.ethereum.org/EIPS/eip-712) - Typed structured data hashing and signing
+- [EIP-1271 Specification](https://eips.ethereum.org/EIPS/eip-1271) - Standard signature validation for contracts

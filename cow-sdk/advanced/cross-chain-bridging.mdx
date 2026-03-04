@@ -1,0 +1,57 @@
+---
+title: "Cross-Chain Bridging"
+description: "Enable seamless token transfers across different blockchain networks using the CoW Protocol SDK"
+---
+
+# Cross-Chain Bridging
+
+## Overview
+
+The CoW Protocol SDK enables seamless token transfers across different blockchain networks. Users can execute cross-chain swaps in a single transaction by leveraging multiple bridge providers.
+
+## Installation & Setup
+
+Install the bridging module via npm:
+
+```bash
+npm install @cowprotocol/sdk-bridging
+```
+
+Developers can initialize the SDK either as a standalone bridging solution or integrated with the broader CoW SDK. Both approaches require configuring an adapter with a provider and signer.
+
+## Getting Cross-Chain Quotes
+
+The quote process requires specifying:
+- Source and destination chains
+- Token addresses and amounts
+- Decimals for both tokens
+
+<Note>
+Cross-chain orders are always SELL orders. BUY orders are not yet supported for cross-chain swaps.
+</Note>
+
+The response includes swap data, bridge information, costs, and a callback function to execute the order.
+
+## Multi-Provider Quote Strategies
+
+Three methods are available:
+
+**`getMultiQuotes()`** - Retrieves quotes from all configured providers simultaneously, returning complete results with both successful quotes and errors.
+
+**`getBestQuote()`** - Returns only the optimal quote across all providers, useful when users need a single recommendation.
+
+**Progressive callbacks** - Both methods support real-time updates as providers respond, enabling dynamic UI updates without waiting for all responses.
+
+## Provider Management
+
+Developers can retrieve all active providers or filter to specific ones using `setAvailableProviders()`. Resetting with an empty array restores all providers.
+
+## Timeout Settings
+
+Two timeout parameters control quote retrieval:
+- **providerTimeout**: Individual deadline per provider (default: 15 seconds)
+- **totalTimeout**: Global deadline for entire operation (default: 30 seconds)
+
+## Error Handling
+
+Common failure scenarios include unavailable provider routes, timeouts, and general quote failures. The SDK provides specific error messages to distinguish between these cases.

@@ -1,0 +1,69 @@
+---
+title: "Contributing"
+description: "Guidelines for contributing to CoW Protocol Services"
+---
+
+# Contributing
+
+This guide covers the contribution process and requirements for CoW Protocol Services.
+
+## Before You Start
+
+### Discussion First
+
+Non-trivial changes require maintainer approval before development begins. Only minor updates like typos or small refactors bypass this requirement. Open a GitHub issue or discussion to propose your changes.
+
+## Workflow Process
+
+1. **Fork the repository** and create descriptive feature branches
+2. **Make changes** with accompanying tests for new functionality
+3. **Run formatting tools**: `just fmt` and `just fmt-toml`
+4. **Execute linting** with Clippy: `cargo clippy --all-targets --all-features`
+5. **Test locally** before pushing
+6. **Create a PR** with a completed template explaining the changes
+
+## Code Quality Standards
+
+### Formatting
+
+The project enforces strict formatting using the nightly Rust toolchain and Tombi for TOML files.
+
+<Warning>
+Always use the nightly toolchain for formatting. Never use stable `cargo fmt`.
+</Warning>
+
+```bash
+# Rust formatting
+cargo +nightly fmt
+
+# TOML formatting
+just fmt-toml
+```
+
+### Testing
+
+All pull requests must pass the complete test suite, including unit tests, database tests, and end-to-end tests where applicable.
+
+<Warning>
+Always use `cargo nextest run`, never `cargo test`.
+</Warning>
+
+### Code Style
+
+- **Imports**: Group by external crates, internal modules, and local imports
+- **Comments**: Explain *why* changes were made rather than restating code logic
+- **Error handling**: Use `anyhow::Result` for consistent failure management
+- **Naming**: Use descriptive, self-documenting names
+
+## Pull Request Requirements
+
+Every PR should:
+
+- Include tests for new functionality
+- Pass all CI checks (formatting, linting, tests)
+- Have a clear description of changes and motivation
+- Follow the PR template provided in the repository
+
+## Community Incentives
+
+Contributors solving "help wanted" issues can earn financial rewards. Contributors need to provide a Gnosis Chain address for payment processing.

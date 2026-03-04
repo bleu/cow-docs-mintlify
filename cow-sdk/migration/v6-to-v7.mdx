@@ -1,0 +1,265 @@
+---
+title: "v6 to v7 Migration"
+description: "Migration guide from CoW SDK v6 to v7 with the new adapter system"
+---
+
+# v6 to v7 Migration Guide
+
+Upgrade from CoW SDK v6 to v7 with the new adapter system
+
+## Overview
+
+CoW SDK v7 is 99% backward compatible with v6. The primary change is the introduction of **adapters** that allow the SDK to work with different Web3 libraries (`viem`, `ethers v6`, and `ethers v5`).
+
+<Note>
+In v7, you must set an adapter corresponding to the library you use: `ViemAdapter`, `EthersV6Adapter`, or `EthersV5Adapter`.
+</Note>
+
+## Key Changes
+
+### Required Adapters
+
+v7 introduces a new adapter system that provides compatibility with multiple blockchain libraries:
+
+- **ViemAdapter** - For viem (recommended for new projects)
+- **EthersV6Adapter** - For ethers.js v6
+- **EthersV5Adapter** - For ethers.js v5
+
+You need to install the appropriate adapter package based on your Web3 library.
+
+## Installation
+
+First, install the adapter package for your chosen Web3 library:
+
+<Tabs>
+  <Tab title="viem">
+    ```bash
+    pnpm add @cowprotocol/sdk-viem-adapter viem
+    ```
+  </Tab>
+  <Tab title="ethers v6">
+    ```bash
+    pnpm add @cowprotocol/sdk-ethers-v6-adapter ethers
+    ```
+  </Tab>
+  <Tab title="ethers v5">
+    ```bash
+    pnpm add @cowprotocol/sdk-ethers-v5-adapter ethers@^5.7.0
+    ```
+  </Tab>
+</Tabs>
+
+## Migration Steps
+
+### Basic Setup
+
+The main difference is creating and passing an adapter when instantiating SDK classes.
+
+<Tabs>
+  <Tab title="v6">
+    ```typescript
+    import { SupportedChainId, TradingSdk } from '@cowprotocol/cow-sdk'
+
+    const options = {}
+
+    const sdk = new TradingSdk({
+      chainId: SupportedChainId.SEPOLIA,
+      appCode: 'YOUR_APP_CODE',
+    }, options)
+    ```
+  </Tab>
+  <Tab title="v7">
+    ```typescript
+    import { SupportedChainId, TradingSdk } from '@cowprotocol/cow-sdk'
+    import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+    import { createPublicClient, http, privateKeyToAccount } from 'viem'
+    import { sepolia } from 'viem/chains'
+
+    // NEW: Instantiate and set adapter
+    const adapter = new ViemAdapter({
+      provider: createPublicClient({
+        chain: sepolia,
+        transport: http('YOUR_RPC_URL')
+      }),
+      // You can also set `walletClient` instead of `signer` using `useWalletClient` from wagmi
+      signer: privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`)
+    })
+
+    const options = {}
+
+    const sdk = new TradingSdk({
+      chainId: SupportedChainId.SEPOLIA,
+      appCode: 'YOUR_APP_CODE',
+    }, options, adapter)
+    ```
+  </Tab>
+</Tabs>
+
+### Adapter Setup Examples
+
+<Tabs>
+  <Tab title="viem">
+    ```typescript
+    import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+    import { http, createPublicClient, privateKeyToAccount } from 'viem'
+    import { sepolia } from 'viem/chains'
+
+    const account = privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`)
+    const transport = http('YOUR_RPC_URL')
+    const provider = createPublicClient({ chain: sepolia, transport })
+
+    // You can also set `walletClient` instead of `signer` using `useWalletClient` from wagmi
+    const adapter = new ViemAdapter({ provider, signer: account })
+    ```
+  </Tab>
+  <Tab title="ethers v6">
+    ```typescript
+    import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter'
+    import { JsonRpcProvider, Wallet } from 'ethers'
+
+    const provider = new JsonRpcProvider('YOUR_RPC_URL')
+    const wallet = new Wallet('YOUR_PRIVATE_KEY', provider)
+    const adapter = new EthersV6Adapter({ provider, signer: wallet })
+    ```
+  </Tab>
+  <Tab title="ethers v5">
+    ```typescript
+    import { EthersV5Adapter } from '@cowprotocol/sdk-ethers-v5-adapter'
+    import { ethers } from 'ethers'
+
+    const provider = new ethers.providers.JsonRpcProvider('YOUR_RPC_URL')
+    const wallet = new ethers.Wallet('YOUR_PRIVATE_KEY', provider)
+    const adapter = new EthersV5Adapter({ provider, signer: wallet })
+    ```
+  </Tab>
+</Tabs>
+
+## Using setGlobalAdapter
+
+Most SDK packages (e.g., `MetadataApi`, `OrderBookApi`, `BridgingSdk`) accept an adapter parameter. However, you can also set a global adapter that will be used by all SDK instances:
+
+```typescript
+import { setGlobalAdapter, CowShedSdk, TradingSdk } from '@cowprotocol/cow-sdk'
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+
+const adapter = new ViemAdapter({
+  // ... adapter configuration
+})
+
+// Set global adapter
+setGlobalAdapter(adapter)
+
+// Now all SDK instances will use this adapter
+const cowShedSdk = new CowShedSdk()
+const tradingSdk = new TradingSdk({
+  chainId: SupportedChainId.MAINNET,
+  appCode: 'YOUR_APP_CODE',
+})
+```
+
+<Note>
+When you provide an adapter directly to an SDK constructor, it takes precedence over the global adapter.
+</Note>
+
+## Wagmi Integration
+
+When integrating with wagmi, you need to bind the SDK to your app's account state. When the account or network changes in the wallet, update the SDK accordingly.
+
+### Complete Wagmi Example
+
+<CodeGroup>
+```typescript cowSdk.ts
+// cowSdk.ts
+import { SupportedChainId, TradingSdk } from '@cowprotocol/cow-sdk'
+
+export const tradingSdk = new TradingSdk({
+  chainId: SupportedChainId.MAINNET, // Default chain, can be changed JIT
+  appCode: 'CoWSdkReactExampleWagmi',
+})
+```
+
+```typescript useBindCoWSdkToWagmi.ts
+// useBindCoWSdkToWagmi.ts
+import { useAccount, usePublicClient, useWalletClient } from 'wagmi'
+import { useEffect, useState } from 'react'
+import { ViemAdapter, ViemAdapterOptions } from '@cowprotocol/sdk-viem-adapter'
+import { tradingSdk } from '../cowSdk.ts'
+import { setGlobalAdapter } from '@cowprotocol/cow-sdk'
+
+export function useBindCoWSdkToWagmi(): boolean {
+  const account = useAccount()
+  const { chainId } = account
+  const { data: walletClient } = useWalletClient()
+  const publicClient = usePublicClient()
+
+  const [isSdkReady, setIsSdkReady] = useState(false)
+
+  /**
+   * Sync Trading SDK with wagmi account state (chainId and signer)
+   */
+  useEffect(() => {
+    if (!walletClient || !chainId) {
+      setIsSdkReady(false)
+      return
+    }
+
+    setGlobalAdapter(
+      new ViemAdapter({
+        provider: publicClient,
+        walletClient,
+      } as unknown as ViemAdapterOptions),
+    )
+
+    tradingSdk.setTraderParams({ chainId })
+
+    setIsSdkReady(true)
+
+    return () => {
+      setIsSdkReady(false)
+    }
+  }, [publicClient, walletClient, chainId])
+
+  return isSdkReady
+}
+```
+</CodeGroup>
+
+<Warning>
+Make sure to check that `isSdkReady` is `true` before using the SDK in your components. This ensures the adapter is properly configured with the user's wallet and network.
+</Warning>
+
+## Migration Checklist
+
+- [ ] Install the appropriate adapter package for your Web3 library
+- [ ] Create an adapter instance with your provider and signer
+- [ ] Pass the adapter when creating SDK instances, or use `setGlobalAdapter()`
+- [ ] If using wagmi/React, create a hook to sync SDK with wallet state
+- [ ] Update your TypeScript imports to include adapter packages
+- [ ] Test that orders can be signed and posted with the new setup
+
+## Common Issues
+
+### Missing Adapter Error
+
+If you see an error about a missing adapter, make sure you've either:
+
+1. Passed an adapter directly to the SDK constructor, or
+2. Called `setGlobalAdapter()` before using any SDK methods
+
+### Wagmi State Sync
+
+When using wagmi, ensure your binding hook runs before attempting to use the SDK. Use the `isSdkReady` flag to control when SDK methods can be called.
+
+### Wrong Adapter Type
+
+Make sure you're using the correct adapter for your Web3 library:
+
+- viem -> `ViemAdapter`
+- ethers v6 -> `EthersV6Adapter`
+- ethers v5 -> `EthersV5Adapter`
+
+## Next Steps
+
+- Review the [Trading SDK](/api/trading-sdk) documentation for updated examples
+- Check out the [complete wagmi example](https://github.com/cowprotocol/cow-sdk/tree/main/examples/react/wagmi) in the repository
+- Explore other [adapter examples](https://github.com/cowprotocol/cow-sdk/tree/main/examples) for viem and ethers

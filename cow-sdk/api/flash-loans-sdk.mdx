@@ -1,0 +1,65 @@
+---
+title: "Flash Loans SDK"
+description: "Capital-efficient collateral swaps combining Aave V3 flash loans with CoW Protocol trading"
+---
+
+# Flash Loans SDK
+
+## Overview
+
+The Flash Loans SDK enables capital-efficient collateral swaps by combining Aave V3 flash loans with CoW Protocol's intent-based trading system. This allows users to swap collateral without upfront capital through a single atomic transaction.
+
+## Key Features
+
+The system provides capital efficiency and atomic execution by borrowing assets via Aave, executing swaps through CoW Protocol's batch auction system, and automatically repaying loans within one transaction.
+
+## Installation
+
+```bash
+npm install @cowprotocol/sdk-flash-loans @cowprotocol/sdk-trading
+```
+
+## How It Works
+
+The process involves four steps:
+
+1. Borrowing from Aave V3
+2. Swapping borrowed assets through CoW Protocol's batch auction system
+3. Managing the flow with pre/post-execution hooks
+4. Automatic loan repayment with fees
+
+## Core Methods
+
+### collateralSwap
+
+Executes complete flash loan-based swaps with automatic approval handling. Requires chain ID, trading parameters (sell/buy tokens, amounts, slippage), collateral token address, and a TradingSdk instance.
+
+### getSwapQuoteParams
+
+Prepares parameters for manual quote fetching.
+
+### getOrderPostingSettings
+
+Generates order settings and returns the adapter contract address.
+
+### getCollateralAllowance
+
+Checks current allowances for the flash loan adapter.
+
+### approveCollateral
+
+Enables the adapter to spend collateral tokens.
+
+## Important Details
+
+- Supports Aave aTokens (interest-bearing tokens) like aGnoWXDAI
+- Flash loans incur fees, typically 0.05%, automatically deducted before quote calculation
+- Customizable gas limits for pre-hooks (default 300,000) and post-hooks (default 600,000)
+- Works on Gnosis Chain and other supported networks
+
+## Security Notes
+
+- Review quotes before execution
+- Test with small amounts first
+- Verify token addresses and decimals
+- Set appropriate slippage tolerances

@@ -1,0 +1,65 @@
+---
+title: "Wagmi Integration"
+description: "Integrate the CoW Protocol SDK with Wagmi and Viem in React applications"
+---
+
+# Wagmi Integration
+
+## Overview
+
+This documentation provides a complete guide for integrating the CoW Protocol SDK with Wagmi and Viem in React applications. The guide demonstrates how to set up wallet management, create swap functionality, and handle token approvals.
+
+## Core Setup Steps
+
+### Installation
+
+```bash
+npm install @cowprotocol/cow-sdk @cowprotocol/sdk-viem-adapter wagmi viem @tanstack/react-query
+```
+
+### Key Configuration
+
+1. Configure Wagmi with supported chains (mainnet, sepolia) and wallet connectors
+2. Create a TradingSdk instance with default chain ID
+3. Build a custom hook to synchronize the SDK with Wagmi's wallet state
+
+## Main Components
+
+### useBindCoWSdkToWagmi Hook
+
+Syncs the SDK by:
+- Monitoring wallet client, public client, and chain ID changes
+- Setting a ViemAdapter with provider and wallet clients
+- Updating the SDK's trader parameters when chain or account changes
+
+### SwapForm Component
+
+Handles:
+- Token selection (WETH for selling, USDC for buying)
+- Quote retrieval based on sell amount and slippage settings
+- Order posting through the quote response
+- Error handling and loading states
+
+### App Structure
+
+Follows this hierarchy:
+- WagmiProvider wraps the application
+- QueryClientProvider enables efficient data caching
+- SwapApp component manages SDK readiness and account connection
+
+## Key Advantages
+
+The Wagmi integration provides:
+- Automatic network switching
+- Multi-wallet support
+- TypeScript safety
+- Efficient data handling
+- Improved user experience
+
+Supporting features include wallet connection buttons with multiple provider options and network switching utilities.
+
+## Additional Resources
+
+- [Node.js Usage](/cow-sdk/examples/nodejs-usage)
+- [Limit Orders](/cow-sdk/examples/limit-orders)
+- [Trading SDK](/cow-sdk/api/trading-sdk)

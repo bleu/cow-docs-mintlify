@@ -1,0 +1,413 @@
+---
+title: "Token Approvals"
+description: "Managing ERC-20 token approvals required before trading on CoW Protocol"
+---
+
+# Token Approvals
+
+Before trading ERC-20 tokens on CoW Protocol, you must approve the protocol to spend your tokens. The SDK provides convenient methods to check and manage token approvals.
+
+## Overview
+
+ERC-20 tokens require explicit approval before a smart contract can transfer them on your behalf. CoW Protocol uses a **Vault Relayer** contract to handle token transfers during order settlement.
+
+<Note>
+  You only need to approve tokens you're **selling**. You don't need approval for tokens you're buying.
+</Note>
+
+## Checking Token Allowance
+
+Use `getCowProtocolAllowance` to check how much of a token the CoW Protocol can spend:
+
+### Method Signature
+
+```typescript
+getCowProtocolAllowance(params: {
+  tokenAddress: string
+  owner: string
+  chainId?: SupportedChainId
+}): Promise<bigint>
+```
+
+### Parameters
+
+- `tokenAddress` - The ERC-20 token contract address
+- `owner` - The address of the token owner (your wallet)
+- `chainId` - (Optional) Chain ID, uses SDK's chain ID if not provided
+
+### Returns
+
+- `Promise<bigint>` - Current allowance amount in the token's smallest unit
+
+### Example
+
+```typescript
+import { TradingSdk, SupportedChainId } from '@cowprotocol/sdk-trading'
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.MAINNET,
+  appCode: 'YOUR_APP_CODE',
+}, {}, adapter)
+
+const tokenAddress = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' // USDC
+const owner = '0x1234567890123456789012345678901234567890' // Your wallet
+
+const allowance = await sdk.getCowProtocolAllowance({
+  tokenAddress,
+  owner,
+})
+
+console.log('Current allowance:', allowance.toString())
+// Output: Current allowance: 1000000000 (1000 USDC with 6 decimals)
+```
+
+## Approving Tokens
+
+Use `approveCowProtocol` to approve the CoW Protocol to spend your tokens:
+
+### Method Signature
+
+```typescript
+approveCowProtocol(params: {
+  tokenAddress: string
+  amount: bigint
+  chainId?: SupportedChainId
+  signer?: SignerLike
+}): Promise<string>
+```
+
+### Parameters
+
+- `tokenAddress` - The ERC-20 token contract address
+- `amount` - The amount to approve (as bigint)
+- `chainId` - (Optional) Chain ID, uses SDK's chain ID if not provided
+- `signer` - (Optional) Custom signer, uses SDK's signer if not provided
+
+### Returns
+
+- `Promise<string>` - Transaction hash of the approval transaction
+
+### Example
+
+<CodeGroup>
+  ```typescript Viem
+  import { TradingSdk, SupportedChainId } from '@cowprotocol/sdk-trading'
+  import { parseUnits } from 'viem'
+  import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+
+  const sdk = new TradingSdk({
+    chainId: SupportedChainId.MAINNET,
+    appCode: 'YOUR_APP_CODE',
+  }, {}, adapter)
+
+  const tokenAddress = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' // USDC
+  const amount = parseUnits('1000', 6) // 1000 USDC (6 decimals)
+
+  const txHash = await sdk.approveCowProtocol({
+    tokenAddress,
+    amount,
+  })
+
+  console.log('Approval transaction:', txHash)
+  // Wait for transaction confirmation
+  await publicClient.waitForTransactionReceipt({ hash: txHash })
+  console.log('Approval confirmed!')
+  ```
+
+  ```typescript Ethers v6
+  import { TradingSdk, SupportedChainId } from '@cowprotocol/sdk-trading'
+  import { parseUnits } from 'ethers'
+  import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter'
+
+  const sdk = new TradingSdk({
+    chainId: SupportedChainId.MAINNET,
+    appCode: 'YOUR_APP_CODE',
+  }, {}, adapter)
+
+  const tokenAddress = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' // USDC
+  const amount = parseUnits('1000', 6) // 1000 USDC (6 decimals)
+
+  const txHash = await sdk.approveCowProtocol({
+    tokenAddress,
+    amount,
+  })
+
+  console.log('Approval transaction:', txHash)
+  // Wait for transaction confirmation
+  await provider.waitForTransaction(txHash)
+  console.log('Approval confirmed!')
+  ```
+</CodeGroup>
+
+## Smart Approval Flow
+
+It's best practice to check the current allowance before approving to avoid unnecessary transactions:
+
+```typescript
+import { TradingSdk, SupportedChainId } from '@cowprotocol/sdk-trading'
+import { parseUnits } from 'viem'
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.MAINNET,
+  appCode: 'YOUR_APP_CODE',
+}, {}, adapter)
+
+const tokenAddress = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' // USDC
+const owner = '0x1234567890123456789012345678901234567890'
+const requiredAmount = parseUnits('1000', 6) // 1000 USDC
+
+// Step 1: Check current allowance
+const currentAllowance = await sdk.getCowProtocolAllowance({
+  tokenAddress,
+  owner,
+})
+
+console.log('Current allowance:', currentAllowance.toString())
+
+// Step 2: Only approve if needed
+if (currentAllowance < requiredAmount) {
+  console.log('Insufficient allowance. Requesting approval...')
+
+  const txHash = await sdk.approveCowProtocol({
+    tokenAddress,
+    amount: requiredAmount,
+  })
+
+  console.log('Approval transaction:', txHash)
+
+  // Wait for confirmation
+  await publicClient.waitForTransactionReceipt({ hash: txHash })
+  console.log('Approval confirmed!')
+} else {
+  console.log('Sufficient allowance already exists')
+}
+```
+
+## Infinite Approval
+
+You can approve the maximum possible amount to avoid repeated approval transactions:
+
+```typescript
+import { maxUint256 } from 'viem' // or ethers.MaxUint256 for ethers
+
+const txHash = await sdk.approveCowProtocol({
+  tokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+  amount: maxUint256, // Infinite approval
+})
+
+console.log('Infinite approval granted:', txHash)
+```
+
+<Warning>
+  **Security consideration**: Infinite approvals are convenient but come with risks. If the approved contract is compromised, all your tokens could be at risk. Consider approving only what you need for immediate trades.
+</Warning>
+
+## Complete Trading Flow with Approvals
+
+Here's a complete example that checks approval, approves if needed, and then creates an order:
+
+```typescript
+import {
+  TradingSdk,
+  SupportedChainId,
+  OrderKind,
+  TradeParameters
+} from '@cowprotocol/sdk-trading'
+import { parseUnits } from 'viem'
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+import { createPublicClient, http, privateKeyToAccount } from 'viem'
+import { mainnet } from 'viem/chains'
+
+const adapter = new ViemAdapter({
+  provider: createPublicClient({
+    chain: mainnet,
+    transport: http('YOUR_RPC_URL')
+  }),
+  signer: privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`)
+})
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.MAINNET,
+  appCode: 'YOUR_APP_CODE',
+}, {}, adapter)
+
+const owner = await adapter.signer.getAddress()
+const sellToken = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' // USDC
+const buyToken = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2' // WETH
+const sellAmount = parseUnits('1000', 6) // 1000 USDC
+
+// Step 1: Check if approval is needed
+const currentAllowance = await sdk.getCowProtocolAllowance({
+  tokenAddress: sellToken,
+  owner,
+})
+
+// Step 2: Approve if necessary
+if (currentAllowance < sellAmount) {
+  console.log('Approving tokens...')
+  const txHash = await sdk.approveCowProtocol({
+    tokenAddress: sellToken,
+    amount: sellAmount,
+  })
+
+  // Wait for approval
+  await adapter.provider.waitForTransactionReceipt({ hash: txHash })
+  console.log('Tokens approved!')
+}
+
+// Step 3: Create the order
+const parameters: TradeParameters = {
+  kind: OrderKind.SELL,
+  sellToken,
+  sellTokenDecimals: 6,
+  buyToken,
+  buyTokenDecimals: 18,
+  amount: sellAmount.toString(),
+}
+
+const { orderId } = await sdk.postSwapOrder(parameters)
+
+console.log('Order created:', orderId)
+```
+
+## Approvals for Smart Contract Wallets
+
+Smart contract wallets like Safe require special handling for approvals:
+
+```typescript
+import Safe from '@safe-global/protocol-kit'
+import { TradingSdk } from '@cowprotocol/sdk-trading'
+
+// Initialize your Safe
+const safe = await Safe.create({
+  safeAddress: '0x...',
+  ethAdapter,
+})
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.MAINNET,
+  appCode: 'YOUR_APP_CODE',
+}, {}, adapter)
+
+// Get approval transaction
+const tokenAddress = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+const amount = parseUnits('1000', 6)
+
+// Create approval transaction through Safe
+const txHash = await sdk.approveCowProtocol({
+  tokenAddress,
+  amount,
+})
+
+console.log('Safe approval transaction:', txHash)
+```
+
+<Note>
+  For Safe and other smart contract wallets, you'll need to propose the approval transaction through your wallet's interface and collect the required signatures.
+</Note>
+
+## Revoking Approvals
+
+To revoke an approval, set the allowance to 0:
+
+```typescript
+const txHash = await sdk.approveCowProtocol({
+  tokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+  amount: 0n, // Revoke approval
+})
+
+console.log('Approval revoked:', txHash)
+```
+
+## Implementation Details
+
+### Under the Hood
+
+The SDK methods interact with these contracts:
+
+1. **getCowProtocolAllowance**: Calls `allowance(owner, spender)` on the ERC-20 token
+2. **approveCowProtocol**: Calls `approve(spender, amount)` on the ERC-20 token
+
+The `spender` is always the CoW Protocol **Vault Relayer** contract address for your chain.
+
+### From the Source Code
+
+```typescript
+// From tradingSdk.ts
+async getCowProtocolAllowance(
+  params: WithPartialTraderParams<{ tokenAddress: string; owner: string }>,
+): Promise<bigint> {
+  const chainId = params.chainId || this.traderParams.chainId
+  const adapter = getGlobalAdapter()
+  const vaultRelayerAddress = COW_PROTOCOL_VAULT_RELAYER_ADDRESS[chainId]
+
+  return (await adapter.readContract({
+    address: params.tokenAddress,
+    abi: ERC20_ALLOWANCE_ABI,
+    functionName: 'allowance',
+    args: [params.owner, vaultRelayerAddress],
+  })) as bigint
+}
+
+async approveCowProtocol(
+  params: WithPartialTraderParams<{ tokenAddress: string; amount: bigint }>
+): Promise<string> {
+  const chainId = params.chainId || this.traderParams.chainId
+  const adapter = getGlobalAdapter()
+  const signer = resolveSigner(params.signer)
+  const vaultRelayerAddress = COW_PROTOCOL_VAULT_RELAYER_ADDRESS[chainId]
+
+  const txParams = {
+    to: params.tokenAddress,
+    data: adapter.utils.encodeFunction(ERC20_APPROVE_ABI, 'approve', [
+      vaultRelayerAddress,
+      '0x' + params.amount.toString(16),
+    ]),
+  }
+
+  const txReceipt = await signer.sendTransaction(txParams)
+  return txReceipt.hash
+}
+```
+
+## Common Issues and Solutions
+
+### Transaction Reverts
+
+**Problem**: Approval transaction reverts.
+
+**Solution**:
+- Ensure you have enough ETH for gas
+- Check that the token address is correct
+- Verify you're on the correct network
+
+### Approval Shows 0 After Transaction
+
+**Problem**: Allowance still shows 0 after approving.
+
+**Solution**: Wait for the transaction to be confirmed before checking allowance.
+
+### Order Fails Despite Approval
+
+**Problem**: Order creation fails even with sufficient approval.
+
+**Solution**:
+- Verify you approved enough tokens (including fees and slippage)
+- Check that your wallet has sufficient token balance
+- Ensure the approval transaction was confirmed
+
+## Best Practices
+
+1. **Check before approving**: Always check current allowance first
+2. **Approve sufficient amounts**: Include slippage and fees in your approval amount
+3. **Consider security**: Use exact amounts instead of infinite approvals when possible
+4. **Wait for confirmation**: Always wait for approval transaction to confirm
+5. **Handle errors gracefully**: Implement proper error handling for approval failures
+6. **Batch approvals**: If trading multiple tokens, consider approving them all upfront
+
+## Next Steps
+
+- Learn about [Creating Swap Orders](/guides/creating-swap-orders) to use your approved tokens
+- See [Smart Contract Wallets](/guides/smart-contract-wallets) for advanced approval scenarios
+- Explore [Order Management](/guides/order-management) to track your trades

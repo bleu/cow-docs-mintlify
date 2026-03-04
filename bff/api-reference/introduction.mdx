@@ -1,0 +1,92 @@
+---
+title: "API Overview"
+description: "Introduction to the CoW Protocol Backend for Frontend API"
+---
+
+# API Overview
+
+The CoW Protocol BFF (Backend for Frontend) API provides a suite of services designed to enhance the user experience for frontend applications interacting with the CoW Protocol.
+
+## Base URL
+
+The API is accessible at:
+
+```
+https://api.cow.fi
+```
+
+For local development:
+
+```
+http://localhost:3001
+```
+
+## API Architecture
+
+The BFF API is built on Fastify and provides endpoints organized into several key areas:
+
+* **Tokens**: Token information, pricing, and holder data
+* **Accounts**: User balances and allowances with real-time updates
+* **Markets**: Slippage tolerance recommendations for trading pairs
+* **Simulation**: Transaction simulation using Tenderly
+* **Yield**: Pool information and APR data from various DEX protocols
+* **Affiliate**: Affiliate program management and statistics
+* **Notifications**: Push notification subscriptions and delivery
+* **Hooks**: CoW Hooks analytics from Dune Analytics
+* **Miscellaneous**: Utility endpoints including API version and proxies
+
+## Chain Support
+
+The API supports multiple blockchain networks. Chain IDs are specified in the path for most endpoints:
+
+* `1` - Ethereum Mainnet
+* `100` - Gnosis Chain
+* `11155111` - Sepolia Testnet
+
+Alternatively, you can use chain slugs:
+
+* `mainnet` - Ethereum Mainnet
+* `gnosis` - Gnosis Chain
+* `sepolia` - Sepolia Testnet
+
+## Response Format
+
+All API responses are in JSON format. Successful responses return the requested data with appropriate HTTP status codes (200, 201, etc.). Error responses include a message field describing the error:
+
+```json
+{
+  "message": "Error description"
+}
+```
+
+## Rate Limiting
+
+The API implements caching headers to optimize performance. Check the `Cache-Control` header in responses to understand caching behavior.
+
+## Getting Started
+
+To get started with the API:
+
+1. Choose the appropriate endpoint for your use case
+2. Construct the request URL with the correct chain ID
+3. Make an HTTP request (GET, POST, etc.)
+4. Handle the JSON response
+
+## API Documentation
+
+Detailed documentation for each endpoint category is available in the following pages:
+
+* [Authentication](/api-reference/authentication) - No authentication required for public endpoints
+* [Token Endpoints](/api-reference/endpoints/tokens) - Token prices and holder data
+* [Account Endpoints](/api-reference/endpoints/accounts) - User balances with SSE support
+* [Market Endpoints](/api-reference/endpoints/markets) - Slippage tolerance calculations
+* [Simulation Endpoints](/api-reference/endpoints/simulation) - Transaction simulation
+* [Yield Endpoints](/api-reference/endpoints/yield) - Pool and APR information
+* [Affiliate Endpoints](/api-reference/endpoints/affiliate) - Affiliate program management
+* [Notification Endpoints](/api-reference/endpoints/notifications) - Push notifications
+* [Hooks Endpoints](/api-reference/endpoints/hooks) - CoW Hooks analytics data
+* [Miscellaneous Endpoints](/api-reference/endpoints/misc) - Utility endpoints
+
+## Support
+
+For issues or questions about the API, please refer to the [CoW Protocol documentation](https://docs.cow.fi) or reach out to the development team.

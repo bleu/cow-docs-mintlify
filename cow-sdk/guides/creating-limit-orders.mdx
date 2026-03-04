@@ -1,0 +1,309 @@
+---
+title: "Creating Limit Orders"
+description: "How to create limit orders with specific price targets using the CoW Protocol SDK"
+---
+
+# Creating Limit Orders
+
+Limit orders allow you to specify both the sell and buy amounts, creating an order that will only execute at your desired price or better.
+
+## Overview
+
+Unlike swap orders that execute at market price, limit orders give you precise control over the exchange rate. The order will only be filled when the market price reaches your specified rate.
+
+<Note>
+  Limit orders are "good-til-cancelled" by default and remain in the order book until filled or cancelled.
+</Note>
+
+## Using postLimitOrder
+
+The `postLimitOrder` method creates a limit order with your specified amounts.
+
+### Required Parameters
+
+- `kind` - The order kind (`OrderKind.SELL` or `OrderKind.BUY`)
+- `sellToken` - The sell token address
+- `sellTokenDecimals` - The sell token decimals
+- `buyToken` - The buy token address
+- `buyTokenDecimals` - The buy token decimals
+- `sellAmount` - The amount to sell in atoms
+- `buyAmount` - The amount to buy in atoms
+
+### Basic Example
+
+<CodeGroup>
+  ```typescript Viem Adapter
+  import {
+    SupportedChainId,
+    OrderKind,
+    LimitTradeParameters,
+    TradingSdk
+  } from '@cowprotocol/sdk-trading'
+  import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+  import { createPublicClient, http, privateKeyToAccount } from 'viem'
+  import { sepolia } from 'viem/chains'
+
+  const adapter = new ViemAdapter({
+    provider: createPublicClient({
+      chain: sepolia,
+      transport: http('YOUR_RPC_URL')
+    }),
+    signer: privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`)
+  })
+
+  const sdk = new TradingSdk({
+    chainId: SupportedChainId.SEPOLIA,
+    appCode: 'YOUR_APP_CODE',
+  }, {}, adapter)
+
+  const limitOrderParameters: LimitTradeParameters = {
+    kind: OrderKind.BUY,
+    sellToken: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+    sellTokenDecimals: 18,
+    buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+    buyTokenDecimals: 18,
+    sellAmount: '120000000000000000',
+    buyAmount: '66600000000000000000',
+  }
+
+  const { orderId } = await sdk.postLimitOrder(limitOrderParameters)
+
+  console.log('Order created, id: ', orderId)
+  ```
+
+  ```typescript Ethers v6
+  import {
+    SupportedChainId,
+    OrderKind,
+    LimitTradeParameters,
+    TradingSdk
+  } from '@cowprotocol/sdk-trading'
+  import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter'
+  import { ethers } from 'ethers'
+
+  const provider = new ethers.JsonRpcProvider('YOUR_RPC_URL')
+  const signer = new ethers.Wallet('YOUR_PRIVATE_KEY', provider)
+
+  const adapter = new EthersV6Adapter({ provider, signer })
+
+  const sdk = new TradingSdk({
+    chainId: SupportedChainId.SEPOLIA,
+    appCode: 'YOUR_APP_CODE',
+  }, {}, adapter)
+
+  const limitOrderParameters: LimitTradeParameters = {
+    kind: OrderKind.BUY,
+    sellToken: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+    sellTokenDecimals: 18,
+    buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+    buyTokenDecimals: 18,
+    sellAmount: '120000000000000000',
+    buyAmount: '66600000000000000000',
+  }
+
+  const { orderId } = await sdk.postLimitOrder(limitOrderParameters)
+
+  console.log('Order created, id: ', orderId)
+  ```
+</CodeGroup>
+
+## Optional Parameters
+
+| Parameter           | Type         | Default       | Description                                          |
+| ------------------- | ------------ | ------------- | ---------------------------------------------------- |
+| `quoteId`           | `number`     | -             | ID of a quote from the Quote API to use as reference |
+| `validTo`           | `number`     | -             | Order expiration timestamp in seconds since epoch    |
+| `env`               | `Env`        | `prod`        | The environment to use (`prod` or `staging`)         |
+| `partiallyFillable` | `boolean`    | `false`       | Whether the order can be partially filled            |
+| `receiver`          | `string`     | order creator | The address that will receive the tokens             |
+| `partnerFee`        | `PartnerFee` | -             | Partner fee configuration                            |
+
+### Example with Optional Parameters
+
+```typescript
+const limitOrderParameters: LimitTradeParameters = {
+  kind: OrderKind.SELL,
+  sellToken: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+  sellTokenDecimals: 18,
+  buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+  buyTokenDecimals: 18,
+  sellAmount: '1000000000000000000',
+  buyAmount: '2000000000000000000',
+  validTo: Math.floor(Date.now() / 1000) + 86400, // Valid for 24 hours
+  partiallyFillable: true,
+}
+
+const { orderId } = await sdk.postLimitOrder(limitOrderParameters)
+```
+
+## Calculating Limit Price
+
+The limit price is determined by the ratio of `sellAmount` to `buyAmount`.
+
+### Example: Setting a Limit Price
+
+```typescript
+// You want to sell 1 WETH for at least 3000 USDC
+const wethDecimals = 18
+const usdcDecimals = 6
+
+const limitOrderParameters: LimitTradeParameters = {
+  kind: OrderKind.SELL,
+  sellToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
+  sellTokenDecimals: wethDecimals,
+  buyToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
+  buyTokenDecimals: usdcDecimals,
+  sellAmount: '1000000000000000000', // 1 WETH (18 decimals)
+  buyAmount: '3000000000', // 3000 USDC (6 decimals)
+}
+
+const { orderId } = await sdk.postLimitOrder(limitOrderParameters)
+```
+
+<Note>
+  **Price calculation:**
+
+  - Limit price = buyAmount / sellAmount (in token units)
+  - In this example: 3000 USDC / 1 WETH = 3000 USDC per WETH
+</Note>
+
+## Using Quote ID
+
+You can reference a previous quote when creating a limit order:
+
+```typescript
+// First, get a quote
+const { quoteResults } = await sdk.getQuote({
+  kind: OrderKind.SELL,
+  sellToken: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+  sellTokenDecimals: 18,
+  buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+  buyTokenDecimals: 18,
+  amount: '1000000000000000000',
+})
+
+const quoteId = quoteResults.quoteResponse.id
+const sellAmount = quoteResults.orderToSign.sellAmount
+const buyAmount = quoteResults.orderToSign.buyAmount
+
+// Create limit order with quote ID
+const limitOrderParameters: LimitTradeParameters = {
+  kind: OrderKind.SELL,
+  sellToken: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+  sellTokenDecimals: 18,
+  buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+  buyTokenDecimals: 18,
+  sellAmount,
+  buyAmount,
+  quoteId, // Reference the quote
+}
+
+const { orderId } = await sdk.postLimitOrder(limitOrderParameters)
+```
+
+## Advanced Settings
+
+Customize limit order behavior with `LimitOrderAdvancedSettings`:
+
+```typescript
+import { LimitOrderAdvancedSettings, SigningScheme } from '@cowprotocol/sdk-trading'
+
+const advancedSettings: LimitOrderAdvancedSettings = {
+  additionalParams: {
+    signingScheme: SigningScheme.EIP712,
+  },
+  appData: {
+    metadata: {
+      quote: {
+        slippageBips: '0', // No slippage for limit orders
+      },
+    },
+  },
+}
+
+const { orderId } = await sdk.postLimitOrder(
+  limitOrderParameters,
+  advancedSettings
+)
+```
+
+## Order Kinds for Limit Orders
+
+<Tabs>
+  <Tab title="SELL Limit Orders">
+    Sell orders guarantee you receive **at least** the specified `buyAmount` for your `sellAmount`:
+
+    ```typescript
+    const limitOrderParameters: LimitTradeParameters = {
+      kind: OrderKind.SELL,
+      sellAmount: '1000000000000000000', // Selling exactly 1 token
+      buyAmount: '2000000000000000000',  // Must receive at least 2 tokens
+      // ... other parameters
+    }
+    ```
+
+    **Use case:** "I want to sell 1 WETH and receive at least 3000 USDC"
+  </Tab>
+
+  <Tab title="BUY Limit Orders">
+    Buy orders guarantee you pay **at most** the specified `sellAmount` for your `buyAmount`:
+
+    ```typescript
+    const limitOrderParameters: LimitTradeParameters = {
+      kind: OrderKind.BUY,
+      sellAmount: '3000000000', // Pay at most 3000 USDC
+      buyAmount: '1000000000000000000', // To receive exactly 1 WETH
+      // ... other parameters
+    }
+    ```
+
+    **Use case:** "I want to buy 1 WETH and pay at most 3000 USDC"
+  </Tab>
+</Tabs>
+
+## Partially Fillable Orders
+
+By default, limit orders are "fill-or-kill" (must be completely filled). Enable partial fills to allow incremental execution:
+
+```typescript
+const limitOrderParameters: LimitTradeParameters = {
+  kind: OrderKind.SELL,
+  sellToken: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+  sellTokenDecimals: 18,
+  buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+  buyTokenDecimals: 18,
+  sellAmount: '10000000000000000000', // 10 tokens
+  buyAmount: '20000000000000000000', // 20 tokens
+  partiallyFillable: true, // Allow partial fills
+}
+
+const { orderId } = await sdk.postLimitOrder(limitOrderParameters)
+```
+
+<Warning>
+  Partially fillable orders may be executed in multiple transactions over time. Monitor the order status to track fills.
+</Warning>
+
+## Comparing Swap vs Limit Orders
+
+| Feature       | Swap Orders                     | Limit Orders                 |
+| ------------- | ------------------------------- | ---------------------------- |
+| **Price**     | Current market price            | Your specified price         |
+| **Amount**    | One amount (sell OR buy)        | Both amounts (sell AND buy)  |
+| **Execution** | Immediate (if liquidity exists) | When price target is reached |
+| **Slippage**  | Applies automatically           | Controlled by your price     |
+| **Use Case**  | Quick trades at market price    | Price-specific trades        |
+
+## Best Practices
+
+1. **Set realistic prices**: Orders too far from market price may never fill
+2. **Use validTo wisely**: Set appropriate expiration times for your strategy
+3. **Consider partial fills**: For large orders, partial fills can improve execution
+4. **Monitor order status**: Check if your order has been filled or partially filled
+5. **Handle slippage**: Limit orders typically use 0 slippage since price is explicit
+
+## Next Steps
+
+- Learn about [Order Management](/guides/order-management) to track and cancel limit orders
+- See [Token Approvals](/guides/token-approvals) for managing ERC-20 approvals
+- Explore [Smart Contract Wallets](/guides/smart-contract-wallets) for advanced signing

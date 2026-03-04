@@ -1,0 +1,244 @@
+---
+title: "Environment Variables"
+description: "Complete reference guide for configuring CoW Protocol BFF services using environment variables"
+---
+
+# Environment Variables
+
+Complete reference guide for configuring CoW Protocol BFF services. Copy `.env.example` to `.env` for local development or `.env.docker` for containerized deployments.
+
+## Application Settings
+
+| Variable    | Description                        | Default     |
+| ----------- | ---------------------------------- | ----------- |
+| `VERSION`   | Application version                | `UNKNOWN`   |
+| `HOST`      | Server host address                | `localhost` |
+| `PORT`      | API service port                   | `1500`      |
+| `LOG_LEVEL` | Logging level (debug/info/warn/error) | `info`   |
+| `LOG_PRETTY`| Human-readable log format          | `false`     |
+
+## Blockchain RPC Endpoints
+
+Configure RPC endpoints for each supported network:
+
+```bash
+# Ethereum Mainnet
+RPC_URL_1=https://mainnet.infura.io/v3/your-key
+
+# Gnosis Chain
+RPC_URL_100=https://rpc.gnosischain.com
+
+# Polygon
+RPC_URL_137=https://polygon-rpc.com
+
+# Arbitrum
+RPC_URL_42161=https://arb1.arbitrum.io/rpc
+
+# Base
+RPC_URL_8453=https://mainnet.base.org
+
+# Avalanche
+RPC_URL_43114=https://api.avax.network/ext/bc/C/rpc
+
+# Sepolia Testnet
+RPC_URL_11155111=https://sepolia.infura.io/v3/your-key
+```
+
+WebSocket URLs (`wss://`) are recommended for real-time event monitoring.
+
+## Database Configuration
+
+### Primary Database (PostgreSQL)
+
+```bash
+DATABASE_ENABLED=true
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_USERNAME=bff-db-user
+DATABASE_PASSWORD=bff-db-password
+DATABASE_NAME=bff-db
+```
+
+### Orderbook Database (Read-only)
+
+```bash
+ORDERBOOK_DATABASE_HOST=localhost
+ORDERBOOK_DATABASE_PORT=5432
+ORDERBOOK_DATABASE_USERNAME=orderbook_user
+ORDERBOOK_DATABASE_PASSWORD=password
+```
+
+### Analytics Database
+
+```bash
+COW_ANALYTICS_DATABASE_HOST=localhost
+COW_ANALYTICS_DATABASE_PORT=5432
+COW_ANALYTICS_DATABASE_USERNAME=analytics_user
+COW_ANALYTICS_DATABASE_PASSWORD=password
+COW_ANALYTICS_DATABASE_NAME=cow_analytics
+```
+
+## Redis Cache
+
+Optional but highly recommended for production to reduce RPC calls.
+
+```bash
+REDIS_ENABLED=true
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_USER=cow_redis
+REDIS_PASSWORD=cow_password
+```
+
+## RabbitMQ
+
+Required for notification services.
+
+```bash
+QUEUE_HOST=localhost
+QUEUE_PORT=5672
+QUEUE_USER=rabbit
+QUEUE_PASSWORD=my-rabbit-password
+```
+
+## External Services
+
+### CoW Protocol API
+
+```bash
+COW_API_BASE_URL=https://api.cow.fi
+```
+
+### CoinGecko
+
+```bash
+COINGECKO_API_KEY=your_api_key
+```
+
+### Tenderly (Transaction Simulation)
+
+```bash
+TENDERLY_API_KEY=your_api_key
+TENDERLY_PROJECT_NAME=your_project
+TENDERLY_ORG_NAME=your_organization
+```
+
+### Moralis
+
+```bash
+MORALIS_API_KEY=your_api_key
+```
+
+### Ethplorer
+
+```bash
+ETHPLORER_API_KEY=your_api_key
+```
+
+### Dune Analytics
+
+```bash
+DUNE_API_KEY=your_api_key
+```
+
+### Socket.tech
+
+```bash
+SOCKET_BASE_URL=https://api.socket.tech
+SOCKET_API_KEY=your_api_key
+```
+
+## CMS Integration
+
+```bash
+CMS_ENABLED=true
+CMS_API_KEY=your_api_key
+CMS_BASE_URL=https://your-cms-url
+```
+
+## Notification Producer
+
+```bash
+NOTIFICATIONS_PRODUCER_CHAINS=1,100,137
+```
+
+## Telegram Bot
+
+```bash
+TELEGRAM_SECRET=your_bot_token
+```
+
+## TWAP Service
+
+```bash
+TWAP_BASE_URL=http://localhost:3000
+```
+
+## JWT Authentication
+
+```bash
+JWT_PASSPHRASE=your_secure_passphrase
+JWT_CERTIFICATE=your_certificate
+```
+
+## CORS Configuration
+
+```bash
+CORS_ORIGIN=https://your-domain.com
+```
+
+## Security Considerations
+
+- **Never commit** sensitive environment files to version control
+- Use secrets management systems for production:
+  - AWS Secrets Manager
+  - HashiCorp Vault
+  - Kubernetes Secrets
+- Use strong, unique values for all passwords and API keys
+- Rotate credentials regularly
+
+## Example Configurations
+
+### Docker Compose
+
+```bash
+# .env.docker
+DATABASE_HOST=db
+REDIS_HOST=redis
+QUEUE_HOST=queue
+LOG_LEVEL=info
+LOG_PRETTY=false
+```
+
+### Local Development
+
+```bash
+# .env
+DATABASE_HOST=localhost
+REDIS_HOST=localhost
+QUEUE_HOST=localhost
+LOG_LEVEL=debug
+LOG_PRETTY=true
+```
+
+## Service-Specific Requirements
+
+### API Service
+
+- Requires: `COW_API_BASE_URL`, database configuration
+- Optional: Redis, Tenderly, CoinGecko, Moralis, Ethplorer, Socket
+
+### TWAP Service
+
+- Requires: Database configuration, Orderbook database
+- Optional: Redis
+
+### Notification Producer
+
+- Requires: RPC endpoints, database, RabbitMQ
+- Optional: Redis, CMS
+
+### Telegram Bot
+
+- Requires: `TELEGRAM_SECRET`, RabbitMQ, database
+- Optional: Redis

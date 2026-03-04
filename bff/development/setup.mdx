@@ -1,0 +1,175 @@
+---
+title: "Development Environment Setup"
+description: "Guide for setting up a local development environment for CoW Protocol BFF services"
+---
+
+# Development Environment Setup
+
+Comprehensive instructions for establishing a local development environment for CoW Protocol's Backend For Frontend (BFF) services, which uses an NX monorepo architecture.
+
+## Prerequisites
+
+The setup requires three foundational tools:
+
+1. **Node.js 20.x** - Install via nvm:
+   ```bash
+   nvm install 20
+   nvm use 20
+   ```
+
+2. **Yarn** - Install globally as the package manager:
+   ```bash
+   npm install -g yarn
+   ```
+
+3. **Docker** - Required for running databases, message queues, and other containerized services
+
+## Initial Setup
+
+### Clone and Install
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd bff
+
+# Install dependencies
+yarn install
+```
+
+The installation automatically generates TypeScript types through a postinstall hook.
+
+### Environment Configuration
+
+```bash
+# Copy the example environment file
+cp .env.example .env
+cp .env.example .env.docker
+```
+
+Configure the following in your `.env` file:
+
+- **RPC URLs** for blockchain networks (Ethereum mainnet, Gnosis Chain, Arbitrum)
+- **Database credentials** for PostgreSQL
+- **Optional**: Redis and RabbitMQ settings
+
+Use `.env` for running services locally via NX commands, and `.env.docker` when running services through Docker Compose.
+
+### Infrastructure Services
+
+Docker Compose manages the project's infrastructure:
+
+```bash
+# Start all infrastructure services
+yarn compose:up
+
+# Or start individual components
+docker-compose up -d db      # PostgreSQL
+docker-compose up -d redis   # Redis cache
+docker-compose up -d queue   # RabbitMQ
+```
+
+### Database Migrations
+
+After the database service starts, run migrations:
+
+```bash
+yarn migration:run
+```
+
+## Development Workflow
+
+### Starting Services
+
+```bash
+# API server (localhost:1500)
+yarn start
+
+# Notification producer
+yarn producer
+
+# Telegram consumer
+yarn telegram
+```
+
+NX enables running specific services:
+
+```bash
+nx run <app-name>:start
+```
+
+## Project Architecture
+
+The monorepo organizes code into:
+
+### Applications (`/apps/`)
+
+- **API** - Main HTTP API server
+- **Telegram** - Telegram bot consumer
+- **TWAP** - Time-weighted average price service
+- **Notification Producer** - Blockchain event monitor
+
+### Shared Libraries (`/libs/`)
+
+- **Repositories** - Data access layer
+- **Services** - Business logic
+- **Shared** - Common utilities and types
+- **Notifications** - Notification templates
+- **Smart Contract ABIs** - Contract interfaces
+
+### TypeScript Path Aliases
+
+The project uses TypeScript path aliases for module imports:
+
+```typescript
+import { logger } from '@cowprotocol/shared';
+import { UsdRepository } from '@cowprotocol/repositories';
+import { SlippageService } from '@cowprotocol/services';
+```
+
+## Common Issues
+
+### TypeORM Driver Error
+
+If you encounter `pg` package resolution errors:
+
+```bash
+yarn add pg
+```
+
+### Port Conflicts
+
+Check for existing processes on the required ports:
+
+```bash
+lsof -i :5432  # PostgreSQL
+lsof -i :5672  # RabbitMQ
+lsof -i :6379  # Redis
+```
+
+### Docker Container Failures
+
+For persistent Docker issues, perform a full reset:
+
+```bash
+docker-compose down -v
+docker-compose up -d
+```
+
+## Useful Commands
+
+```bash
+# Run tests
+yarn test
+
+# Run linter
+yarn lint
+
+# Build a specific service
+yarn build api
+
+# Run NX tasks for a project
+nx run api:test
+nx run api:lint
+nx run api:build
+```

@@ -1,0 +1,288 @@
+---
+title: "Native Token Swaps"
+description: "How to trade native tokens (ETH, MATIC, etc.) through the EthFlow contract"
+---
+
+# Native Token Swaps
+
+The CoW Protocol SDK enables selling blockchain native tokens (ETH, MATIC, etc.) through the **EthFlow** contract. Since native tokens aren't ERC-20 compliant, they require special handling for on-chain transactions.
+
+## How It Works
+
+When selling native tokens:
+
+1. An on-chain transaction is sent to the EthFlow contract
+2. Native tokens are locked in the contract
+3. An order is created in the CoW Protocol order book
+4. Upon filling, the buyer receives their tokens
+5. Unfilled orders can be cancelled to reclaim funds
+
+<Warning>
+  Only **selling** native tokens is supported. To buy native tokens, trade for wrapped versions (e.g., WETH) first.
+</Warning>
+
+## Using postSwapOrder (Automatic Detection)
+
+The SDK automatically detects native token orders using the special marker address `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE` and routes them through EthFlow.
+
+```typescript
+import {
+  SupportedChainId,
+  OrderKind,
+  TradeParameters,
+  TradingSdk
+} from '@cowprotocol/sdk-trading'
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+import { createPublicClient, http, privateKeyToAccount } from 'viem'
+import { sepolia } from 'viem/chains'
+
+const adapter = new ViemAdapter({
+  provider: createPublicClient({
+    chain: sepolia,
+    transport: http('YOUR_RPC_URL')
+  }),
+  signer: privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`)
+})
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.SEPOLIA,
+  appCode: 'YOUR_APP_CODE',
+}, {}, adapter)
+
+const parameters: TradeParameters = {
+  kind: OrderKind.SELL,
+  sellToken: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
+  sellTokenDecimals: 18,
+  buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+  buyTokenDecimals: 18,
+  amount: '100000000000000000', // 0.1 ETH
+}
+
+const { orderId, txHash } = await sdk.postSwapOrder(parameters)
+
+console.log('Order ID:', orderId)
+console.log('Transaction hash:', txHash)
+```
+
+## Using postSellNativeCurrencyOrder
+
+For more control, use the dedicated `postSellNativeCurrencyOrder` method:
+
+### Method Signature
+
+```typescript
+postSellNativeCurrencyOrder(
+  params: TradeParameters,
+  advancedSettings?: SwapAdvancedSettings
+): Promise<{
+  orderId: string
+  txHash: string
+  signingScheme: SigningScheme
+  signature: string
+  orderToSign: UnsignedOrder
+}>
+```
+
+### Example
+
+```typescript
+import {
+  SupportedChainId,
+  OrderKind,
+  TradeParameters,
+  TradingSdk
+} from '@cowprotocol/sdk-trading'
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+import { createPublicClient, http, privateKeyToAccount } from 'viem'
+import { sepolia } from 'viem/chains'
+
+const adapter = new ViemAdapter({
+  provider: createPublicClient({
+    chain: sepolia,
+    transport: http('YOUR_RPC_URL')
+  }),
+  signer: privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`)
+})
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.SEPOLIA,
+  appCode: 'YOUR_APP_CODE',
+}, {}, adapter)
+
+const parameters: TradeParameters = {
+  kind: OrderKind.SELL,
+  sellToken: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
+  sellTokenDecimals: 18,
+  buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+  buyTokenDecimals: 18,
+  amount: '100000000000000000', // 0.1 ETH
+}
+
+const result = await sdk.postSellNativeCurrencyOrder(parameters)
+
+console.log('Order created:', result.orderId)
+console.log('Transaction:', result.txHash)
+
+// Wait for transaction confirmation
+await adapter.provider.waitForTransactionReceipt({ hash: result.txHash })
+console.log('Transaction confirmed!')
+```
+
+## Complete Example with Quote
+
+```typescript
+import {
+  TradingSdk,
+  SupportedChainId,
+  OrderKind,
+  TradeParameters,
+} from '@cowprotocol/sdk-trading'
+import { parseEther } from 'viem'
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.MAINNET,
+  appCode: 'YOUR_APP_CODE',
+}, {}, adapter)
+
+const parameters: TradeParameters = {
+  kind: OrderKind.SELL,
+  sellToken: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
+  sellTokenDecimals: 18,
+  buyToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
+  buyTokenDecimals: 6,
+  amount: parseEther('1').toString(), // 1 ETH
+}
+
+// Step 1: Get a quote
+const { quoteResults } = await sdk.getQuote(parameters)
+
+const expectedUSDC = quoteResults.amountsAndCosts.afterSlippage.buyAmount
+const ethAmount = parseEther('1')
+
+console.log(`Selling ${ethAmount} ETH`)
+console.log(`Expected to receive at least: ${expectedUSDC} USDC`)
+
+// Step 2: Create the order
+if (confirm('Proceed with the trade?')) {
+  const { orderId, txHash } = await sdk.postSellNativeCurrencyOrder(parameters)
+
+  console.log('Order ID:', orderId)
+  console.log('Transaction hash:', txHash)
+
+  await adapter.provider.waitForTransactionReceipt({ hash: txHash })
+  console.log('Order created successfully!')
+}
+```
+
+## Order Kinds for Native Tokens
+
+<Tabs>
+  <Tab title="SELL Orders (Supported)">
+    ```typescript
+    const parameters: TradeParameters = {
+      kind: OrderKind.SELL,
+      sellToken: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
+      sellTokenDecimals: 18,
+      buyToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+      buyTokenDecimals: 6,
+      amount: '1000000000000000000', // 1 ETH
+    }
+    ```
+  </Tab>
+
+  <Tab title="BUY Orders (Limited)">
+    ```typescript
+    const parameters: TradeParameters = {
+      kind: OrderKind.BUY,
+      sellToken: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
+      sellTokenDecimals: 18,
+      buyToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+      buyTokenDecimals: 6,
+      amount: '1000000000', // 1000 USDC
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Gas Cost Considerations
+
+Native token orders require on-chain transactions, making them significantly more expensive than regular orders:
+
+| Operation              | Gas Usage           | Estimated Cost              |
+| ---------------------- | ------------------- | --------------------------- |
+| EthFlow order creation | ~150,000-200,000    | ~$15-$20                    |
+| Regular orders         | 0 gas               | Free (off-chain)            |
+| Cancellation           | ~50,000-70,000 gas  | ~$5-$7                      |
+
+<Note>
+  Always ensure you have enough ETH for gas **in addition to** the amount you're selling.
+</Note>
+
+## Cancelling Native Token Orders
+
+```typescript
+import { TradingSdk } from '@cowprotocol/sdk-trading'
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.MAINNET,
+  appCode: 'YOUR_APP_CODE',
+}, {}, adapter)
+
+const { orderId, txHash } = await sdk.postSellNativeCurrencyOrder(parameters)
+
+// Try off-chain cancellation first
+try {
+  await sdk.offChainCancelOrder({ orderUid: orderId })
+  console.log('Order cancelled (soft)')
+} catch (error) {
+  // Fall back to on-chain cancellation (refunds locked ETH)
+  const cancelTxHash = await sdk.onChainCancelOrder({ orderUid: orderId })
+  console.log('Cancellation transaction:', cancelTxHash)
+
+  await adapter.provider.waitForTransactionReceipt({ hash: cancelTxHash })
+  console.log('Order cancelled and ETH refunded')
+}
+```
+
+## Advanced: Custom EthFlow Parameters
+
+```typescript
+import { SwapAdvancedSettings, SigningScheme } from '@cowprotocol/sdk-trading'
+
+const advancedSettings: SwapAdvancedSettings = {
+  quoteRequest: {
+    signingScheme: SigningScheme.EIP1271,
+    onchainOrder: true,
+    verificationGasLimit: 0,
+    validFor: 3600, // 1 hour
+  },
+}
+
+const { orderId, txHash } = await sdk.postSellNativeCurrencyOrder(
+  parameters,
+  advancedSettings
+)
+```
+
+## Common Chains and Native Tokens
+
+| Chain    | Native Token | Address to Use                               |
+| -------- | ------------ | -------------------------------------------- |
+| Ethereum | ETH          | `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE` |
+| Gnosis   | xDAI         | `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE` |
+| Arbitrum | ETH          | `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE` |
+| Sepolia  | ETH          | `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE` |
+
+## Best Practices
+
+1. **Verify sufficient balance** for both the order amount and gas fees
+2. **Use `OrderKind.SELL`** for better predictability with native tokens
+3. **Wait for transaction confirmation** before querying order status
+4. **Consider wrapping to WETH** for smaller amounts where gas costs might exceed savings
+5. **Monitor gas prices** before executing native token orders
+
+## Next Steps
+
+- Learn about [Creating Swap Orders](/guides/creating-swap-orders) for regular ERC-20 trades
+- See [Order Management](/guides/order-management) to track and cancel orders
+- Explore [Token Approvals](/guides/token-approvals) for ERC-20 approval management

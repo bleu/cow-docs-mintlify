@@ -1,0 +1,53 @@
+---
+title: "Basic Swap"
+description: "Complete guide for creating and posting a swap order to trade WETH for USDC on Sepolia testnet"
+---
+
+# Basic Swap Example
+
+## Overview
+
+This page provides a complete guide for creating and posting a swap order using the CoW Protocol SDK, specifically demonstrating how to swap WETH for USDC on Sepolia testnet.
+
+## Key Requirements
+
+- Node.js
+- Testnet ETH in a wallet
+- An Ethereum RPC endpoint
+
+## Installation
+
+```bash
+npm install @cowprotocol/cow-sdk ethers
+```
+
+## Implementation Approaches
+
+The guide offers three code examples supporting different Ethereum libraries:
+
+1. **Ethers v6** - Using the latest ethers version with EthersV6Adapter
+2. **Ethers v5** - For projects still using the previous ethers major version
+3. **Viem** - An alternative library for Ethereum interactions
+
+## Core Process Steps
+
+The workflow involves four main stages:
+
+1. **Adapter Setup** - Connecting the SDK to your provider through an adapter pattern
+2. **SDK Initialization** - Creating a TradingSdk instance with chain and app identifiers
+3. **Quote Request** - Obtaining pricing information including slippage tolerance
+4. **Order Submission** - Broadcasting the swap order and receiving a confirmation ID
+
+## Important Data Points
+
+Quote results include the final buy amount after network fees, network cost breakdowns, and the order data requiring signature. The quote contains important information including amounts and costs.
+
+## Best Practices
+
+Wrap SDK calls in try-catch blocks and handle specific error conditions like insufficient token balances.
+
+## Related Resources
+
+- [Limit Orders](/cow-sdk/examples/limit-orders)
+- [React Integration](/cow-sdk/examples/react-integration)
+- [Creating Swap Orders](/cow-sdk/guides/creating-swap-orders)

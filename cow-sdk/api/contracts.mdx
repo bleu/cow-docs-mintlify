@@ -1,0 +1,106 @@
+---
+title: "Contracts"
+description: "TypeScript utilities for interacting with CoW Protocol smart contracts, encoding settlements, and managing orders"
+---
+
+# @cowprotocol/sdk-contracts-ts
+
+## Overview
+
+The `@cowprotocol/sdk-contracts-ts` package provides TypeScript utilities for interacting with CoW Protocol smart contracts, encoding settlements, and managing orders.
+
+## Installation
+
+```bash
+npm install @cowprotocol/sdk-contracts-ts
+```
+
+## Core Data Structures
+
+### Order Interface
+
+Orders represent Gnosis Protocol v2 transactions with fields for token pairs, amounts, validity periods, and execution parameters. Key properties include `sellToken`, `buyToken`, `sellAmount`, `buyAmount`, `validTo`, `appData`, `feeAmount`, `kind`, and balance management options.
+
+### OrderKind Enum
+
+Two types exist:
+- `SELL` - selling a specific token amount
+- `BUY` - buying a specific token amount
+
+### OrderBalance Enum
+
+Balance management strategies:
+- `ERC20` - standard ERC-20 balances
+- `EXTERNAL` - Balancer Vault external balances
+- `INTERNAL` - Balancer Vault internal balances
+
+## Signing Schemes
+
+Four signing methods are supported:
+
+| Scheme | Value | Purpose |
+|--------|-------|---------|
+| EIP712 | 0b00 | EIP-712 typed data (preferred) |
+| ETHSIGN | 0b01 | eth_sign RPC calls |
+| EIP1271 | 0b10 | Smart contract signatures |
+| PRESIGN | 0b11 | Pre-signed orders |
+
+## Utility Functions
+
+### hashOrder
+
+Generates a 32-byte signing digest for orders using EIP-712 domain separators.
+
+### computeOrderUid
+
+Creates a unique 56-byte identifier combining order hash, owner address, and validity time.
+
+### extractOrderUidParams
+
+Reverses UIDs into component parts (digest, owner, validTo).
+
+### normalizeOrder
+
+Prepares order data for cryptographic signing operations.
+
+## Settlement Encoding
+
+### SettlementEncoder Class
+
+Primary class managing settlement construction through:
+- `encodeTrade()` - adds trades with signatures
+- `signEncodeTrade()` - signs and encodes trades atomically
+- `encodeInteraction()` - includes contract interactions
+- `encodedSettlement()` - generates final encoded output
+
+### InteractionStage Enum
+
+Execution timing for contract interactions:
+- `PRE` (0) - approvals and permits
+- `INTRA` (1) - AMM interactions
+- `POST` (2) - cleanup operations
+
+## Trade & Flag Encoding
+
+Trade data includes token indices, execution amounts, and bitfield flags. The `encodeTradeFlags()` function converts flag objects into numeric representations, while `decodeTradeFlags()` reverses this process.
+
+## Order Cancellation
+
+Functions handle single and batch order cancellations:
+- `hashOrderCancellation()` - single order
+- `hashOrderCancellations()` - multiple orders
+
+## Constants
+
+Key values include:
+- `BUY_ETH_ADDRESS` = `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE` (ETH marker)
+- `ORDER_UID_LENGTH` = 56 bytes
+- `ORDER_TYPE_HASH` for EIP-712 compliance
+
+## Package Version
+
+Access via:
+
+```typescript
+import { CONTRACTS_PKG_VERSION } from '@cowprotocol/sdk-contracts-ts'
+```

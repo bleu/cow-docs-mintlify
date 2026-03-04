@@ -1,0 +1,46 @@
+---
+title: "Architecture"
+description: "Comprehensive guide to the CoW Protocol BFF monorepo structure, design patterns, component relationships, and core services"
+---
+
+# Architecture Overview
+
+The BFF is organized as a TypeScript monorepo utilizing NX to manage multiple applications and shared libraries.
+
+## Key Architectural Components
+
+The system comprises four main services:
+
+1. **API Service** (port 3001) - Primary REST API providing token balances, Server-Sent Events, slippage analysis, transaction simulation, and affiliate tracking
+2. **Notification Producer** - Monitors blockchain events and publishes push notifications to RabbitMQ
+3. **Telegram Bot** - Consumes notifications from the queue and delivers messages to users
+4. **TWAP Service** (port 3000) - Calculates time-weighted average prices with dedicated database
+
+## Shared Libraries Architecture
+
+The monorepo implements a layered architecture through shared libraries:
+
+- **Repositories Layer** - Data access abstraction with multiple implementations (Viem, cache wrappers, fallback chains)
+- **Services Layer** - Business logic orchestration using injected repositories
+- **Shared Library** - Common utilities, types, loggers, and constants
+- **Specialized Libraries** - Smart contract ABIs and notification templates
+
+## Design Patterns
+
+The codebase employs several established patterns:
+
+- **Repository Pattern** - For data access
+- **Dependency Injection** - Via Inversify for loose coupling
+- **Decorator Pattern** - For cache wrapping
+- **Observer Pattern** - For event-driven notifications
+- **Singleton Pattern** - For stateful services
+
+## Infrastructure Integration
+
+- **PostgreSQL** - Stores application data (orders, notifications, indexer state) while a separate instance supports TWAP
+- **Redis** - Provides multi-level caching with fallback to in-memory implementation
+- **RabbitMQ** - Enables asynchronous communication between producers and consumers
+
+## Real-Time Capabilities
+
+Server-Sent Events enable live balance updates, with a dedicated `SSEService` managing client connections and `BalanceTrackingService` monitoring blockchain blocks to push updates to subscribed clients.

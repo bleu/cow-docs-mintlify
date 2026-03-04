@@ -1,0 +1,449 @@
+---
+title: "Order Management"
+description: "How to retrieve order information and cancel orders through the CoW Protocol SDK"
+---
+
+# Order Management
+
+Track, monitor, and cancel orders using the CoW Protocol SDK.
+
+## Overview
+
+After creating an order, you can:
+
+- **Retrieve order details** - Get full information about an order
+- **Cancel off-chain** - Free and fast soft cancellation
+- **Cancel on-chain** - Gas-required hard cancellation
+
+<Note>
+  All order management methods require an order UID (unique identifier) returned when creating an order.
+</Note>
+
+## Retrieving Order Details
+
+Use `getOrder` to fetch complete information about an order:
+
+### Method Signature
+
+```typescript
+getOrder(params: {
+  orderUid: string
+  chainId?: SupportedChainId
+}): Promise<EnrichedOrder>
+```
+
+### Parameters
+
+- `orderUid` - The unique identifier of the order
+- `chainId` - (Optional) Chain ID, uses trader params if not provided
+
+### Returns
+
+- `Promise<EnrichedOrder>` - Full order details including status, amounts, and metadata
+
+### Example
+
+```typescript
+import { TradingSdk, SupportedChainId } from '@cowprotocol/sdk-trading'
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.MAINNET,
+  appCode: 'YOUR_APP_CODE',
+}, {}, adapter)
+
+const orderUid = '0xd64389693b6cf89ad6c140a113b10df08073e5ef3063d05a02f3f42e1a42f0ad...'
+
+const order = await sdk.getOrder({ orderUid })
+
+console.log('Order status:', order.status)
+console.log('Sell amount:', order.sellAmount)
+console.log('Buy amount:', order.buyAmount)
+console.log('Creation time:', new Date(order.creationDate))
+console.log('Expiration:', new Date(order.validTo * 1000))
+```
+
+### Order Status Values
+
+The `status` field can be one of:
+
+| Status                 | Description                                                      |
+| ---------------------- | ---------------------------------------------------------------- |
+| `open`                 | Order is active and waiting to be filled                         |
+| `fulfilled`            | Order has been completely filled                                 |
+| `cancelled`            | Order has been cancelled                                         |
+| `expired`              | Order has passed its expiration time                             |
+| `presignaturePending`  | Order is waiting for pre-signature (smart contract wallets)      |
+
+### EnrichedOrder Properties
+
+```typescript
+interface EnrichedOrder {
+  uid: string
+  status: OrderStatus
+  owner: string
+  creationDate: string
+  sellToken: string
+  sellAmount: string
+  sellAmountBeforeFee: string
+  buyToken: string
+  buyAmount: string
+  validTo: number
+  appData: string
+  feeAmount: string
+  kind: 'sell' | 'buy'
+  partiallyFillable: boolean
+  signature: string
+  signingScheme: SigningScheme
+  receiver: string
+  // ... and more fields
+}
+```
+
+### Tracking Order Progress
+
+```typescript
+async function trackOrder(sdk: TradingSdk, orderUid: string) {
+  const order = await sdk.getOrder({ orderUid })
+
+  console.log(`Order ${orderUid}:`)
+  console.log(`  Status: ${order.status}`)
+  console.log(`  Sell Token: ${order.sellToken}`)
+  console.log(`  Sell Amount: ${order.sellAmount}`)
+  console.log(`  Buy Token: ${order.buyToken}`)
+  console.log(`  Buy Amount: ${order.buyAmount}`)
+
+  // Check if order is partially filled
+  if (order.partiallyFillable && order.status === 'open') {
+    const executedAmount = BigInt(order.sellAmount) - BigInt(order.sellAmountBeforeFee)
+    console.log(`  Executed: ${executedAmount}`)
+  }
+
+  // Check time until expiration
+  const now = Math.floor(Date.now() / 1000)
+  const timeLeft = order.validTo - now
+
+  if (timeLeft > 0) {
+    console.log(`  Time remaining: ${timeLeft} seconds`)
+  } else {
+    console.log(`  Order expired`)
+  }
+
+  return order
+}
+```
+
+## Off-Chain Order Cancellation
+
+Off-chain cancellation is the recommended way to cancel orders. It's free, fast, and doesn't require gas.
+
+### Method Signature
+
+```typescript
+offChainCancelOrder(params: {
+  orderUid: string
+  chainId?: SupportedChainId
+  signer?: SignerLike
+}): Promise<boolean>
+```
+
+### Parameters
+
+- `orderUid` - The unique identifier of the order to cancel
+- `chainId` - (Optional) Chain ID, uses trader params if not provided
+- `signer` - (Optional) Custom signer, uses trader params signer if not provided
+
+### Returns
+
+- `Promise<boolean>` - True if cancellation was successful
+
+### Example
+
+```typescript
+import { TradingSdk, SupportedChainId } from '@cowprotocol/sdk-trading'
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.MAINNET,
+  appCode: 'YOUR_APP_CODE',
+}, {}, adapter)
+
+const orderUid = '0xd64389693b6cf89ad6c140a113b10df08073e5ef3063d05a02f3f42e1a42f0ad...'
+
+try {
+  const success = await sdk.offChainCancelOrder({ orderUid })
+
+  if (success) {
+    console.log('Order cancelled successfully (off-chain)')
+  }
+} catch (error) {
+  console.error('Failed to cancel order:', error)
+}
+```
+
+### How It Works
+
+1. **Sign cancellation message** - The SDK creates and signs a cancellation message using EIP-712
+2. **Send to order book** - The signed cancellation is sent to the CoW Protocol order book API
+3. **Order removed** - The order book marks the order as cancelled and stops including it in solutions
+
+<Note>
+  Off-chain cancellation is a "soft" cancel. While the order book will stop trying to fill the order, the order signature remains valid on-chain. For complete security, use on-chain cancellation.
+</Note>
+
+## On-Chain Order Cancellation
+
+On-chain cancellation provides a hard guarantee that the order cannot be filled. It requires gas but is the most secure method.
+
+### Method Signature
+
+```typescript
+onChainCancelOrder(params: {
+  orderUid: string
+  chainId?: SupportedChainId
+  signer?: SignerLike
+}): Promise<string>
+```
+
+### Parameters
+
+- `orderUid` - The unique identifier of the order to cancel
+- `chainId` - (Optional) Chain ID, uses trader params if not provided
+- `signer` - (Optional) Custom signer, uses trader params signer if not provided
+
+### Returns
+
+- `Promise<string>` - Transaction hash of the cancellation
+
+### Example
+
+```typescript
+import { TradingSdk, SupportedChainId } from '@cowprotocol/sdk-trading'
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.MAINNET,
+  appCode: 'YOUR_APP_CODE',
+}, {}, adapter)
+
+const orderUid = '0xd64389693b6cf89ad6c140a113b10df08073e5ef3063d05a02f3f42e1a42f0ad...'
+
+try {
+  const txHash = await sdk.onChainCancelOrder({ orderUid })
+
+  console.log('Cancellation transaction:', txHash)
+
+  // Wait for transaction confirmation
+  await publicClient.waitForTransactionReceipt({ hash: txHash })
+  console.log('Order cancelled on-chain')
+} catch (error) {
+  console.error('Failed to cancel order on-chain:', error)
+}
+```
+
+### How It Works
+
+The SDK automatically detects the order type and uses the appropriate contract:
+
+- **Regular orders**: Calls `invalidateOrder()` on the Settlement contract
+- **ETH-Flow orders**: Calls `invalidateOrder()` on the EthFlow contract
+
+### Gas Costs
+
+On-chain cancellation costs gas:
+
+| Order Type      | Gas Usage        | Estimated Cost (50 gwei, $2000 ETH) |
+| --------------- | ---------------- | ------------------------------------ |
+| Regular orders  | ~45,000-60,000   | ~$4.50-$6.00                         |
+| ETH-Flow orders | ~50,000-70,000   | ~$5.00-$7.00                         |
+
+## Comparing Cancellation Methods
+
+| Feature           | Off-Chain                        | On-Chain                           |
+| ----------------- | -------------------------------- | ---------------------------------- |
+| **Cost**          | Free (no gas)                    | Requires gas payment               |
+| **Speed**         | Instant                          | Must wait for tx confirmation      |
+| **Guarantee**     | Soft cancel only                 | Hard cancel with on-chain proof    |
+| **Security**      | Requires order book cooperation  | Cannot be bypassed                 |
+| **Best for**      | Regular cancellations            | High-value or security-critical    |
+
+## Complete Example: Order Lifecycle
+
+Here's a complete example showing order creation, tracking, and cancellation:
+
+```typescript
+import {
+  TradingSdk,
+  SupportedChainId,
+  OrderKind,
+  TradeParameters
+} from '@cowprotocol/sdk-trading'
+import { parseUnits } from 'viem'
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.MAINNET,
+  appCode: 'YOUR_APP_CODE',
+}, {}, adapter)
+
+// Step 1: Create an order
+const parameters: TradeParameters = {
+  kind: OrderKind.SELL,
+  sellToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
+  sellTokenDecimals: 6,
+  buyToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
+  buyTokenDecimals: 18,
+  amount: parseUnits('1000', 6).toString(), // 1000 USDC
+  validFor: 3600, // 1 hour
+}
+
+const { orderId } = await sdk.postSwapOrder(parameters)
+console.log('Order created:', orderId)
+
+// Step 2: Monitor the order
+const checkOrder = async () => {
+  const order = await sdk.getOrder({ orderUid: orderId })
+  console.log('Order status:', order.status)
+  return order
+}
+
+// Check order status every 30 seconds
+const intervalId = setInterval(async () => {
+  const order = await checkOrder()
+
+  if (order.status === 'fulfilled') {
+    console.log('Order filled!')
+    clearInterval(intervalId)
+  } else if (order.status === 'expired') {
+    console.log('Order expired')
+    clearInterval(intervalId)
+  }
+}, 30000)
+
+// Step 3: Cancel the order if needed
+const cancelOrder = async () => {
+  try {
+    // Try off-chain cancellation first (free)
+    console.log('Attempting off-chain cancellation...')
+    const success = await sdk.offChainCancelOrder({ orderUid: orderId })
+
+    if (success) {
+      console.log('Order cancelled (off-chain)')
+      clearInterval(intervalId)
+    }
+  } catch (error) {
+    console.error('Off-chain cancellation failed, trying on-chain...')
+
+    // Fall back to on-chain cancellation
+    const txHash = await sdk.onChainCancelOrder({ orderUid: orderId })
+    console.log('On-chain cancellation transaction:', txHash)
+
+    await publicClient.waitForTransactionReceipt({ hash: txHash })
+    console.log('Order cancelled (on-chain)')
+    clearInterval(intervalId)
+  }
+}
+
+// Call cancelOrder() when user clicks cancel button
+```
+
+## Batch Order Monitoring
+
+Monitor multiple orders efficiently:
+
+```typescript
+interface OrderTracker {
+  orderId: string
+  status: string
+  checkCount: number
+}
+
+async function monitorOrders(
+  sdk: TradingSdk,
+  orderIds: string[]
+): Promise<Map<string, OrderTracker>> {
+  const trackers = new Map<string, OrderTracker>()
+
+  for (const orderId of orderIds) {
+    trackers.set(orderId, {
+      orderId,
+      status: 'unknown',
+      checkCount: 0,
+    })
+  }
+
+  const updateStatuses = async () => {
+    for (const [orderId, tracker] of trackers) {
+      try {
+        const order = await sdk.getOrder({ orderUid: orderId })
+        tracker.status = order.status
+        tracker.checkCount++
+
+        console.log(`Order ${orderId.slice(0, 10)}... - ${order.status}`)
+      } catch (error) {
+        console.error(`Failed to get order ${orderId}:`, error)
+      }
+    }
+  }
+
+  // Check every minute
+  const intervalId = setInterval(updateStatuses, 60000)
+
+  // Initial check
+  await updateStatuses()
+
+  return trackers
+}
+
+// Usage
+const orderIds = [
+  '0xabc123...',
+  '0xdef456...',
+  '0xghi789...',
+]
+
+const trackers = await monitorOrders(sdk, orderIds)
+```
+
+## Best Practices
+
+1. **Always store order IDs**: Save order UIDs for future reference
+2. **Monitor important orders**: Track order status for large trades
+3. **Try off-chain first**: Start with off-chain cancellation to save gas
+4. **Handle errors gracefully**: Orders might already be filled when you try to cancel
+5. **Set reasonable expiration**: Don't set `validFor` too long if you might want to cancel
+6. **Check status before operations**: Verify order state before cancelling
+7. **Use appropriate cancellation**: Choose based on order value and security needs
+
+## Common Issues and Solutions
+
+### Order Not Found
+
+**Problem**: `getOrder` throws "Order not found" error.
+
+**Solution**:
+- Verify the order UID is correct
+- Ensure the order has been created (wait a few seconds after posting)
+- Check you're using the correct chain ID
+
+### Cancellation Fails
+
+**Problem**: Off-chain cancellation returns false or throws error.
+
+**Solution**:
+- Check if the order is already filled or expired
+- Verify you're using the same signer that created the order
+- Try on-chain cancellation as a fallback
+
+### Order Still Executes After Cancellation
+
+**Problem**: Order filled despite cancellation.
+
+**Solution**:
+- This can happen with off-chain cancellation if there's a race condition
+- Use on-chain cancellation for critical orders
+- Always wait for confirmation before assuming cancellation succeeded
+
+## Next Steps
+
+- Learn about [Creating Swap Orders](/guides/creating-swap-orders) to create orders
+- See [Creating Limit Orders](/guides/creating-limit-orders) for price-specific orders
+- Explore [Token Approvals](/guides/token-approvals) for managing approvals

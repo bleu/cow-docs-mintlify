@@ -1,0 +1,279 @@
+---
+title: "Creating Swap Orders"
+description: "How to create market orders using the CoW Protocol SDK's postSwapOrder method"
+---
+
+# Creating Swap Orders
+
+Swap orders are market orders that automatically fetch a quote and create an order in one step. The SDK handles all the complexity of parameters, calculations, and signing.
+
+## Basic Flow
+
+The basic trading flow consists of three steps:
+
+<Steps>
+  <Step title="Get a quote (price) for a trade">
+    The SDK fetches the current market price from the CoW Protocol API
+  </Step>
+
+  <Step title="Sign the order">
+    Sign the order using EIP-712 signature
+  </Step>
+
+  <Step title="Post the order to the order-book">
+    Submit the signed order to the CoW Protocol order book
+  </Step>
+</Steps>
+
+## Using postSwapOrder
+
+The `postSwapOrder` method combines all three steps into one convenient function.
+
+### Required Parameters
+
+- `kind` - The order kind (`OrderKind.SELL` or `OrderKind.BUY`)
+- `sellToken` - The sell token address
+- `sellTokenDecimals` - The sell token decimals
+- `buyToken` - The buy token address
+- `buyTokenDecimals` - The buy token decimals
+- `amount` - The amount to sell/buy in atoms (smallest unit)
+
+### Example
+
+<CodeGroup>
+  ```typescript Viem Adapter
+  import { SupportedChainId, OrderKind, TradeParameters, TradingSdk } from '@cowprotocol/sdk-trading'
+  import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+  import { createPublicClient, http, privateKeyToAccount } from 'viem'
+  import { sepolia } from 'viem/chains'
+
+  const adapter = new ViemAdapter({
+    provider: createPublicClient({
+      chain: sepolia,
+      transport: http('YOUR_RPC_URL')
+    }),
+    signer: privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`)
+  })
+
+  const sdk = new TradingSdk(
+    {
+      appCode: 'YOUR_APP_CODE',
+    },
+    {
+      chainId: SupportedChainId.SEPOLIA,
+    },
+    adapter,
+  )
+
+  const parameters: TradeParameters = {
+    kind: OrderKind.BUY,
+    sellToken: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+    sellTokenDecimals: 18,
+    buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+    buyTokenDecimals: 18,
+    amount: '120000000000000000',
+  }
+
+  const { orderId } = await sdk.postSwapOrder(parameters)
+
+  console.log('Order created, id: ', orderId)
+  ```
+
+  ```typescript Ethers v6
+  import { SupportedChainId, OrderKind, TradeParameters, TradingSdk } from '@cowprotocol/sdk-trading'
+  import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter'
+  import { ethers } from 'ethers'
+
+  const provider = new ethers.JsonRpcProvider('YOUR_RPC_URL')
+  const signer = new ethers.Wallet('YOUR_PRIVATE_KEY', provider)
+
+  const adapter = new EthersV6Adapter({ provider, signer })
+
+  const sdk = new TradingSdk(
+    {
+      chainId: SupportedChainId.SEPOLIA,
+      appCode: 'YOUR_APP_CODE',
+    },
+    {},
+    adapter,
+  )
+
+  const parameters: TradeParameters = {
+    kind: OrderKind.BUY,
+    sellToken: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+    sellTokenDecimals: 18,
+    buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+    buyTokenDecimals: 18,
+    amount: '120000000000000000',
+  }
+
+  const { orderId } = await sdk.postSwapOrder(parameters)
+
+  console.log('Order created, id: ', orderId)
+  ```
+</CodeGroup>
+
+## Optional Parameters
+
+You can customize your swap order with these optional parameters:
+
+| Parameter           | Type         | Default        | Description                                                       |
+| ------------------- | ------------ | -------------- | ----------------------------------------------------------------- |
+| `env`               | `Env`        | `prod`         | The environment to use (`prod` or `staging`)                      |
+| `partiallyFillable` | `boolean`    | `false`        | Whether the order can be partially filled                         |
+| `slippageBps`       | `number`     | 50             | Slippage tolerance in basis points (BPS). One basis point = 0.01% |
+| `receiver`          | `string`     | order creator  | The address that will receive the tokens                          |
+| `validFor`          | `number`     | 1800 (30 mins) | Order expiration time in seconds                                  |
+| `partnerFee`        | `PartnerFee` | -              | Partner fee configuration (fee in BPS and recipient address)      |
+
+### Example with Optional Parameters
+
+```typescript
+const parameters: TradeParameters = {
+  kind: OrderKind.BUY,
+  sellToken: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+  sellTokenDecimals: 18,
+  buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+  buyTokenDecimals: 18,
+  amount: '120000000000000000',
+  // Optional parameters
+  slippageBps: 200, // 2% slippage
+  validFor: 1200, // 20 minutes
+  receiver: '0xdef1ca1fb7f1232777520aa7f396b4e015f497ab',
+  partiallyFillable: true,
+}
+
+const { orderId } = await sdk.postSwapOrder(parameters)
+```
+
+<Note>
+  Slippage is expressed in basis points (BPS). For example:
+
+  - 50 BPS = 0.5%
+  - 100 BPS = 1%
+  - 200 BPS = 2%
+</Note>
+
+## Advanced Settings
+
+For more control over the order creation process, use `SwapAdvancedSettings`:
+
+### Quote Request Customization
+
+```typescript
+import { SwapAdvancedSettings, PriceQuality } from '@cowprotocol/sdk-trading'
+
+const advancedSettings: SwapAdvancedSettings = {
+  quoteRequest: {
+    priceQuality: PriceQuality.FAST,
+    validFor: 120,
+  },
+}
+
+const { orderId } = await sdk.postSwapOrder(parameters, advancedSettings)
+```
+
+### Adding Hooks
+
+You can add pre-hooks that execute before your order is settled:
+
+```typescript
+const advancedSettings: SwapAdvancedSettings = {
+  appData: {
+    hooks: {
+      version: 1,
+      pre: [
+        {
+          target: '0xdef1ca1fb7fbcdc777520aa7f396b4e015f497ab',
+          callData: '0x70a08231000000000000000000000000d8da6bf26964af9d7eed9e03e53415d37aa96045',
+          gasLimit: 21000,
+        },
+      ],
+    },
+  },
+}
+
+const { orderId } = await sdk.postSwapOrder(parameters, advancedSettings)
+```
+
+## Two-Step Process: getQuote + postSwapOrderFromQuote
+
+If you want to show the quote to users before creating an order, use the two-step approach:
+
+```typescript
+// Step 1: Get quote
+const { quoteResults, postSwapOrderFromQuote } = await sdk.getQuote(parameters)
+
+const buyAmount = quoteResults.amountsAndCosts.afterSlippage.buyAmount
+
+console.log(`You will get at least: ${buyAmount}`)
+
+// Show quote to user and wait for confirmation
+if (confirm(`You will get at least: ${buyAmount}, ok?`)) {
+  // Step 2: Create order from quote
+  const orderId = await postSwapOrderFromQuote()
+
+  console.log('Order created, id: ', orderId)
+}
+```
+
+### Quote Results
+
+The `quoteResults` object contains:
+
+- `tradeParameters` - Trade type, assets, amounts and optional parameters
+- `amountsAndCosts` - Order sell/buy amounts including network costs, fees and slippage
+- `orderToSign` - Order parameters ready for signing
+- `quoteResponse` - Raw DTO from the Quote API
+- `appDataInfo` - Order's metadata
+- `orderTypedData` - EIP-712 typed data for signing
+
+<Warning>
+  Quotes are time-sensitive and typically valid for 30 minutes. Make sure to post the order within the validity period.
+</Warning>
+
+## Order Kinds
+
+The SDK supports two order kinds:
+
+<Tabs>
+  <Tab title="SELL Orders">
+    **Sell orders** specify the exact amount you want to sell:
+
+    ```typescript
+    const parameters: TradeParameters = {
+      kind: OrderKind.SELL,
+      sellToken: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+      sellTokenDecimals: 18,
+      buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+      buyTokenDecimals: 18,
+      amount: '1000000000000000000', // Selling exactly 1 token
+    }
+    ```
+
+    You'll receive at least the quoted buy amount (minus slippage).
+  </Tab>
+
+  <Tab title="BUY Orders">
+    **Buy orders** specify the exact amount you want to buy:
+
+    ```typescript
+    const parameters: TradeParameters = {
+      kind: OrderKind.BUY,
+      sellToken: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+      sellTokenDecimals: 18,
+      buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',
+      buyTokenDecimals: 18,
+      amount: '1000000000000000000', // Buying exactly 1 token
+    }
+    ```
+
+    You'll pay at most the quoted sell amount (plus slippage).
+  </Tab>
+</Tabs>
+
+## Next Steps
+
+- Learn about [Token Approvals](/guides/token-approvals) before trading
+- Explore [Limit Orders](/guides/creating-limit-orders) for price-specific trades
+- See [Order Management](/guides/order-management) to track and cancel orders

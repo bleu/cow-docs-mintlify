@@ -1,0 +1,107 @@
+---
+title: "Quickstart"
+description: "Setup and installation guide for running the CoW Protocol BFF locally"
+---
+
+# Quickstart
+
+A comprehensive setup and installation guide for running the CoW Protocol BFF locally, covering prerequisites, installation steps, service configuration, verification procedures, and troubleshooting tips.
+
+## Prerequisites
+
+Before getting started, ensure you have the following installed:
+
+- **Node.js v18+**
+- **Yarn**
+- **Docker / Docker Compose**
+- **Git**
+
+## Installation Steps
+
+The guide outlines a seven-step installation process:
+
+1. Clone the repository
+2. Install dependencies
+3. Configure environment variables
+4. Launch infrastructure services via Docker
+5. Run database migrations
+6. Start the API service
+7. Verify the installation
+
+### Environment Configuration
+
+Use `.env` for running services locally via NX commands, and `.env.docker` when running services through Docker Compose.
+
+### Infrastructure Services
+
+Essential services managed through Docker Compose:
+
+| Service    | Port |
+| ---------- | ---- |
+| PostgreSQL | 5432 |
+| RabbitMQ   | 5672 |
+| Redis      | 6379 |
+
+```bash
+# Start all infrastructure services
+yarn compose:up
+
+# Run database migrations
+yarn migration:run
+
+# Start the API
+yarn start
+```
+
+## Verification
+
+After installation, confirm successful setup by:
+
+1. Testing the `/about` endpoint, which returns version information
+2. Querying real data through token balance endpoints
+3. Accessing the Swagger UI at `/docs` for interactive API documentation
+
+```bash
+# Test the health endpoint
+curl http://localhost:3001/about
+```
+
+## Additional Services
+
+Beyond the core API, the BFF supports:
+
+- **Notification Producer** - `yarn producer`
+- **Telegram Bot Integration** - `yarn telegram`
+- **TWAP Service** - Time-Weighted Average Price calculations
+
+Each service has specific startup commands and configuration requirements.
+
+## Common Issues
+
+### TypeORM Package Resolution
+
+If you encounter TypeORM driver errors, ensure the `pg` package is installed.
+
+### Docker Container Startup Failures
+
+Port conflicts can prevent services from starting. Check for existing processes on the required ports.
+
+### RPC Configuration
+
+Balance queries require properly configured RPC endpoints for the target chains.
+
+## Development Tools
+
+```bash
+# Run tests
+yarn test
+
+# Run linter
+yarn lint
+
+# Create a database migration
+yarn typeorm migration:create src/migrations/migration-name
+
+# Run migrations
+yarn migration:run
+```
