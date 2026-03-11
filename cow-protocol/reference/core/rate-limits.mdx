@@ -10,6 +10,7 @@ The CoW Protocol API enforces rate limits to ensure fair access and protect infr
 - Different endpoints have **different limits** based on computational cost
 - Limits apply **per IP address**
 - Exceeding limits returns an HTTP `429 Too Many Requests` response
+- There is **no API key system** — all access is unauthenticated and rate-limited per IP
 
 <Note>
   Rate limits are designed to support normal integration patterns. If you are consistently hitting limits, consider optimizing your request patterns using the [best practices](#best-practices-by-integration-type) below.
@@ -19,7 +20,7 @@ The CoW Protocol API enforces rate limits to ensure fair access and protect infr
 
 | Endpoint | Method | Limit | Window | Notes |
 |---|---|---|---|---|
-| `/api/v1/quote` | POST | 10 req/s | Per second | Most restrictive — computationally expensive |
+| `/api/v1/quote` | POST | 10 req/s | Per second | Most restrictive — triggers solver computation |
 | `/api/v1/orders` | POST | 5 req/s | Per second | Order submission |
 | `/api/v1/orders/{uid}` | GET | 100 req/min | Per minute | Order status polling |
 | `/api/v1/orders/{uid}` | DELETE | 5 req/s | Per second | Order cancellation |
@@ -28,8 +29,27 @@ The CoW Protocol API enforces rate limits to ensure fair access and protect infr
 | General read endpoints | GET | 100 req/min | Per minute | Default for other GET endpoints |
 
 <Warning>
-  The `/api/v1/quote` endpoint is the most restrictive because each quote request triggers solver computation. Avoid unnecessary quote requests by caching results and only refreshing when input parameters change.
+  The `/api/v1/quote` endpoint is the most expensive because each request triggers a full solver computation cycle. CoW Protocol runs batch auctions every ~15 seconds, so there is rarely a reason to request quotes more frequently than once per 15 seconds for the same trading pair. Avoid unnecessary quote requests by caching results and only refreshing when input parameters change.
 </Warning>
+
+## Firewall Protection (Cloudflare)
+
+In addition to API-level rate limits, the CoW Protocol API is protected by a Cloudflare Web Application Firewall (WAF). This means:
+
+- You may receive an **HTTP 403 Forbidden** response from Cloudflare _before_ reaching the API rate limiter
+- Cloudflare's rules are **dynamic** and may be more aggressive than the published per-endpoint limits, particularly for the `/api/v1/quote` endpoint
+- Repeated violations or unusual request patterns can trigger IP-level blocks that persist beyond individual rate limit windows
+
+<Warning>
+  If you receive 403 responses despite staying well under the published rate limits, your IP may have been flagged by Cloudflare. This is distinct from a 429 rate limit response. See [Troubleshooting](#troubleshooting) for how to resolve this.
+</Warning>
+
+### How to distinguish the two
+
+| Response | Source | Meaning |
+|---|---|---|
+| **429 Too Many Requests** | CoW Protocol API | You exceeded per-endpoint rate limits. Retry after the `Retry-After` header value. |
+| **403 Forbidden** | Cloudflare WAF | Your IP has been flagged. Contact the team to resolve (see [Getting Help](#getting-help)). |
 
 ## Response Headers
 
@@ -49,9 +69,18 @@ Content-Type: application/json
 }
 ```
 
+## SDK Built-in Rate Limiting
+
+The official SDKs include built-in rate limiting so you don't have to implement it yourself:
+
+- **[CoW SDK](/cow-sdk/introduction)** (TypeScript) — ships with a default limiter set to 5 requests/second
+- **[cow-py](/cow-py/introduction)** (Python) — includes automatic backoff and retry strategies for all API calls
+
+Using an official SDK is the recommended approach for most integrations, as it handles rate limiting, retries, and request formatting out of the box.
+
 ## Backoff Strategy
 
-Always implement retry logic with exponential backoff and jitter to handle rate limit responses gracefully.
+If you are calling the API directly (without an SDK), always implement retry logic with exponential backoff and jitter to handle rate limit responses gracefully.
 
 ### Exponential Backoff with Jitter (TypeScript)
 
@@ -115,15 +144,16 @@ def fetch_with_backoff(url, payload=None, max_retries=3):
 ### Backend / Bot
 
 - Implement a **request queue** with built-in rate limiting
-- Use WebSocket connections for order status updates when available, instead of polling
+- CoW Protocol runs auctions every ~15 seconds — polling quotes faster than this provides no benefit
 - Batch operations where possible to reduce total request count
 - Track your request rate client-side to stay under limits proactively
+- Consider **sourcing prices from another provider** (e.g., a DEX aggregator or your own pricing system) and only using the CoW Protocol API for order submission, which has more generous limits
 
 ### Aggregator
 
 - Rate limits apply **per IP** — if running multiple instances behind the same IP, coordinate request budgets across them
-- Consider using the [CoW SDK](/cow-protocol/howto/integrate/sdk) which handles rate limiting internally
-- Contact **bd@cow.fi** for higher limits if you need elevated throughput for a production aggregator integration
+- Consider using the [CoW SDK](/cow-sdk/introduction) which handles rate limiting internally
+- For production aggregator integrations that need elevated throughput, contact **bd@cow.fi**
 
 <Note>
   Rate limits are the same across all supported networks (Mainnet, Gnosis Chain, Arbitrum, Base, and Sepolia). Each network's API is rate-limited independently.
@@ -134,12 +164,26 @@ def fetch_with_backoff(url, payload=None, max_retries=3):
 | Symptom | Likely Cause | Solution |
 |---|---|---|
 | Getting 429 but request volume seems low | Retry loops or concurrent requests from the same IP | Add backoff logic; check for runaway retry loops |
+| Getting 403 despite low request volume | Cloudflare WAF has flagged your IP | Contact the team (see [Getting Help](#getting-help)) |
 | Quotes are slow to return | Near the rate limit threshold | Space out requests; cache results more aggressively |
 | Order submission fails intermittently | Hitting submission limits during batch operations | Queue submissions and throttle to under 5 req/s |
 | Multiple services share the same IP | Combined traffic exceeds per-IP limits | Coordinate request budgets or use separate IPs |
+| Blocked on first request to a new endpoint | IP reputation or shared hosting/VPN | Try from a different IP, or contact the team |
+
+## Getting Help
+
+There is currently no self-service API key system for custom rate limits. If you need elevated limits or are experiencing unexpected blocks:
+
+- **Email**: Contact **bd@cow.fi** with your use case and expected request volume
+- **Discord**: Join the [CoW Protocol Discord](https://discord.com/invite/cowprotocol) and reach out in the tech-talk channel
+- **Feedback**: Use the feedback button on [swap.cow.fi](https://swap.cow.fi) (bottom-right corner) to report API access issues
+
+When reporting an issue, include your **public IP address** and the **HTTP status code** you're receiving (429 vs. 403) so the team can investigate quickly.
 
 ## Related Resources
 
 - [API Integration Guide](/cow-protocol/howto/integrate/api) — Getting started with the CoW Protocol API
 - [Order Book API Reference](/cow-protocol/reference/apis/orderbook) — Complete endpoint documentation
 - [Interactive API Explorer](https://api.cow.fi/docs/) — Test endpoints directly
+- [CoW SDK](/cow-sdk/introduction) — TypeScript SDK with built-in rate limiting
+- [cow-py](/cow-py/introduction) — Python SDK with built-in backoff strategies
