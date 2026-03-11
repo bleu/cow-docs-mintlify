@@ -1,0 +1,472 @@
+---
+title: "Error Reference"
+description: "Comprehensive error reference for CoW Protocol API, organized by integration stage — quoting, signing, submission, and settlement."
+---
+
+## Overview
+
+When integrating with CoW Protocol, errors can occur at four distinct stages of the order lifecycle:
+
+1. **Quoting** -- requesting a price quote from the API
+2. **Signing** -- constructing and signing the order client-side
+3. **Submission** -- posting the signed order to the orderbook
+4. **Settlement** -- solver execution after the order is accepted
+
+This reference documents every common error at each stage, along with its root cause and a concrete fix.
+
+<Note>
+All API errors return a JSON body with an `errorType` and `description` field. Always parse the response body for details rather than relying solely on the HTTP status code.
+</Note>
+
+---
+
+## Quoting Errors
+
+These errors are returned by `POST /api/v1/quote` when requesting a price quote.
+
+<Accordion title="400 — SellAmountDoesNotCoverFee">
+
+| Field | Value |
+|---|---|
+| **HTTP Status** | `400 Bad Request` |
+| **Error Code** | `SellAmountDoesNotCoverFee` |
+| **Root Cause** | The sell amount is too small to cover the network costs (gas) required to settle the trade. This is common when trading very small amounts of high-value tokens or when gas prices are elevated. |
+
+**Fix:**
+- Increase the `sellAmountBeforeFee` to a value that exceeds the estimated fee.
+- Try a different token pair with lower gas overhead.
+- Wait for lower gas conditions if trading on Ethereum mainnet.
+
+</Accordion>
+
+<Accordion title="400 — NoLiquidity">
+
+| Field | Value |
+|---|---|
+| **HTTP Status** | `400 Bad Request` |
+| **Error Code** | `NoLiquidity` |
+| **Root Cause** | No liquidity path was found between the sell and buy tokens at the requested amount. This can happen when a token is new, has very thin liquidity, or the amount is too large for available pools. |
+
+**Fix:**
+- Verify both token addresses are correct and checksummed.
+- Confirm the tokens have on-chain liquidity (check on a DEX aggregator).
+- Try a smaller trade amount.
+- Try routing through a more liquid intermediate token (e.g., WETH or USDC) by splitting into two trades.
+
+</Accordion>
+
+<Accordion title="400 — UnsupportedToken">
+
+| Field | Value |
+|---|---|
+| **HTTP Status** | `400 Bad Request` |
+| **Error Code** | `UnsupportedToken` |
+| **Root Cause** | One or both tokens are not supported by CoW Protocol. Tokens may be unsupported due to fee-on-transfer mechanics, rebasing behavior, or simply not being indexed. |
+
+**Fix:**
+- Verify the token contract address is correct for the target chain.
+- Check whether the token is a fee-on-transfer or rebasing token, as these are generally not supported.
+- Consult the [supported token list](/cow-protocol/reference/core/tokens) for the relevant network.
+
+</Accordion>
+
+<Accordion title="400 — InvalidParameter">
+
+| Field | Value |
+|---|---|
+| **HTTP Status** | `400 Bad Request` |
+| **Error Code** | `InvalidParameter` |
+| **Root Cause** | One or more request parameters are missing, malformed, or invalid. Common variants include missing required fields (`sellToken`, `buyToken`, `from`), invalid Ethereum addresses, non-numeric amounts, or an unsupported `kind` value. |
+
+**Fix:**
+- Ensure all required fields are present: `sellToken`, `buyToken`, `from`, `kind`, and either `sellAmountBeforeFee` (for sell orders) or `buyAmountAfterFee` (for buy orders).
+- Validate that all addresses are valid, checksummed, 42-character hex strings.
+- Ensure amounts are passed as decimal strings (not hex), without decimals.
+- Use `"sell"` or `"buy"` for the `kind` field.
+
+</Accordion>
+
+<Accordion title="429 — RateLimited">
+
+| Field | Value |
+|---|---|
+| **HTTP Status** | `429 Too Many Requests` |
+| **Error Code** | `RateLimited` |
+| **Root Cause** | You have exceeded the API rate limit. Quote requests are limited to approximately 10 requests per second. |
+
+**Fix:**
+- Implement exponential backoff with jitter between retries.
+- Respect `Retry-After` headers when present.
+- Cache quote responses where appropriate to reduce request volume.
+- See the [Common Patterns](#common-patterns) section for a recommended retry strategy.
+
+</Accordion>
+
+<Accordion title="500 — Internal Server Error">
+
+| Field | Value |
+|---|---|
+| **HTTP Status** | `500 Internal Server Error` |
+| **Error Code** | `InternalServerError` |
+| **Root Cause** | A transient error occurred on the API server. This is typically temporary and not caused by your request. |
+
+**Fix:**
+- Retry the request with exponential backoff (start at 1 second, max 30 seconds).
+- If the error persists for more than a few minutes, check [CoW Protocol status](https://status.cow.fi) for outages.
+- Try the staging environment (`barn.api.cow.fi`) to determine if the issue is environment-specific.
+
+</Accordion>
+
+---
+
+## Signing Errors
+
+Signing errors occur **client-side** when constructing the EIP-712 typed data signature. These are not API responses but runtime errors in your signing code.
+
+<Warning>
+Signing errors are the most common integration issue. The EIP-712 domain and type definitions must match *exactly* what the settlement contract expects, or the order will be rejected on submission.
+</Warning>
+
+<Accordion title="Invalid domain separator — wrong chainId or verifyingContract">
+
+| Field | Value |
+|---|---|
+| **Error Type** | Client-side / signature verification failure |
+| **Root Cause** | The EIP-712 domain separator used for signing does not match the target chain. This happens when `chainId` is wrong (e.g., using `1` for Gnosis Chain) or `verifyingContract` does not point to the correct GPv2Settlement contract. |
+
+**Fix:**
+
+Use the correct domain parameters per chain:
+
+| Chain | chainId | Settlement Contract |
+|---|---|---|
+| Ethereum | `1` | `0x9008D19f58AAbD9eD0D60971565AA8510560ab41` |
+| Gnosis Chain | `100` | `0x9008D19f58AAbD9eD0D60971565AA8510560ab41` |
+| Arbitrum One | `42161` | `0x9008D19f58AAbD9eD0D60971565AA8510560ab41` |
+| Base | `8453` | `0x9008D19f58AAbD9eD0D60971565AA8510560ab41` |
+| Sepolia | `11155111` | `0x9008D19f58AAbD9eD0D60971565AA8510560ab41` |
+
+The domain must be:
+```typescript
+const domain = {
+  name: 'Gnosis Protocol',
+  version: 'v2',
+  chainId: <TARGET_CHAIN_ID>,
+  verifyingContract: '0x9008D19f58AAbD9eD0D60971565AA8510560ab41'
+}
+```
+
+<Note>
+The settlement contract address is the same across all supported chains, but the `chainId` must match the network you are submitting to.
+</Note>
+
+</Accordion>
+
+<Accordion title="TypedData signature mismatch — order struct doesn't match expected types">
+
+| Field | Value |
+|---|---|
+| **Error Type** | Client-side / EIP-712 encoding error |
+| **Root Cause** | The order struct fields or their types do not match the EIP-712 type definition expected by the settlement contract. Common mistakes include missing fields, wrong field order, or incorrect types (e.g., using `uint128` instead of `uint256`). |
+
+**Fix:**
+
+Use the exact type definition:
+```typescript
+const types = {
+  Order: [
+    { name: 'sellToken', type: 'address' },
+    { name: 'buyToken', type: 'address' },
+    { name: 'receiver', type: 'address' },
+    { name: 'sellAmount', type: 'uint256' },
+    { name: 'buyAmount', type: 'uint256' },
+    { name: 'validTo', type: 'uint32' },
+    { name: 'appData', type: 'bytes32' },
+    { name: 'feeAmount', type: 'uint256' },
+    { name: 'kind', type: 'string' },
+    { name: 'partiallyFillable', type: 'bool' },
+    { name: 'sellTokenBalance', type: 'string' },
+    { name: 'buyTokenBalance', type: 'string' },
+  ]
+}
+```
+
+Alternatively, use the SDK's `signOrder` helper which handles this automatically. See the [signing schemes reference](/cow-protocol/reference/core/signing-schemes) for full details.
+
+</Accordion>
+
+<Accordion title="Wrong signer — signature doesn't match the from address">
+
+| Field | Value |
+|---|---|
+| **Error Type** | Client-side / signer mismatch |
+| **Root Cause** | The wallet or private key used to sign the order does not correspond to the `from` address specified in the quote request. The API will reject the signature because recovered signer differs from the expected order owner. |
+
+**Fix:**
+- Ensure the signer (private key or connected wallet) matches the `from` address used when requesting the quote.
+- When using a smart contract wallet (e.g., Safe), use the `presign` signing scheme instead of `eip712`.
+- Double-check that you are not mixing up accounts in a multi-wallet setup.
+
+</Accordion>
+
+---
+
+## Submission Errors
+
+These errors are returned by `POST /api/v1/orders` when submitting a signed order to the orderbook.
+
+<Accordion title="400 — InvalidSignature">
+
+| Field | Value |
+|---|---|
+| **HTTP Status** | `400 Bad Request` |
+| **Error Code** | `InvalidSignature` |
+| **Root Cause** | The signature attached to the order could not be verified. This is typically caused by a domain separator mismatch, incorrect signing scheme declaration, or the signature being generated by the wrong account. |
+
+**Fix:**
+- Verify the `signingScheme` field matches how you actually signed (e.g., `eip712`, `ethsign`, `presign`).
+- Check the EIP-712 domain separator matches the target chain (see [Signing Errors](#signing-errors)).
+- Ensure the signer address matches the order's `from`/`owner` field.
+- If using `ethsign`, remember the message is prefixed with `\x19Ethereum Signed Message:\n32` before hashing.
+
+</Accordion>
+
+<Accordion title="400 — DuplicateOrder">
+
+| Field | Value |
+|---|---|
+| **HTTP Status** | `400 Bad Request` |
+| **Error Code** | `DuplicateOrder` |
+| **Root Cause** | An order with the same UID already exists in the orderbook. Order UIDs are deterministic based on order parameters and the owner address. |
+
+**Fix:**
+- Use the existing order's UID to track its status via `GET /api/v1/orders/{uid}`.
+- If you need a new order, change at least one parameter (e.g., `validTo`, `sellAmount`, or `appData`) to produce a different UID.
+
+</Accordion>
+
+<Accordion title="400 — InsufficientBalance">
+
+| Field | Value |
+|---|---|
+| **HTTP Status** | `400 Bad Request` |
+| **Error Code** | `InsufficientBalance` |
+| **Root Cause** | The order owner's wallet does not hold enough of the sell token to cover the sell amount plus fees. |
+
+**Fix:**
+- Check the owner's on-chain balance of the sell token.
+- Ensure the balance covers `sellAmount + feeAmount`.
+- If the balance will be available by settlement time (e.g., from a pending transaction), note that the API validates balance at submission time.
+
+</Accordion>
+
+<Accordion title="400 — InsufficientAllowance">
+
+| Field | Value |
+|---|---|
+| **HTTP Status** | `400 Bad Request` |
+| **Error Code** | `InsufficientAllowance` |
+| **Root Cause** | The GPv2VaultRelayer contract has not been approved to spend the sell token on behalf of the order owner. CoW Protocol requires token approval for the VaultRelayer, not the Settlement contract. |
+
+**Fix:**
+- Approve the **GPv2VaultRelayer** contract (`0xC92E8bdf79f0507f65a392b0ab4667716BFE0110`) to spend the sell token.
+- The approval amount must be at least `sellAmount + feeAmount`.
+- For convenience, many integrations approve `type(uint256).max`.
+
+```typescript
+// Example approval using viem
+await walletClient.writeContract({
+  address: sellTokenAddress,
+  abi: erc20Abi,
+  functionName: 'approve',
+  args: [
+    '0xC92E8bdf79f0507f65a392b0ab4667716BFE0110', // VaultRelayer
+    maxUint256
+  ]
+})
+```
+
+<Warning>
+The VaultRelayer address (`0xC92E8bdf79f0507f65a392b0ab4667716BFE0110`) is the same on all supported chains. Do **not** approve the Settlement contract (`0x9008D19...`) directly — it will not work.
+</Warning>
+
+</Accordion>
+
+<Accordion title="400 — OrderExpired">
+
+| Field | Value |
+|---|---|
+| **HTTP Status** | `400 Bad Request` |
+| **Error Code** | `OrderExpired` |
+| **Root Cause** | The `validTo` timestamp on the order is in the past. This commonly happens when there is a delay between getting a quote and submitting the order. |
+
+**Fix:**
+- Request a fresh quote and submit promptly.
+- Increase the validity window by setting a later `validTo` timestamp (e.g., current time + 30 minutes).
+- Note that `validTo` is a Unix timestamp in **seconds**, not milliseconds.
+
+</Accordion>
+
+<Accordion title="400 — SellAmountOverflow / BuyAmountOverflow">
+
+| Field | Value |
+|---|---|
+| **HTTP Status** | `400 Bad Request` |
+| **Error Code** | `SellAmountOverflow` or `BuyAmountOverflow` |
+| **Root Cause** | The sell or buy amount exceeds the maximum value for `uint256`. This typically occurs when token decimals are mishandled (e.g., applying decimals twice). |
+
+**Fix:**
+- Verify you are converting human-readable amounts to the correct token decimals only once.
+- For a token with 18 decimals, `1.0` token = `"1000000000000000000"`.
+- Amounts must be positive integer strings without decimal points.
+
+</Accordion>
+
+<Accordion title="400 — InvalidAppData">
+
+| Field | Value |
+|---|---|
+| **HTTP Status** | `400 Bad Request` |
+| **Error Code** | `InvalidAppData` |
+| **Root Cause** | The `appData` bytes32 hash in the order does not match any previously uploaded appData document, or the appData content is malformed. |
+
+**Fix:**
+- Upload the appData JSON document first via `PUT /api/v1/app_data/{hash}` before submitting the order.
+- Ensure the `appData` field in the order is the keccak256 hash of the uploaded JSON document.
+- If using the SDK, appData is handled automatically. For direct API usage, follow the [appData specification](https://github.com/cowprotocol/app-data).
+
+</Accordion>
+
+<Accordion title="403 — Forbidden">
+
+| Field | Value |
+|---|---|
+| **HTTP Status** | `403 Forbidden` |
+| **Error Code** | `Forbidden` |
+| **Root Cause** | The order owner address has been flagged or banned from using CoW Protocol, typically due to policy violations. |
+
+**Fix:**
+- This is not a transient error. Contact the CoW Protocol team if you believe this is in error.
+
+</Accordion>
+
+<Accordion title="429 — RateLimited">
+
+| Field | Value |
+|---|---|
+| **HTTP Status** | `429 Too Many Requests` |
+| **Error Code** | `RateLimited` |
+| **Root Cause** | Order submission rate limit exceeded. Submissions are limited to approximately 5 requests per second. |
+
+**Fix:**
+- Implement exponential backoff with jitter.
+- Batch order logic to avoid bursts.
+- See the [Common Patterns](#common-patterns) section for retry strategy.
+
+</Accordion>
+
+---
+
+## Settlement Errors
+
+These are not API error responses. They occur **after** an order has been accepted into the orderbook, during the solver competition and on-chain settlement phase. Monitor order status via `GET /api/v1/orders/{uid}`.
+
+<Accordion title="Order expires without fill">
+
+| Field | Value |
+|---|---|
+| **Order Status** | `expired` |
+| **Root Cause** | Solvers could not find a profitable execution path before the order's `validTo` timestamp. Common causes include tight slippage tolerance, illiquid token pairs, or rapidly moving markets. |
+
+**Fix:**
+- Widen slippage tolerance (e.g., from 0.5% to 1-2%).
+- Increase the `validTo` window to give solvers more time and more auction batches.
+- For illiquid pairs, consider using a limit order with a longer validity period.
+- Check that the buy/sell amounts are still within market range.
+
+</Accordion>
+
+<Accordion title="Partial fill not enabled">
+
+| Field | Value |
+|---|---|
+| **Order Status** | `expired` (with zero or no fills) |
+| **Root Cause** | The order has `partiallyFillable: false` (the default), meaning it requires a complete fill. If solvers cannot match the full amount in a single batch, the order goes unfilled. |
+
+**Fix:**
+- Set `partiallyFillable: true` in the order to allow the order to be filled incrementally across multiple batches.
+- This is particularly useful for large orders relative to available liquidity.
+
+</Accordion>
+
+<Accordion title="Order cancelled">
+
+| Field | Value |
+|---|---|
+| **Order Status** | `cancelled` |
+| **Root Cause** | The order was explicitly cancelled either by the user (via `DELETE /api/v1/orders/{uid}` or an on-chain cancellation) or by protocol policy. |
+
+**Fix:**
+- Check the cancellation source by querying `GET /api/v1/orders/{uid}` and inspecting the `invalidated` and `onchainUser` fields.
+- If the cancellation was unintentional, submit a new order.
+- On-chain cancellations are irreversible.
+
+</Accordion>
+
+---
+
+## Common Patterns
+
+### HTTP Status Code Summary
+
+| Status | Category | Action |
+|---|---|---|
+| `200` | Success | Process response |
+| `400` | Client error | Fix request parameters, do not retry without changes |
+| `403` | Forbidden | Do not retry, address is restricted |
+| `404` | Not found | Verify the order UID or endpoint path |
+| `429` | Rate limited | Retry with exponential backoff |
+| `500` | Server error | Retry with exponential backoff |
+
+### Recommended Retry Strategy
+
+For transient errors (`429`, `500`), use exponential backoff with jitter:
+
+```typescript
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries = 5
+): Promise<Response> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const response = await fetch(url, options)
+
+    if (response.ok) return response
+
+    // Do not retry client errors (except rate limits)
+    if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+      throw new Error(`Client error ${response.status}: ${await response.text()}`)
+    }
+
+    // Exponential backoff with jitter
+    const baseDelay = Math.min(1000 * Math.pow(2, attempt), 30000)
+    const jitter = Math.random() * 1000
+    await new Promise(resolve => setTimeout(resolve, baseDelay + jitter))
+  }
+
+  throw new Error(`Request failed after ${maxRetries} retries`)
+}
+```
+
+### Debugging Orders
+
+When an order is not behaving as expected:
+
+1. **Query the order status** via `GET /api/v1/orders/{uid}` and inspect the `status` field (`open`, `fulfilled`, `expired`, `cancelled`).
+2. **Check the explorer** at `https://explorer.cow.fi/orders/{uid}` for a visual breakdown of order state, fills, and solver competition results.
+3. **Verify on-chain state** -- confirm the owner has sufficient balance and the VaultRelayer has adequate allowance.
+4. **Check solver competition** via `GET /api/v1/solver_competition/{auction_id}` to see if solvers attempted to include the order and why they may have excluded it.
+
+<Note>
+The CoW Explorer at [explorer.cow.fi](https://explorer.cow.fi) is the fastest way to diagnose order issues. Paste any order UID to see its full lifecycle, including solver attempts and settlement transactions.
+</Note>

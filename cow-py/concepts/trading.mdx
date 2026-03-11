@@ -1,0 +1,375 @@
+---
+title: "Trading on CoW Protocol"
+description: "Learn about MEV protection, batch auctions, intent-based trading, and fee structure"
+---
+
+## Overview
+
+CoW Protocol revolutionizes decentralized trading through its unique approach that prioritizes user protection and optimal execution. Unlike traditional DEXs, CoW Protocol uses batch auctions and intent-based trading to protect traders from MEV and find better prices.
+
+<CardGroup cols={2}>
+  <Card title="MEV Protection" icon="shield-check">
+    Built-in protection against front-running, sandwich attacks, and other MEV exploitation.
+  </Card>
+  <Card title="Batch Auctions" icon="layer-group">
+    Orders are grouped and executed together, enabling better prices through Coincidence of Wants.
+  </Card>
+  <Card title="Intent-Based Trading" icon="bullseye">
+    Express what you want to achieve, not how to achieve it. Solvers compete to find the best execution.
+  </Card>
+  <Card title="Gasless Trading" icon="gas-pump">
+    Pay fees in your sell token. No need to hold ETH for gas.
+  </Card>
+</CardGroup>
+
+## MEV Protection
+
+### What is MEV?
+
+Maximal Extractable Value (MEV) refers to profit extracted by reordering, inserting, or censoring transactions. Common MEV attacks include:
+
+- **Front-running**: Seeing your transaction and placing a similar one ahead of it
+- **Sandwich attacks**: Placing transactions before and after yours to profit from price movement
+- **Back-running**: Exploiting price changes caused by your transaction
+
+### How CoW Protocol Protects You
+
+CoW Protocol provides built-in MEV protection through several mechanisms:
+
+#### Off-Chain Order Matching
+
+Orders are signed off-chain and submitted to the orderbook, not directly to the blockchain. This means:
+
+- Orders are not visible in the public mempool
+- Bots cannot front-run your transactions
+- Your trading intent remains private until execution
+
+```python
+# Order is signed off-chain
+signature = sign_order(chain, account, order)
+
+# Submitted to orderbook API, not blockchain
+order_uid = await order_book_api.post_order(order_creation)
+```
+
+#### Batch Auction Settlement
+
+Multiple orders are executed together in a single atomic transaction:
+
+- All orders in a batch are settled at uniform prices
+- No individual order can be sandwiched
+- Price manipulation within a batch is impossible
+
+#### Solver Competition
+
+Independent solvers compete to provide the best execution:
+
+- Solvers are incentivized to maximize user surplus
+- The winning solver's solution is executed on-chain
+- Users benefit from competitive optimization
+
+<Note>
+  CoW Protocol's MEV protection is automatic and requires no additional configuration. Every trade benefits from these protections by default.
+</Note>
+
+## Batch Auctions
+
+### How Batch Auctions Work
+
+CoW Protocol aggregates orders into batches and runs auctions to find optimal execution:
+
+<Steps>
+  <Step title="Order Collection">
+    Orders are collected over a time period (typically a few minutes) and stored in the orderbook.
+  </Step>
+  <Step title="Solver Competition">
+    Multiple solvers analyze all orders and compete to find the best settlement solution:
+    - Matching orders directly (Coincidence of Wants)
+    - Routing through DEX liquidity
+    - Combining multiple strategies
+  </Step>
+  <Step title="Solution Selection">
+    The solution providing the most surplus to users is selected as the winner.
+  </Step>
+  <Step title="On-Chain Settlement">
+    The winning solution is executed on-chain in a single atomic transaction, settling all matched orders simultaneously.
+  </Step>
+</Steps>
+
+### Coincidence of Wants (CoW)
+
+The protocol's namesake feature: when two orders can be matched directly against each other:
+
+```python
+# Alice wants to sell 1000 USDC for WETH
+alice_order = Order(
+    sell_token=USDC,
+    buy_token=WETH,
+    sell_amount="1000000000",  # 1000 USDC
+    buy_amount="500000000",    # At least 0.5 WETH
+    kind="sell",
+)
+
+# Bob wants to sell 0.6 WETH for USDC
+bob_order = Order(
+    sell_token=WETH,
+    buy_token=USDC,
+    sell_amount="600000000",   # 0.6 WETH
+    buy_amount="1100000000",   # At least 1100 USDC
+    kind="sell",
+)
+
+# These orders can be matched directly!
+# Both users get better prices than market rates
+# No DEX fees, no slippage, minimal gas costs
+```
+
+<Tip>
+  When CoWs are found, users often receive prices better than any single DEX could provide, with near-zero slippage.
+</Tip>
+
+### Benefits of Batch Auctions
+
+| Benefit | Description |
+|---------|-------------|
+| **Better Prices** | Uniform clearing prices and CoW matching often result in prices better than individual DEX trades |
+| **Lower Gas Costs** | Multiple trades settle in one transaction, dramatically reducing per-trade gas costs |
+| **Reduced Slippage** | Batch execution and optimal routing minimize price impact and slippage |
+| **Fair Execution** | All orders in a batch receive the same price for the same token pair |
+
+## Intent-Based Trading
+
+### Traditional DEX Trading
+
+On traditional DEXs, you must specify the exact execution path:
+
+```python
+# Traditional: Specify HOW to trade
+router.swapExactTokensForTokens(
+    amount_in=1000,
+    amount_out_min=500,
+    path=[USDC, WETH, DAI],  # You specify the route
+    to=receiver,
+    deadline=timestamp,
+)
+```
+
+### CoW Protocol: Intent-Based
+
+With CoW Protocol, you only specify your intent -- WHAT you want:
+
+```python
+# CoW Protocol: Specify WHAT you want
+order = Order(
+    sell_token=USDC,
+    buy_token=DAI,
+    sell_amount="1000000000",
+    buy_amount="990000000",  # Minimum acceptable
+    # No routing path needed!
+)
+
+# Solvers figure out the optimal HOW:
+# - Direct CoW matching?
+# - Uniswap V3?
+# - Curve?
+# - Multi-hop routing?
+# - Combination of sources?
+```
+
+### Advantages of Intent-Based Trading
+
+**Optimal Execution**: Solvers search across all available liquidity sources to find the best execution -- multiple DEX protocols, DEX aggregators, private liquidity, and direct peer-to-peer matching.
+
+**Simplified UX**: Trading becomes simpler:
+
+```python
+# Just specify what you want to trade
+result = await swap_tokens(
+    amount=Wei(1000000000),
+    account=account,
+    chain=Chain.MAINNET,
+    sell_token=SELL_TOKEN,
+    buy_token=BUY_TOKEN,
+)
+# That's it! No routing, no path finding, no complex parameters
+```
+
+**Future-Proof**: As new liquidity sources emerge, solvers automatically integrate them. Your code doesn't change. You automatically benefit from improvements.
+
+<Note>
+  Intent-based trading means you focus on your trading goals while the protocol handles optimal execution.
+</Note>
+
+## Fee Structure
+
+### Gasless Trading
+
+CoW Protocol offers a unique fee model where fees are paid in the sell token:
+
+```python
+order = Order(
+    sell_token=USDC,
+    buy_token=WETH,
+    sell_amount="1000000000",
+    buy_amount="500000000",
+    fee_amount="0",  # No explicit fee
+)
+```
+
+**How Gasless Trading Works:**
+
+1. **No ETH Required**: You don't need ETH for gas. Fees are paid in your sell token.
+2. **Inclusive Pricing**: The `sell_amount` includes all costs -- protocol fees, gas costs, and solver rewards.
+3. **Transparent Quotes**: When you get a quote, the price already accounts for all costs:
+
+```python
+order_quote = await order_book_api.post_quote(
+    order_quote_request,
+    order_side,
+)
+# quote.buyAmount already accounts for all fees
+```
+
+### Price Improvement (Surplus)
+
+One of CoW Protocol's best features: you often receive MORE than your minimum:
+
+```python
+# You specify minimum acceptable
+order = Order(
+    sell_amount="1000000000",  # Sell 1000 USDC
+    buy_amount="500000000",    # Get at least 0.5 WETH
+)
+
+# Solver finds better execution
+# You might receive: 0.52 WETH
+# Extra 0.02 WETH is your surplus!
+```
+
+<Tip>
+  Price improvement is common on CoW Protocol thanks to competitive solver optimization, CoW matching, efficient batch execution, and DEX aggregation.
+</Tip>
+
+## Practical Trading Examples
+
+### Basic Token Swap
+
+```python
+import asyncio
+from web3 import Account, Web3
+from web3.types import Wei
+from cowdao_cowpy.cow.swap import swap_tokens
+from cowdao_cowpy.common.chains import Chain
+
+async def simple_swap():
+    account = Account.from_key(PRIVATE_KEY)
+
+    result = await swap_tokens(
+        amount=Wei(1000000000),
+        account=account,
+        chain=Chain.MAINNET,
+        sell_token=Web3.to_checksum_address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),  # USDC
+        buy_token=Web3.to_checksum_address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),   # WETH
+    )
+
+    print(f"Order submitted: {result.url}")
+
+asyncio.run(simple_swap())
+```
+
+### Swap with Custom Slippage
+
+```python
+async def swap_with_slippage():
+    account = Account.from_key(PRIVATE_KEY)
+
+    result = await swap_tokens(
+        amount=Wei(1000000000),
+        account=account,
+        chain=Chain.MAINNET,
+        sell_token=SELL_TOKEN,
+        buy_token=BUY_TOKEN,
+        slippage_tolerance=0.01,  # 1% slippage tolerance
+    )
+
+    return result
+
+asyncio.run(swap_with_slippage())
+```
+
+### Partially Fillable Order
+
+For large orders that might not fill completely at once:
+
+```python
+async def large_order():
+    account = Account.from_key(PRIVATE_KEY)
+
+    result = await swap_tokens(
+        amount=Wei(1000000000000),  # Very large amount
+        account=account,
+        chain=Chain.MAINNET,
+        sell_token=SELL_TOKEN,
+        buy_token=BUY_TOKEN,
+        partially_fillable=True,  # Allow partial fills
+    )
+
+    return result
+
+asyncio.run(large_order())
+```
+
+<Warning>
+  Remember to approve the Vault Relayer to spend your sell tokens before executing a swap:
+
+  ```python
+  from cowdao_cowpy.common.constants import CowContractAddress
+
+  # Approve Vault Relayer
+  token_contract.approve(
+      CowContractAddress.VAULT_RELAYER.value,
+      amount
+  )
+  ```
+</Warning>
+
+## Trading on Different Chains
+
+CoW Protocol supports multiple chains with a consistent API:
+
+```python
+from cowdao_cowpy.common.chains import Chain
+
+# Ethereum Mainnet
+result = await swap_tokens(chain=Chain.MAINNET, ...)
+
+# Gnosis Chain - lower fees
+result = await swap_tokens(chain=Chain.GNOSIS, ...)
+
+# Arbitrum - L2 scaling
+result = await swap_tokens(chain=Chain.ARBITRUM_ONE, ...)
+
+# Sepolia Testnet - for testing
+result = await swap_tokens(chain=Chain.SEPOLIA, ...)
+```
+
+<Note>
+  Each chain has different liquidity depth, gas costs, and token availability. Choose the chain that best fits your use case.
+</Note>
+
+## Best Practices
+
+- **Set Appropriate Slippage**: Default is 0.5%. Increase for volatile tokens or large orders.
+- **Use Realistic Deadlines**: Don't set `valid_to` too far in the future. Orders can become stale.
+- **Monitor Order Status**: Track your orders using the returned URL.
+- **Test on Sepolia**: Always test your integration on Sepolia testnet first.
+
+## Summary
+
+CoW Protocol's unique trading approach offers:
+
+- **Automatic MEV Protection** -- Trade safely without fear of front-running
+- **Better Prices** -- Benefit from CoW matching and competitive solver optimization
+- **Gasless Trading** -- Pay fees in any token, no ETH needed
+- **Intent-Based** -- Focus on WHAT you want, not HOW to get it
+- **Batch Efficiency** -- Lower gas costs and better execution through batch auctions

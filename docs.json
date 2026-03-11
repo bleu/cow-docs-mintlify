@@ -74,6 +74,11 @@
           "anchor": "Changelog",
           "icon": "clock-rotate-left",
           "href": "/changelog"
+        },
+        {
+          "anchor": "About These Docs",
+          "icon": "book",
+          "href": "/about-these-docs"
         }
       ]
     },
@@ -100,6 +105,7 @@
             "pages": [
               "cow-protocol/explanation/how-it-works/flow-of-an-order",
               "cow-protocol/explanation/how-it-works/how-intents-are-formed",
+              "cow-protocol/explanation/how-it-works/quote-selection",
               "cow-protocol/explanation/how-it-works/coincidence-of-wants",
               "cow-protocol/explanation/how-it-works/protocol-vs-swap"
             ]
@@ -148,6 +154,14 @@
             "group": "Trading Tutorials",
             "icon": "graduation-cap",
             "pages": [
+              {
+                "group": "Quickstarts",
+                "pages": [
+                  "cow-protocol/tutorials/quickstart-curl",
+                  "cow-protocol/tutorials/quickstart-python",
+                  "cow-protocol/tutorials/token-approvals"
+                ]
+              },
               {
                 "group": "CoW Swap",
                 "pages": [
@@ -208,6 +222,8 @@
               "cow-protocol/reference/core/definitions",
               "cow-protocol/reference/core/tokens",
               "cow-protocol/reference/core/signing-schemes",
+              "cow-protocol/reference/core/error-reference",
+              "cow-protocol/reference/core/rate-limits",
               {
                 "group": "Intents",
                 "pages": [

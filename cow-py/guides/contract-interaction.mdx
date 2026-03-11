@@ -1,0 +1,338 @@
+---
+title: "Contract Interaction"
+description: "Interact with CoW Protocol smart contracts and sign orders using EIP-712"
+---
+
+## Overview
+
+This guide covers interacting with CoW Protocol smart contracts, signing orders using EIP-712 typed data, and understanding the various signing schemes supported by the protocol.
+
+## Core Concepts
+
+CoW Protocol uses EIP-712 typed structured data for order signing, which provides:
+
+- Human-readable signature requests in wallets
+- Domain separation to prevent replay attacks
+- Type safety for order parameters
+
+## Setting Up the Domain
+
+The EIP-712 domain identifies the protocol and chain:
+
+```python
+from cowdao_cowpy.contracts.domain import domain, TypedDataDomain
+from cowdao_cowpy.common.chains import Chain
+from cowdao_cowpy.common.constants import CowContractAddress
+
+order_domain = domain(
+    chain=Chain.MAINNET,
+    verifying_contract=CowContractAddress.SETTLEMENT_CONTRACT.value
+)
+
+print(f"Domain name: {order_domain.name}")  # "Gnosis Protocol"
+print(f"Version: {order_domain.version}")    # "v2"
+print(f"Chain ID: {order_domain.chainId}")   # 1 (mainnet)
+```
+
+## Creating Orders
+
+Orders are created using the `Order` dataclass:
+
+```python
+from cowdao_cowpy.contracts.order import Order
+from web3 import Web3
+import time
+
+order = Order(
+    sell_token=Web3.to_checksum_address(
+        "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"  # USDC
+    ),
+    buy_token=Web3.to_checksum_address(
+        "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"  # WETH
+    ),
+    receiver="0x...",
+    sell_amount="1000000000",      # 1000 USDC (6 decimals)
+    buy_amount="500000000000000000",  # 0.5 WETH (18 decimals)
+    valid_to=int(time.time()) + 3600,
+    app_data="0x0000000000000000000000000000000000000000000000000000000000000000",
+    fee_amount="0",
+    kind="sell",
+    partially_fillable=False,
+    sell_token_balance="erc20",
+    buy_token_balance="erc20",
+)
+```
+
+## Signing Schemes
+
+CoW Protocol supports multiple signing schemes:
+
+### EIP-712 (Recommended)
+
+The preferred method using typed structured data:
+
+```python
+from cowdao_cowpy.contracts.sign import sign_order, SigningScheme, EcdsaSignature
+from eth_account import Account
+from eth_account.signers.local import LocalAccount
+
+account: LocalAccount = Account.from_key("YOUR_PRIVATE_KEY")
+
+signature: EcdsaSignature = sign_order(
+    domain=order_domain,
+    order=order,
+    owner=account,
+    scheme=SigningScheme.EIP712
+)
+
+print(f"Signature scheme: {signature.scheme.name}")
+print(f"Signature data: {signature.to_string()}")
+```
+
+### ETH_SIGN
+
+Alternative signing method using eth_sign:
+
+```python
+signature = sign_order(
+    domain=order_domain,
+    order=order,
+    owner=account,
+    scheme=SigningScheme.ETHSIGN
+)
+```
+
+### EIP-1271 (Smart Contract Signatures)
+
+For smart contract wallets implementing EIP-1271:
+
+```python
+from cowdao_cowpy.contracts.sign import Eip1271Signature, Eip1271SignatureData, SigningScheme
+
+verifier_address = "0x..."
+signature_bytes = b"..."
+
+eip1271_signature = Eip1271Signature(
+    scheme=SigningScheme.EIP1271,
+    data=Eip1271SignatureData(
+        verifier=verifier_address,
+        signature=signature_bytes
+    )
+)
+```
+
+### PRESIGN (Gnosis Safe)
+
+For Gnosis Safe multisig wallets:
+
+```python
+from cowdao_cowpy.contracts.sign import PreSignSignature, SigningScheme
+
+safe_address = "0x..."
+
+presign_signature = PreSignSignature(
+    scheme=SigningScheme.PRESIGN,
+    data=safe_address
+)
+```
+
+## Order Hashing
+
+Compute order hashes for verification:
+
+```python
+from cowdao_cowpy.contracts.order import hash_order, compute_order_uid
+from web3 import Web3
+
+order_hash = hash_order(order_domain, order)
+print(f"Order hash: {Web3.to_hex(order_hash)}")
+
+order_uid = compute_order_uid(
+    domain=order_domain,
+    order=order,
+    owner=account.address
+)
+print(f"Order UID: {order_uid}")
+```
+
+## Canceling Orders
+
+### Single Order Cancellation
+
+```python
+from cowdao_cowpy.contracts.sign import sign_order_cancellation, SigningScheme
+
+cancellation_signature = sign_order_cancellation(
+    domain=order_domain,
+    order_uid=order_uid,
+    owner=account,
+    scheme=SigningScheme.EIP712
+)
+```
+
+### Batch Cancellation
+
+```python
+from cowdao_cowpy.contracts.sign import sign_order_cancellations
+
+order_uids = ["0x...", "0x...", "0x..."]
+
+cancellation_signature = sign_order_cancellations(
+    domain=order_domain,
+    order_uids=order_uids,
+    owner=account,
+    scheme=SigningScheme.EIP712
+)
+```
+
+## Order Types
+
+### Sell Orders
+
+```python
+sell_order = Order(
+    sell_amount="1000000000",         # Exact amount to sell
+    buy_amount="500000000000000000",  # Minimum to receive
+    kind="sell",
+    # ... other params
+)
+```
+
+### Buy Orders
+
+```python
+buy_order = Order(
+    sell_amount="1000000000",         # Maximum to pay
+    buy_amount="500000000000000000",  # Exact amount to buy
+    kind="buy",
+    # ... other params
+)
+```
+
+### Partially Fillable Orders
+
+```python
+partial_order = Order(
+    partially_fillable=True,  # Can be filled in multiple txs
+    # ... other params
+)
+```
+
+## Token Balance Sources
+
+```python
+from cowdao_cowpy.contracts.order import OrderBalance
+
+# Standard ERC20 (default)
+order.sell_token_balance = "erc20"
+
+# Balancer Vault internal balances
+order.sell_token_balance = OrderBalance.INTERNAL.value
+
+# Balancer Vault external balances
+order.sell_token_balance = OrderBalance.EXTERNAL.value
+```
+
+## Complete Contract Interaction Example
+
+```python
+import asyncio
+import time
+from web3 import Web3, Account
+from eth_account.signers.local import LocalAccount
+from cowdao_cowpy.contracts.order import Order, hash_order, compute_order_uid
+from cowdao_cowpy.contracts.sign import sign_order, SigningScheme
+from cowdao_cowpy.contracts.domain import domain
+from cowdao_cowpy.common.chains import Chain
+from cowdao_cowpy.common.constants import CowContractAddress
+from cowdao_cowpy.order_book.api import OrderBookApi
+from cowdao_cowpy.order_book.generated.model import OrderCreation
+
+async def create_and_sign_order():
+    account: LocalAccount = Account.from_key("YOUR_PRIVATE_KEY")
+
+    order_domain = domain(
+        chain=Chain.MAINNET,
+        verifying_contract=CowContractAddress.SETTLEMENT_CONTRACT.value
+    )
+
+    order = Order(
+        sell_token=Web3.to_checksum_address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+        buy_token=Web3.to_checksum_address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
+        receiver=account.address,
+        sell_amount="1000000000",
+        buy_amount="500000000000000000",
+        valid_to=int(time.time()) + 3600,
+        app_data="0x0000000000000000000000000000000000000000000000000000000000000000",
+        fee_amount="0",
+        kind="sell",
+        partially_fillable=False,
+        sell_token_balance="erc20",
+        buy_token_balance="erc20",
+    )
+
+    order_hash = hash_order(order_domain, order)
+    print(f"Order hash: {Web3.to_hex(order_hash)}")
+
+    order_uid = compute_order_uid(order_domain, order, account.address)
+    print(f"Order UID: {order_uid}")
+
+    signature = sign_order(
+        domain=order_domain,
+        order=order,
+        owner=account,
+        scheme=SigningScheme.EIP712
+    )
+    print(f"Signature: {signature.to_string()}")
+
+    order_book_api = OrderBookApi()
+
+    order_creation = OrderCreation(
+        from_=account.address,
+        sellToken=order.sellToken,
+        buyToken=order.buyToken,
+        sellAmount=order.sellAmount,
+        buyAmount=order.buyAmount,
+        validTo=order.validTo,
+        appData=order.appData,
+        feeAmount=order.feeAmount,
+        kind=order.kind,
+        partiallyFillable=order.partiallyFillable,
+        receiver=order.receiver,
+        signature=signature.to_string(),
+        signingScheme=signature.scheme.name.lower(),
+    )
+
+    uid = await order_book_api.post_order(order_creation)
+    print(f"Order submitted: {uid}")
+
+    order_link = order_book_api.get_order_link(uid)
+    print(f"View order: {order_link}")
+
+if __name__ == "__main__":
+    asyncio.run(create_and_sign_order())
+```
+
+## Contract Addresses
+
+```python
+from cowdao_cowpy.common.constants import CowContractAddress
+
+print(f"Settlement: {CowContractAddress.SETTLEMENT_CONTRACT.value}")
+print(f"Vault Relayer: {CowContractAddress.VAULT_RELAYER.value}")
+```
+
+## Security Considerations
+
+<Warning>
+  **Private Key Safety**: Never commit private keys to version control. Use environment variables or secure key management services.
+</Warning>
+
+- **Order Validation**: Always validate order parameters before signing. Check token addresses, amounts, and validity periods.
+- **Domain Separation**: The EIP-712 domain prevents signatures from being used on different chains or protocols.
+
+## Next Steps
+
+- Learn about [Swapping Tokens](/cow-py/guides/swapping-tokens) for a higher-level interface
+- Explore [Managing Orders](/cow-py/guides/managing-orders) to submit signed orders
+- Check [App Data](/cow-py/guides/app-data) for order metadata

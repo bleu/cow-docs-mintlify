@@ -1,0 +1,261 @@
+---
+title: "Composable Orders"
+description: "Create conditional orders that execute based on custom logic using CoW Protocol's ComposableCow framework"
+---
+
+## Overview
+
+Composable orders enable you to create **conditional orders** that execute based on custom logic rather than executing immediately. These orders leverage the ComposableCow smart contract framework to define conditions that must be met before an order becomes tradeable.
+
+Key benefits of composable orders:
+
+- **Conditional Execution** -- Orders only execute when specific conditions are met
+- **Advanced Strategies** -- Build complex trading strategies like TWAP, DCA, or custom logic
+- **Gas Efficiency** -- Reduce on-chain transactions by batching order logic
+- **Merkle Tree Storage** -- Efficiently store multiple orders using Merkle proofs
+
+## ConditionalOrder Base Class
+
+All composable orders inherit from the `ConditionalOrder` abstract base class:
+
+```python
+from cowdao_cowpy.composable import ConditionalOrder
+from cowdao_cowpy.common.chains import Chain
+from eth_typing import HexStr
+
+class MyCustomOrder(ConditionalOrder[DataType, StructType]):
+    def __init__(self, handler: HexStr, data: DataType, salt: HexStr = None):
+        super().__init__(
+            handler=handler,
+            data=data,
+            salt=salt,
+            has_off_chain_input=False,
+            chain=Chain.MAINNET
+        )
+
+    @property
+    def is_single_order(self) -> bool:
+        return True
+
+    @property
+    def order_type(self) -> str:
+        return "my_custom_order"
+
+    def is_valid(self) -> IsValidResult:
+        pass
+
+    async def poll_validate(self, params: PollParams) -> Optional[PollResultError]:
+        pass
+```
+
+## Key Properties and Methods
+
+### Order Identification
+
+```python
+order_id = conditional_order.id    # keccak256 hash of serialized order
+ctx_key = conditional_order.ctx     # Context key for cabinet lookups
+leaf = conditional_order.leaf       # Leaf data for Merkle tree storage
+```
+
+### Creating Orders
+
+Generate calldata to create a conditional order on-chain:
+
+```python
+from cowdao_cowpy.composable.order_types.twap import Twap, TwapData, StartType, DurationType
+from cowdao_cowpy.common.chains import Chain
+from web3 import Web3
+
+twap_data = TwapData(
+    sell_token=Web3.to_checksum_address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+    buy_token=Web3.to_checksum_address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
+    receiver=Web3.to_checksum_address("0xYourAddress"),
+    sell_amount=1000000000,
+    buy_amount=500000000000000000,
+    start_type=StartType.AT_MINING_TIME,
+    number_of_parts=10,
+    time_between_parts=3600,
+    duration_type=DurationType.AUTO,
+    app_data="0x" + "0" * 64
+)
+
+twap_order = Twap.from_data(twap_data)
+create_calldata = twap_order.create_calldata
+twap_order.assert_is_valid()
+```
+
+### Polling Orders
+
+Check if a conditional order is ready to be executed:
+
+```python
+import asyncio
+from cowdao_cowpy.composable.types import PollParams, PollResultCode
+from cowdao_cowpy.order_book.api import OrderBookApi
+from web3 import AsyncWeb3
+
+async def poll_conditional_order(order, owner_address, chain):
+    provider = AsyncWeb3(AsyncWeb3.AsyncHTTPProvider("https://rpc.ankr.com/eth"))
+    order_book_api = OrderBookApi()
+
+    poll_params = PollParams(
+        owner=owner_address,
+        chain=chain,
+        provider=provider,
+        order_book_api=order_book_api
+    )
+
+    result = await order.poll(poll_params)
+
+    if result.result == PollResultCode.SUCCESS:
+        print(f"Order ready! Order: {result.order}")
+        print(f"Signature: {result.signature}")
+    elif result.result == PollResultCode.TRY_NEXT_BLOCK:
+        print(f"Not ready yet: {result.reason}")
+    elif result.result == PollResultCode.DONT_TRY_AGAIN:
+        print(f"Order cannot execute: {result.reason}")
+
+await poll_conditional_order(twap_order, "0xYourAddress", Chain.MAINNET)
+```
+
+### Authorization
+
+```python
+from cowdao_cowpy.composable.types import OwnerParams
+
+async def check_authorization(order, owner_address, chain, provider):
+    params = OwnerParams(
+        owner=owner_address,
+        chain=chain,
+        provider=provider
+    )
+
+    is_authorized = await order.is_authorized(params)
+    print(f"Order authorized: {is_authorized}")
+
+    cabinet_value = await order.cabinet(params)
+    print(f"Cabinet value: {cabinet_value}")
+```
+
+## ComposableCow Contract Integration
+
+```python
+from cowdao_cowpy.codegen.__generated__.ComposableCow import (
+    ComposableCow,
+    IConditionalOrder_ConditionalOrderParams
+)
+from hexbytes import HexBytes
+
+composable_cow = ComposableCow(chain=Chain.MAINNET)
+
+order_params = IConditionalOrder_ConditionalOrderParams(
+    handler="0xHandlerAddress",
+    salt=HexBytes("0x" + "0" * 64),
+    staticInput=HexBytes("0x...")
+)
+
+is_single_order = await composable_cow.single_orders(
+    owner_address,
+    HexBytes(order_id)
+)
+
+tradeable_order, signature = await composable_cow.get_tradeable_order_with_signature(
+    owner=owner_address,
+    params=order_params,
+    offchain_input=HexBytes("0x"),
+    proof=[]
+)
+```
+
+## Multiplexer for Multiple Orders
+
+The `Multiplexer` class enables efficient management of multiple conditional orders using Merkle trees:
+
+```python
+from cowdao_cowpy.composable import Multiplexer
+from cowdao_cowpy.composable.types import ProofLocation
+
+orders_dict = {
+    order1.id: order1,
+    order2.id: order2,
+    order3.id: order3
+}
+
+multiplexer = Multiplexer(
+    orders=orders_dict,
+    root=None,
+    location=ProofLocation.PRIVATE
+)
+
+# Get Merkle root
+root = multiplexer.root
+print(f"Merkle root: {root}")
+
+# Get proofs for all orders
+proofs = multiplexer.get_proofs()
+
+for proof_with_params in proofs:
+    print(f"Handler: {proof_with_params.params.handler}")
+    print(f"Salt: {proof_with_params.params.salt}")
+    print(f"Merkle path: {[p.hex() for p in proof_with_params.proof.path]}")
+
+# Export/Import JSON
+json_data = multiplexer.to_json()
+restored_multiplexer = Multiplexer.from_json(json_data)
+```
+
+## Custom Handler Implementation
+
+```python
+from dataclasses import dataclass
+from typing import Optional
+from cowdao_cowpy.composable import ConditionalOrder
+from cowdao_cowpy.composable.types import IsValidResult, PollParams, PollResultError
+from eth_typing import HexStr
+
+@dataclass
+class PriceThresholdData:
+    sell_token: str
+    buy_token: str
+    sell_amount: int
+    min_price: int
+    receiver: str
+
+class PriceThresholdOrder(ConditionalOrder[PriceThresholdData, PriceThresholdStruct]):
+    HANDLER_ADDRESS = HexStr("0xYourHandlerAddress")
+
+    @property
+    def is_single_order(self) -> bool:
+        return True
+
+    @property
+    def order_type(self) -> str:
+        return "price_threshold"
+
+    def is_valid(self) -> IsValidResult:
+        if self.data.sell_amount <= 0:
+            return IsValidResult(is_valid=False, reason="Invalid sell amount")
+        if self.data.min_price <= 0:
+            return IsValidResult(is_valid=False, reason="Invalid min price")
+        return IsValidResult(is_valid=True)
+
+    async def poll_validate(self, params: PollParams) -> Optional[PollResultError]:
+        return None
+```
+
+## Best Practices
+
+<Note>
+  **Validate Order Parameters**: Always implement thorough validation in the `is_valid()` method to catch errors before submitting orders on-chain.
+</Note>
+
+- **Handle Polling Errors Gracefully**: Use appropriate `PollResultCode` values to signal whether polling should be retried, delayed, or stopped entirely.
+- **Test with Testnets First**: Always test conditional orders on testnets (like Sepolia) before deploying to mainnet.
+- **Use Salt for Uniqueness**: The salt parameter ensures each order has a unique ID even if other parameters are identical.
+
+## Related Resources
+
+- [TWAP Orders](/cow-py/advanced/twap-orders) -- Learn about Time-Weighted Average Price orders
+- [Signing Schemes](/cow-py/advanced/signing-schemes) -- Understand different order signing methods
+- [Composable API](/cow-py/api/composable) -- Composable orders API documentation

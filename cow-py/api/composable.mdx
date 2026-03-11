@@ -1,0 +1,234 @@
+---
+title: "Composable Orders API"
+description: "API reference for composable conditional orders in the CoW Protocol Python SDK"
+---
+
+The `composable` module provides functionality for creating and managing conditional orders that execute based on specific conditions.
+
+## ConditionalOrder
+
+Abstract base class for all conditional orders.
+
+### Constructor
+
+```python
+from cowdao_cowpy.composable import ConditionalOrder
+
+class MyOrder(ConditionalOrder[DataType, StructType]):
+    def __init__(
+        self,
+        handler: HexStr,
+        data: DataType,
+        salt: HexStr | None = None,
+        has_off_chain_input: bool = False,
+        chain: Chain = Chain.MAINNET,
+    ):
+        super().__init__(handler, data, salt, has_off_chain_input, chain)
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `handler` | `HexStr` | Required | Handler contract address |
+| `data` | `D` | Required | Order parameters in friendly format |
+| `salt` | `HexStr \| None` | `None` | 32-byte hex salt (random if not provided) |
+| `has_off_chain_input` | `bool` | `False` | Whether order requires off-chain input |
+| `chain` | `Chain` | `Chain.MAINNET` | Blockchain network |
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `HexStr` | Unique identifier (`keccak256(serialize())`) |
+| `ctx` | `str` | Context key for cabinet lookups |
+| `leaf` | `ConditionalOrderParams` | Leaf data for Merkle trees |
+| `create_calldata` | `HexStr` | Calldata for on-chain creation |
+| `remove_calldata` | `str` | Calldata for removing the order |
+| `off_chain_input` | `HexStr` | Off-chain input data |
+
+### Abstract Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `is_valid()` | `IsValidResult` | Validate order parameters |
+| `poll_validate(params)` | `Optional[PollResultError]` | Validate during polling |
+| `transform_data_to_struct(data)` | `S` | Convert data to struct format |
+| `transform_struct_to_data(struct)` | `D` | Convert struct to data format |
+| `to_string(token_formatter)` | `str` | Human-readable representation |
+| `serialize()` | `HexStr` | ABI-encoded serialization |
+| `encode_static_input()` | `HexStr` | Encode static input |
+
+### Methods
+
+#### poll
+
+```python
+async def poll(self, params: PollParams) -> PollResult
+```
+
+Poll the conditional order to check if it's tradeable.
+
+#### is_authorized
+
+```python
+async def is_authorized(self, params: OwnerParams) -> bool
+```
+
+Check if the owner has authorized this conditional order.
+
+#### cabinet
+
+```python
+async def cabinet(self, params: OwnerParams) -> str
+```
+
+Get the cabinet value for this order and owner.
+
+---
+
+## Multiplexer
+
+Manages multiple conditional orders using Merkle trees.
+
+### Constructor
+
+```python
+from cowdao_cowpy.composable import Multiplexer, ProofLocation
+
+multiplexer = Multiplexer(
+    orders={"id1": order1, "id2": order2},
+    root="0xabc...",
+    location=ProofLocation.PRIVATE
+)
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `orders` | `Optional[Dict[str, ConditionalOrder]]` | `None` | Order ID to order mapping |
+| `root` | `Optional[str]` | `None` | Merkle tree root |
+| `location` | `ProofLocation` | `ProofLocation.PRIVATE` | Proof storage location |
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `root` | `str` | Merkle tree root hash |
+| `order_ids` | `List[str]` | List of all order IDs |
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `add(order)` | Add a new order |
+| `remove(id)` | Remove an order by ID |
+| `update(id, updater)` | Update an order with a function |
+| `get_by_id(id)` | Get order by ID |
+| `get_by_index(i)` | Get order by index |
+| `get_proofs(filter)` | Get Merkle proofs for orders |
+| `prepare_proof_struct(...)` | Prepare proof data for on-chain submission |
+| `to_json()` | Serialize to JSON |
+| `from_json(s)` | Deserialize from JSON (classmethod) |
+| `register_order_type(type, cls)` | Register a new order type (classmethod) |
+
+---
+
+## TWAP Order Type
+
+### TwapData
+
+```python
+@dataclass
+class TwapData:
+    sell_token: str
+    buy_token: str
+    receiver: str
+    sell_amount: int
+    buy_amount: int
+    start_type: StartType
+    number_of_parts: int
+    time_between_parts: int
+    duration_type: DurationType
+    app_data: str
+    start_time_epoch: int = 0
+    duration_of_part: int = 0
+```
+
+### Twap
+
+```python
+from cowdao_cowpy.composable import Twap, TwapData, StartType, DurationType
+
+twap = Twap.from_data(TwapData(
+    sell_token="0x...", buy_token="0x...", receiver="0x...",
+    sell_amount=1000000, buy_amount=900000,
+    start_type=StartType.AT_MINING_TIME,
+    number_of_parts=10, time_between_parts=3600,
+    duration_type=DurationType.AUTO, app_data="0x..."
+))
+
+validation = twap.is_valid()
+if validation.is_valid:
+    print(f"Order ID: {twap.id}")
+    print(f"Create calldata: {twap.create_calldata}")
+```
+
+TWAP handler address: `0x6cF1e9cA41f7611dEf408122793c358a3d11E5a5`
+
+---
+
+## Types
+
+### ProofLocation
+
+```python
+class ProofLocation(Enum):
+    PRIVATE = 0
+    EMITTED = 1
+    SWARM = 2
+    WAKU = 3
+    RESERVED = 4
+    IPFS = 5
+```
+
+### PollResultCode
+
+```python
+class PollResultCode(Enum):
+    SUCCESS = "SUCCESS"
+    UNEXPECTED_ERROR = "UNEXPECTED_ERROR"
+    TRY_NEXT_BLOCK = "TRY_NEXT_BLOCK"
+    TRY_ON_BLOCK = "TRY_ON_BLOCK"
+    TRY_AT_EPOCH = "TRY_AT_EPOCH"
+    DONT_TRY_AGAIN = "DONT_TRY_AGAIN"
+```
+
+### IsValidResult
+
+```python
+@dataclass
+class IsValidResult:
+    is_valid: bool
+    reason: Optional[str] = None
+```
+
+### ConditionalOrderParams
+
+```python
+@dataclass
+class ConditionalOrderParams:
+    handler: HexStr
+    salt: HexStr
+    static_input: HexStr
+```
+
+---
+
+## Utility Functions
+
+| Function | Description |
+|----------|-------------|
+| `encode_params(params)` | Encode conditional order parameters to ABI format |
+| `decode_params(encoded)` | Decode ABI-encoded parameters |
+| `hash_order(domain, order)` | Compute EIP-712 hash of an order |
+| `hash_order_cancellation(domain, order_uid)` | Compute hash for cancelling a single order |
+| `hash_order_cancellations(domain, order_uids)` | Compute hash for cancelling multiple orders |
+| `encode_order(order)` | Encode an order to bytes for hashing |

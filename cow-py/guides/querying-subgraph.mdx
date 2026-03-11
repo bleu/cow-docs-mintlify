@@ -1,0 +1,451 @@
+---
+title: "Querying the Subgraph"
+description: "Access historical trades, volume statistics, and protocol metrics through the SubgraphClient"
+---
+
+## Overview
+
+The CoW Protocol Subgraph indexes on-chain trading data, making it easy to query historical trades, volume statistics, and protocol metrics. The SDK provides a type-safe `SubgraphClient` with built-in queries and support for custom GraphQL queries.
+
+## Setting Up the Subgraph Client
+
+```python
+from cowdao_cowpy.subgraph.client import SubgraphClient
+from cowdao_cowpy.subgraph.deployments import build_subgraph_url, SubgraphEnvironment
+from cowdao_cowpy.common.chains import Chain
+
+# Use default configuration (Mainnet, Production)
+url = build_subgraph_url()
+client = SubgraphClient(url=url)
+
+# Or specify chain and environment
+url = build_subgraph_url(
+    chain=Chain.GNOSIS,
+    env=SubgraphEnvironment.PRODUCTION
+)
+client = SubgraphClient(url=url)
+```
+
+## Supported Networks
+
+The Subgraph is available on:
+
+- **Ethereum Mainnet** -- `Chain.MAINNET`
+- **Gnosis Chain** -- `Chain.GNOSIS`
+- **Arbitrum One** -- `Chain.ARBITRUM_ONE`
+- **Base** -- `Chain.BASE`
+- **Sepolia Testnet** -- `Chain.SEPOLIA`
+
+## Built-in Queries
+
+### Total Protocol Statistics
+
+```python
+import asyncio
+from cowdao_cowpy.subgraph.client import SubgraphClient
+from cowdao_cowpy.subgraph.deployments import build_subgraph_url
+
+async def get_totals():
+    url = build_subgraph_url()
+    client = SubgraphClient(url=url)
+
+    totals = await client.totals()
+
+    print(f"Total tokens: {totals.totals[0].tokens}")
+    print(f"Total orders: {totals.totals[0].orders}")
+    print(f"Total traders: {totals.totals[0].traders}")
+    print(f"Total settlements: {totals.totals[0].settlements}")
+    print(f"Volume USD: {totals.totals[0].volumeUsd}")
+    print(f"Volume ETH: {totals.totals[0].volumeEth}")
+    print(f"Fees USD: {totals.totals[0].feesUsd}")
+    print(f"Fees ETH: {totals.totals[0].feesEth}")
+
+asyncio.run(get_totals())
+```
+
+### Daily Volume Statistics
+
+```python
+async def get_daily_volume():
+    url = build_subgraph_url()
+    client = SubgraphClient(url=url)
+
+    daily_volume = await client.last_days_volume(days=7)
+
+    for day in daily_volume.dailyTotals:
+        print(f"Date: {day.timestamp}")
+        print(f"Volume: ${day.volumeUsd}")
+
+asyncio.run(get_daily_volume())
+```
+
+### Hourly Volume Statistics
+
+```python
+async def get_hourly_volume():
+    url = build_subgraph_url()
+    client = SubgraphClient(url=url)
+
+    hourly_volume = await client.last_hours_volume(hours=24)
+
+    for hour in hourly_volume.hourlyTotals:
+        print(f"Hour: {hour.timestamp}")
+        print(f"Volume: ${hour.volumeUsd}")
+
+asyncio.run(get_hourly_volume())
+```
+
+## Custom GraphQL Queries
+
+Execute custom GraphQL queries using the `execute()` method:
+
+### Basic Custom Query
+
+```python
+from pprint import pprint
+
+async def custom_query():
+    url = build_subgraph_url()
+    client = SubgraphClient(url=url)
+
+    query = """
+    query LastDaysVolume($days: Int!) {
+        dailyTotals(orderBy: timestamp, orderDirection: desc, first: $days) {
+            timestamp
+            volumeUsd
+            orders
+            traders
+        }
+    }
+    """
+
+    response = await client.execute(
+        query=query,
+        variables={"days": 30}
+    )
+
+    data = client.get_data(response)
+    pprint(data)
+
+asyncio.run(custom_query())
+```
+
+### Query Orders with Filters
+
+```python
+async def query_orders():
+    url = build_subgraph_url()
+    client = SubgraphClient(url=url)
+
+    query = """
+    query GetOrders($owner: String!, $first: Int!) {
+        orders(
+            where: { owner: $owner }
+            first: $first
+            orderBy: creationTimestamp
+            orderDirection: desc
+        ) {
+            id
+            owner
+            sellToken
+            buyToken
+            sellAmount
+            buyAmount
+            creationTimestamp
+            status
+        }
+    }
+    """
+
+    response = await client.execute(
+        query=query,
+        variables={
+            "owner": "0x...",
+            "first": 100
+        }
+    )
+
+    data = client.get_data(response)
+
+    for order in data["orders"]:
+        print(f"Order {order['id']}:")
+        print(f"  Status: {order['status']}")
+        print(f"  Created: {order['creationTimestamp']}")
+
+asyncio.run(query_orders())
+```
+
+### Query Trades
+
+```python
+async def query_trades():
+    url = build_subgraph_url()
+    client = SubgraphClient(url=url)
+
+    query = """
+    query GetTrades($owner: String!, $first: Int!) {
+        trades(
+            where: { owner: $owner }
+            first: $first
+            orderBy: timestamp
+            orderDirection: desc
+        ) {
+            id
+            timestamp
+            sellToken
+            buyToken
+            sellAmount
+            buyAmount
+            order {
+                id
+            }
+        }
+    }
+    """
+
+    response = await client.execute(
+        query=query,
+        variables={
+            "owner": "0x...",
+            "first": 50
+        }
+    )
+
+    data = client.get_data(response)
+
+    for trade in data["trades"]:
+        print(f"Trade at {trade['timestamp']}:")
+        print(f"  Sold: {trade['sellAmount']} {trade['sellToken']}")
+        print(f"  Bought: {trade['buyAmount']} {trade['buyToken']}")
+
+asyncio.run(query_trades())
+```
+
+## Advanced Query Examples
+
+### Token Trading Statistics
+
+```python
+async def token_stats():
+    url = build_subgraph_url()
+    client = SubgraphClient(url=url)
+
+    query = """
+    query TokenStats($tokenAddress: String!) {
+        token(id: $tokenAddress) {
+            id
+            address
+            symbol
+            name
+            decimals
+            totalVolume
+            numberOfTrades
+            totalVolumeUsd
+        }
+        tokenDailyTotals(
+            where: { token: $tokenAddress }
+            first: 30
+            orderBy: timestamp
+            orderDirection: desc
+        ) {
+            timestamp
+            volumeUsd
+            totalVolume
+        }
+    }
+    """
+
+    response = await client.execute(
+        query=query,
+        variables={
+            "tokenAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"  # USDC
+        }
+    )
+
+    data = client.get_data(response)
+    token = data["token"]
+
+    print(f"Token: {token['symbol']}")
+    print(f"Total volume: ${token['totalVolumeUsd']}")
+    print(f"Number of trades: {token['numberOfTrades']}")
+
+asyncio.run(token_stats())
+```
+
+### User Trading Activity
+
+```python
+async def user_activity():
+    url = build_subgraph_url()
+    client = SubgraphClient(url=url)
+
+    query = """
+    query UserActivity($userAddress: String!) {
+        user(id: $userAddress) {
+            id
+            address
+            numberOfTrades
+            volumeUsd
+            solvedAmountUsd
+            orders(first: 10, orderBy: creationTimestamp, orderDirection: desc) {
+                id
+                status
+                sellToken
+                buyToken
+                creationTimestamp
+            }
+            trades(first: 10, orderBy: timestamp, orderDirection: desc) {
+                id
+                timestamp
+                sellAmount
+                buyAmount
+            }
+        }
+    }
+    """
+
+    response = await client.execute(
+        query=query,
+        variables={"userAddress": "0x..."}
+    )
+
+    data = client.get_data(response)
+    user = data["user"]
+
+    if user:
+        print(f"User: {user['address']}")
+        print(f"Total trades: {user['numberOfTrades']}")
+        print(f"Total volume: ${user['volumeUsd']}")
+    else:
+        print("User not found")
+
+asyncio.run(user_activity())
+```
+
+## Working with Context Manager
+
+```python
+async def with_context_manager():
+    url = build_subgraph_url()
+
+    async with SubgraphClient(url=url) as client:
+        totals = await client.totals()
+        print(f"Total traders: {totals.totals[0].traders}")
+
+        daily_volume = await client.last_days_volume(days=7)
+        print(f"Days of data: {len(daily_volume.dailyTotals)}")
+
+asyncio.run(with_context_manager())
+```
+
+## Error Handling
+
+```python
+from cowdao_cowpy.subgraph.client.exceptions import (
+    GraphQLClientError,
+    GraphQLClientHttpError,
+    GraphQLClientGraphQLMultiError,
+)
+
+async def safe_query():
+    url = build_subgraph_url()
+    client = SubgraphClient(url=url)
+
+    try:
+        response = await client.execute(
+            query="""query { invalidField }"""
+        )
+        data = client.get_data(response)
+    except GraphQLClientGraphQLMultiError as e:
+        print(f"GraphQL errors: {e.errors}")
+    except GraphQLClientHttpError as e:
+        print(f"HTTP error: {e.status_code}")
+    except GraphQLClientError as e:
+        print(f"Client error: {e}")
+
+asyncio.run(safe_query())
+```
+
+## Complete Example: Trading Dashboard
+
+```python
+import asyncio
+from datetime import datetime
+from cowdao_cowpy.subgraph.client import SubgraphClient
+from cowdao_cowpy.subgraph.deployments import build_subgraph_url
+from cowdao_cowpy.common.chains import Chain
+
+async def create_dashboard():
+    url = build_subgraph_url(chain=Chain.MAINNET)
+    client = SubgraphClient(url=url)
+
+    print("=" * 60)
+    print("CoW Protocol Trading Dashboard")
+    print("=" * 60)
+
+    # Protocol totals
+    totals = await client.totals()
+    total_data = totals.totals[0]
+
+    print("\nPROTOCOL STATISTICS")
+    print(f"  Total Traders: {total_data.traders:,}")
+    print(f"  Total Orders: {total_data.orders:,}")
+    print(f"  Total Settlements: {total_data.settlements:,}")
+    print(f"  Total Volume (USD): ${float(total_data.volumeUsd):,.2f}")
+    print(f"  Total Fees (USD): ${float(total_data.feesUsd):,.2f}")
+
+    # Last 7 days volume
+    daily_volume = await client.last_days_volume(days=7)
+
+    print("\nLAST 7 DAYS VOLUME")
+    total_week_volume = 0
+    for day in reversed(daily_volume.dailyTotals):
+        date = datetime.fromtimestamp(int(day.timestamp)).strftime('%Y-%m-%d')
+        volume = float(day.volumeUsd)
+        total_week_volume += volume
+        print(f"  {date}: ${volume:,.2f}")
+
+    print(f"\n  Weekly Total: ${total_week_volume:,.2f}")
+    print(f"  Daily Average: ${total_week_volume / 7:,.2f}")
+
+    # Last 24 hours activity
+    hourly_volume = await client.last_hours_volume(hours=24)
+
+    total_day_volume = sum(
+        float(hour.volumeUsd) for hour in hourly_volume.hourlyTotals
+    )
+    print(f"\nLAST 24 HOURS")
+    print(f"  Total Volume: ${total_day_volume:,.2f}")
+    print(f"  Hourly Average: ${total_day_volume / 24:,.2f}")
+
+if __name__ == "__main__":
+    asyncio.run(create_dashboard())
+```
+
+## Available Schema Types
+
+The Subgraph schema includes these main types:
+
+- **User** -- Trader information and statistics
+- **Order** -- Order details and status
+- **Trade** -- Executed trade information
+- **Token** -- Token metadata and statistics
+- **Pair** -- Trading pair information
+- **Settlement** -- Settlement transaction details
+- **DailyTotal** -- Daily aggregated statistics
+- **HourlyTotal** -- Hourly aggregated statistics
+- **Total** -- Overall protocol statistics
+
+## Query Optimization Tips
+
+1. **Use pagination**: Limit results with `first` and `skip` parameters
+2. **Filter early**: Apply `where` clauses to reduce data transfer
+3. **Select specific fields**: Only query fields you need
+4. **Use orderBy**: Sort results at the subgraph level
+5. **Cache results**: Store frequently accessed data locally
+
+## Next Steps
+
+- Learn about [Managing Orders](/cow-py/guides/managing-orders) to create and track orders
+- Explore [Swapping Tokens](/cow-py/guides/swapping-tokens) for executing trades
+- Check [App Data](/cow-py/guides/app-data) for order metadata

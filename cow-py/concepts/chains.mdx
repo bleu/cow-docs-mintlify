@@ -1,0 +1,93 @@
+---
+title: "Supported Chains"
+description: "Learn about the blockchain networks supported by the CoW Protocol Python SDK"
+---
+
+## Overview
+
+The CoW Protocol Python SDK provides access to multiple blockchain networks through a `Chain` enum that configures chain IDs, network identifiers, and block explorer URLs.
+
+## Accessing Chain Information
+
+Import the `Chain` enum to retrieve network properties:
+
+```python
+from cowdao_cowpy.common.chains import Chain
+
+chain = Chain.MAINNET
+print(chain.chain_id)      # SupportedChainId.MAINNET
+print(chain.name)          # "ethereum"
+print(chain.explorer)      # "https://etherscan.io"
+```
+
+## Supported Networks
+
+The SDK supports nine blockchain networks:
+
+| Network | Chain ID | Name | Explorer |
+|---------|----------|------|----------|
+| Ethereum Mainnet | 1 | ethereum | etherscan.io |
+| Sepolia Testnet | 11155111 | sepolia | sepolia.etherscan.io |
+| Gnosis Chain | 100 | gnosis | gnosisscan.io |
+| Arbitrum One | 42161 | arbitrum_one | arbiscan.io |
+| Base | 8453 | base | basescan.org |
+| Polygon | 137 | polygon | polygonscan.com |
+| Avalanche | 43114 | avalanche | snowtrace.io |
+| BNB Chain | 56 | bnb | bscscan.com |
+| Lens Network | 232 | lens | explorer.lens.xyz |
+
+## Chain Properties
+
+Each `Chain` enum provides three properties:
+
+- **chain_id** -- Returns the `SupportedChainId` enum value representing the numeric identifier.
+- **name** -- Returns the network name as a string for display and configuration.
+- **explorer** -- Returns the block explorer URL for transaction and address verification.
+
+## Usage Example
+
+Complete example demonstrating chain specification in a token swap:
+
+```python
+import os
+import asyncio
+from dotenv import load_dotenv
+from web3 import Account, Web3
+from web3.types import Wei
+from cowdao_cowpy.cow.swap import swap_tokens
+from cowdao_cowpy.common.chains import Chain
+
+load_dotenv()
+PRIVATE_KEY = os.getenv("PRIVATE_KEY")
+ACCOUNT = Account.from_key(PRIVATE_KEY)
+
+SELL_TOKEN = Web3.to_checksum_address("0xbe72E441BF55620febc26715db68d3494213D8Cb")
+BUY_TOKEN = Web3.to_checksum_address("0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14")
+AMOUNT = Wei(5000000000000000000)
+
+result = await swap_tokens(
+    amount=AMOUNT,
+    account=ACCOUNT,
+    chain=Chain.SEPOLIA,
+    sell_token=SELL_TOKEN,
+    buy_token=BUY_TOKEN,
+)
+
+print(f"Order UID: {result.uid}")
+print(f"Order URL: {result.url}")
+```
+
+## Retrieving All Supported Chains
+
+Access the complete list using the `SUPPORTED_CHAINS` constant:
+
+```python
+from cowdao_cowpy.common.chains import SUPPORTED_CHAINS
+
+for chain in SUPPORTED_CHAINS:
+    print(f"{chain.name}: Chain ID {chain.chain_id.value}")
+```
+
+<Note>
+  The SDK uses chain configuration internally to determine API endpoints, contract addresses, and network-specific parameters.
+</Note>

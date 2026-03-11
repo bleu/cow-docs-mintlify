@@ -1,0 +1,403 @@
+---
+title: "Quickstart: Raw API (cURL)"
+description: "Place your first CoW Protocol order using only cURL and the REST API — from quote to confirmed trade in under 10 minutes."
+---
+
+This guide walks you through placing an order on CoW Protocol using nothing but `cURL` and the REST API. No SDK, no framework -- just raw HTTP requests against the Sepolia testnet.
+
+By the end you will have:
+
+1. Fetched a quote
+2. Signed an order
+3. Submitted it to the order book
+4. Monitored it until settlement
+
+## Prerequisites
+
+Before you start, make sure you have:
+
+- **cURL** installed (ships with macOS and most Linux distributions)
+- **An Ethereum wallet** with some WETH on the **Sepolia** testnet
+  - Sepolia WETH: `0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14`
+  - Sepolia COW (buy token in this guide): `0xbe72E441BF55620febc26715db68d3494213D8Cb`
+- **Token approval** for the GPv2VaultRelayer contract so it can spend your sell token
+
+<Warning>
+You must approve the **GPv2VaultRelayer** (`0xC92E8bdf79f0507f65a392b0ab4667716BFE0110`) to spend your sell token **before** submitting an order. Without this approval the order will revert on settlement.
+
+You can do this via Etherscan's "Write Contract" tab, or with Foundry:
+
+```bash
+cast send 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14 \
+  "approve(address,uint256)" \
+  0xC92E8bdf79f0507f65a392b0ab4667716BFE0110 \
+  115792089237316195423570985008687907853269984665640564039457584007913129639935 \
+  --rpc-url https://rpc.sepolia.org \
+  --private-key $PRIVATE_KEY
+```
+</Warning>
+
+<Note>
+All examples in this guide target the **Sepolia testnet** (`https://api.cow.fi/sepolia/api/v1`). Replace `sepolia` with `mainnet`, `xdai`, `arbitrum_one`, or `base` for other networks.
+</Note>
+
+## Walkthrough
+
+<Steps>
+
+### Get a Quote
+
+Send your trading intention to the `/quote` endpoint. This example sells 1 WETH for COW tokens:
+
+```bash
+curl -X POST "https://api.cow.fi/sepolia/api/v1/quote" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sellToken": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+    "buyToken": "0xbe72E441BF55620febc26715db68d3494213D8Cb",
+    "sellAmountBeforeFee": "1000000000000000000",
+    "kind": "sell",
+    "from": "0xYOUR_ADDRESS",
+    "receiver": "0xYOUR_ADDRESS",
+    "validFor": 1800,
+    "signingScheme": "eip712"
+  }'
+```
+
+Replace `0xYOUR_ADDRESS` with your wallet address on Sepolia.
+
+| Field | Description |
+|---|---|
+| `sellToken` | Address of the token you are selling (WETH) |
+| `buyToken` | Address of the token you are buying (COW) |
+| `sellAmountBeforeFee` | Amount to sell in the token's smallest unit (1 WETH = 10^18) |
+| `kind` | `"sell"` fixes the sell amount; `"buy"` fixes the buy amount |
+| `from` | Your wallet address |
+| `receiver` | Address that receives the bought tokens (usually same as `from`) |
+| `validFor` | How long the order stays valid, in seconds |
+| `signingScheme` | The signing scheme you will use (`eip712` recommended for EOAs) |
+
+### Understand the Response
+
+The API returns a JSON object containing the quote details. Here is a sample response (trimmed for clarity):
+
+```json
+{
+  "quote": {
+    "sellToken": "0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+    "buyToken": "0xbe72e441bf55620febc26715db68d3494213d8cb",
+    "sellAmount": "999375166535692640",
+    "buyAmount": "191179999",
+    "feeAmount": "624833464307360",
+    "kind": "sell",
+    "validTo": 1741700000,
+    "receiver": "0xYOUR_ADDRESS",
+    "appData": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "partiallyFillable": false
+  },
+  "from": "0xYOUR_ADDRESS",
+  "expiration": "2026-03-11T12:30:00.000Z",
+  "id": 12345,
+  "verified": true
+}
+```
+
+Key fields inside `quote`:
+
+| Field | Description |
+|---|---|
+| `sellAmount` | Sell amount **after** network costs have been deducted from your original input |
+| `buyAmount` | Estimated amount you will receive, **after** network costs and protocol fee |
+| `feeAmount` | Network costs in **sell token** units (gas estimation) |
+| `validTo` | Unix timestamp after which the order expires |
+
+<Note>
+For a deep dive into how these amounts relate to each other through the fee pipeline (network costs, protocol fee, partner fee, slippage), see [How Intents Are Formed](/cow-protocol/explanation/how-it-works/how-intents-are-formed).
+</Note>
+
+### Sign the Order
+
+CoW Protocol orders are off-chain intents that must be cryptographically signed. cURL cannot produce EIP-712 signatures on its own, so you need a signing tool.
+
+#### Construct the signing payload
+
+Using the quote response, build the order struct that must be signed. For a **sell** order the amounts to sign are:
+
+- **`sellAmount`**: `quote.sellAmount + quote.feeAmount` (the spot price / `beforeAllFees` amount)
+- **`buyAmount`**: `quote.buyAmount` with your slippage tolerance applied (e.g. subtract 0.5%)
+- **`feeAmount`**: `"0"` (fees are handled internally by the protocol at settlement)
+
+All other fields come directly from the quote response.
+
+```json
+{
+  "sellToken": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+  "buyToken": "0xbe72E441BF55620febc26715db68d3494213D8Cb",
+  "receiver": "0xYOUR_ADDRESS",
+  "sellAmount": "1000000000000000000",
+  "buyAmount": "190224099",
+  "validTo": 1741700000,
+  "feeAmount": "0",
+  "kind": "sell",
+  "partiallyFillable": false,
+  "sellTokenBalance": "erc20",
+  "buyTokenBalance": "erc20",
+  "appData": "0x0000000000000000000000000000000000000000000000000000000000000000"
+}
+```
+
+<Warning>
+The `sellAmount` you **sign** is `quote.sellAmount + quote.feeAmount` (the full amount before network cost deduction). The settlement contract deducts network costs itself. If you sign only `quote.sellAmount`, your order will sell less than intended.
+</Warning>
+
+#### EIP-712 domain
+
+The EIP-712 domain for CoW Protocol on Sepolia is:
+
+```json
+{
+  "name": "Gnosis Protocol",
+  "version": "v2",
+  "chainId": 11155111,
+  "verifyingContract": "0x9008D19f58AAbD9eD0D60971565AA8510560ab41"
+}
+```
+
+For details on the domain separator and order struct hashing, see [Signing Schemes](/cow-protocol/reference/core/signing-schemes).
+
+#### Option A: Sign with Foundry (`cast`)
+
+If you have [Foundry](https://book.getfoundry.sh/) installed, you can use `cast` to produce the EIP-712 signature. First, compute the order digest using the helper contract on Sepolia, then sign it:
+
+```bash
+# Compute the order digest using the on-chain helper
+# (see https://sepolia.etherscan.io/address/0x59Ffd6c1823F212D49887230f155A35451FdDbfa)
+
+# Then sign the digest
+cast wallet sign \
+  --private-key $PRIVATE_KEY \
+  $ORDER_DIGEST
+```
+
+The output is a 65-byte hex signature you will pass as the `signature` field.
+
+#### Option B: Sign with a Python one-liner
+
+```python
+from eth_account import Account
+from eth_account.messages import encode_structured_data
+
+order_typed_data = {
+    "types": {
+        "EIP712Domain": [
+            {"name": "name", "type": "string"},
+            {"name": "version", "type": "string"},
+            {"name": "chainId", "type": "uint256"},
+            {"name": "verifyingContract", "type": "address"},
+        ],
+        "Order": [
+            {"name": "sellToken", "type": "address"},
+            {"name": "buyToken", "type": "address"},
+            {"name": "receiver", "type": "address"},
+            {"name": "sellAmount", "type": "uint256"},
+            {"name": "buyAmount", "type": "uint256"},
+            {"name": "validTo", "type": "uint32"},
+            {"name": "appData", "type": "bytes32"},
+            {"name": "feeAmount", "type": "uint256"},
+            {"name": "kind", "type": "string"},
+            {"name": "partiallyFillable", "type": "bool"},
+            {"name": "sellTokenBalance", "type": "string"},
+            {"name": "buyTokenBalance", "type": "string"},
+        ],
+    },
+    "primaryType": "Order",
+    "domain": {
+        "name": "Gnosis Protocol",
+        "version": "v2",
+        "chainId": 11155111,
+        "verifyingContract": "0x9008D19f58AAbD9eD0D60971565AA8510560ab41",
+    },
+    "message": {
+        "sellToken": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+        "buyToken": "0xbe72E441BF55620febc26715db68d3494213D8Cb",
+        "receiver": "0xYOUR_ADDRESS",
+        "sellAmount": 1000000000000000000,
+        "buyAmount": 190224099,
+        "validTo": 1741700000,
+        "appData": bytes.fromhex(
+            "0000000000000000000000000000000000000000000000000000000000000000"
+        ),
+        "feeAmount": 0,
+        "kind": "sell",
+        "partiallyFillable": False,
+        "sellTokenBalance": "erc20",
+        "buyTokenBalance": "erc20",
+    },
+}
+
+msg = encode_structured_data(order_typed_data)
+signed = Account.sign_message(msg, private_key="0xYOUR_PRIVATE_KEY")
+print(signed.signature.hex())
+```
+
+Install dependencies with: `pip install eth-account`
+
+#### Option C: Sign with TypeScript
+
+```typescript
+import { ethers } from "ethers";
+
+const domain = {
+  name: "Gnosis Protocol",
+  version: "v2",
+  chainId: 11155111,
+  verifyingContract: "0x9008D19f58AAbD9eD0D60971565AA8510560ab41",
+};
+
+const types = {
+  Order: [
+    { name: "sellToken", type: "address" },
+    { name: "buyToken", type: "address" },
+    { name: "receiver", type: "address" },
+    { name: "sellAmount", type: "uint256" },
+    { name: "buyAmount", type: "uint256" },
+    { name: "validTo", type: "uint32" },
+    { name: "appData", type: "bytes32" },
+    { name: "feeAmount", type: "uint256" },
+    { name: "kind", type: "string" },
+    { name: "partiallyFillable", type: "bool" },
+    { name: "sellTokenBalance", type: "string" },
+    { name: "buyTokenBalance", type: "string" },
+  ],
+};
+
+const order = {
+  sellToken: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+  buyToken: "0xbe72E441BF55620febc26715db68d3494213D8Cb",
+  receiver: "0xYOUR_ADDRESS",
+  sellAmount: "1000000000000000000",
+  buyAmount: "190224099",
+  validTo: 1741700000,
+  appData:
+    "0x0000000000000000000000000000000000000000000000000000000000000000",
+  feeAmount: "0",
+  kind: "sell",
+  partiallyFillable: false,
+  sellTokenBalance: "erc20",
+  buyTokenBalance: "erc20",
+};
+
+const wallet = new ethers.Wallet("0xYOUR_PRIVATE_KEY");
+const signature = await wallet.signTypedData(domain, types, order);
+console.log(signature);
+```
+
+Install dependencies with: `npm install ethers`
+
+### Submit the Order
+
+Once you have the signature, submit the signed order to the order book:
+
+```bash
+curl -X POST "https://api.cow.fi/sepolia/api/v1/orders" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sellToken": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+    "buyToken": "0xbe72E441BF55620febc26715db68d3494213D8Cb",
+    "sellAmount": "1000000000000000000",
+    "buyAmount": "190224099",
+    "validTo": 1741700000,
+    "feeAmount": "0",
+    "kind": "sell",
+    "partiallyFillable": false,
+    "receiver": "0xYOUR_ADDRESS",
+    "from": "0xYOUR_ADDRESS",
+    "appData": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "signingScheme": "eip712",
+    "signature": "0xYOUR_SIGNATURE",
+    "sellTokenBalance": "erc20",
+    "buyTokenBalance": "erc20"
+  }'
+```
+
+A successful response returns the **order UID** as a plain string:
+
+```
+"0x2a3f1c9e8b7d6a5e4f3c2b1a09d8e7f6c5b4a3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2"
+```
+
+Save this UID -- you will need it to monitor and (optionally) cancel the order.
+
+### Monitor the Order
+
+Poll the order status to track its lifecycle:
+
+```bash
+# Check order status
+curl "https://api.cow.fi/sepolia/api/v1/orders/ORDER_UID"
+```
+
+The `status` field in the response will be one of:
+
+| Status | Meaning |
+|---|---|
+| `open` | Order is in the book and awaiting solver execution |
+| `fulfilled` | Order has been fully settled on-chain |
+| `expired` | The `validTo` timestamp has passed without settlement |
+| `cancelled` | Order was cancelled by the owner |
+
+To check whether any trades have been executed for your order:
+
+```bash
+# Check trades for this order
+curl "https://api.cow.fi/sepolia/api/v1/trades?orderUid=ORDER_UID"
+```
+
+This returns an array of trade objects. Each trade includes the on-chain `txHash`, the actual `sellAmount` and `buyAmount` that were settled, and the block number.
+
+### Cancel an Order (Optional)
+
+If your order is still `open` and you want to cancel it, you need to sign a cancellation message and send a `DELETE` request:
+
+```bash
+curl -X DELETE "https://api.cow.fi/sepolia/api/v1/orders/ORDER_UID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "signature": "0xCANCEL_SIGNATURE",
+    "signingScheme": "eip712"
+  }'
+```
+
+The cancellation signature is an EIP-712 signature over the **order UID** bytes using the same signing key that created the order.
+
+<Note>
+Cancellation is best-effort. If a solver has already included your order in a solution that is being settled, the cancellation may not take effect in time.
+</Note>
+
+</Steps>
+
+## Troubleshooting
+
+Common errors you may encounter:
+
+| Error | Cause | Fix |
+|---|---|---|
+| `InsufficientBalance` | Your wallet does not hold enough sell token | Fund your wallet with more tokens on Sepolia |
+| `InsufficientAllowance` | The VaultRelayer has not been approved to spend your token | Approve `0xC92E8bdf79f0507f65a392b0ab4667716BFE0110` for the sell token |
+| `InvalidSignature` | The signature does not match the order data or signer | Ensure the EIP-712 domain, types, and order values match exactly |
+| `DuplicateOrder` | An identical order already exists | Change `validTo` or amounts slightly |
+| `SellAmountDoesNotCoverFee` | The sell amount is too small to cover network costs | Increase your sell amount |
+| `QuoteNotFound` / `NoLiquidity` | No solver can fill this trade pair | Try a different token pair or larger amount |
+
+For the full list of API error codes, see the [Order Book API Reference](/cow-protocol/reference/apis/orderbook).
+
+## Next Steps
+
+Now that you know how the raw API works, explore these resources:
+
+- **[CoW SDK Quickstart](/cow-sdk/quickstart)** -- a more ergonomic experience with TypeScript helpers for signing, quoting, and order management
+- **[How Intents Are Formed](/cow-protocol/explanation/how-it-works/how-intents-are-formed)** -- deep dive into the fee pipeline and amount stages
+- **[Signing Schemes](/cow-protocol/reference/core/signing-schemes)** -- all four supported signing methods (EIP-712, eth_sign, ERC-1271, PreSign)
+- **[Limit Orders](/cow-protocol/tutorials/cow-swap/limit)** -- place limit orders through CoW Swap
+- **[TWAP Orders](/cow-protocol/tutorials/cow-swap/twap)** -- time-weighted average price orders
+- **[API Integration Guide](/cow-protocol/howto/integrate/api)** -- complete API integration reference

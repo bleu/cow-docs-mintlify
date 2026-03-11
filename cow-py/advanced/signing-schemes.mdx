@@ -1,0 +1,254 @@
+---
+title: "Signing Schemes"
+description: "Understand the different methods for signing orders on CoW Protocol including EIP-712, EthSign, EIP-1271, and PreSign"
+---
+
+## Overview
+
+CoW Protocol supports multiple **signing schemes** to accommodate different wallet types and use cases:
+
+- **EIP-712** -- Standard wallet signatures with structured data
+- **ETHSIGN** -- Legacy eth_sign RPC method
+- **EIP-1271** -- Smart contract wallet signatures
+- **PRESIGN** -- On-chain pre-authorized orders
+
+## SigningScheme Enum
+
+```python
+from cowdao_cowpy.contracts.sign import SigningScheme
+
+print(f"EIP712: {SigningScheme.EIP712}")      # 0b00 = 0
+print(f"ETHSIGN: {SigningScheme.ETHSIGN}")    # 0b01 = 1
+print(f"EIP1271: {SigningScheme.EIP1271}")    # 0b10 = 2
+print(f"PRESIGN: {SigningScheme.PRESIGN}")    # 0b11 = 3
+```
+
+## EIP-712 Signatures
+
+**EIP-712** is the recommended signing scheme for standard wallets (MetaMask, Ledger, etc.). It provides human-readable structured data in wallet prompts, type-safe signing with domain separation, and the best user experience and security.
+
+```python
+from web3 import Account
+from cowdao_cowpy.contracts.sign import sign_order, SigningScheme, EcdsaSignature
+from cowdao_cowpy.contracts.domain import domain
+from cowdao_cowpy.contracts.order import Order
+from cowdao_cowpy.common.chains import Chain
+from cowdao_cowpy.common.constants import COW_PROTOCOL_SETTLEMENT_CONTRACT_CHAIN_ADDRESS_MAP
+from eth_typing import HexStr
+import os
+
+account = Account.from_key(os.getenv("PRIVATE_KEY"))
+
+order = Order(
+    sell_token="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    buy_token="0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    receiver=account.address,
+    sell_amount=1000000000,
+    buy_amount=500000000000000000,
+    valid_to=1735689600,
+    app_data=HexStr("0x" + "0" * 64),
+    fee_amount=5000000,
+    kind=HexStr("0x00"),
+    partially_fillable=False,
+    sell_token_balance=HexStr("0x00"),
+    buy_token_balance=HexStr("0x00")
+)
+
+chain = Chain.MAINNET
+settlement_contract = COW_PROTOCOL_SETTLEMENT_CONTRACT_CHAIN_ADDRESS_MAP[chain.chain_id].value
+order_domain = domain(chain, settlement_contract)
+
+signature: EcdsaSignature = sign_order(
+    domain=order_domain,
+    order=order,
+    owner=account,
+    scheme=SigningScheme.EIP712
+)
+
+print(f"Signature scheme: {signature.scheme}")
+print(f"Signature data: {signature.to_string()}")
+```
+
+### EcdsaSignature Structure
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class EcdsaSignature:
+    scheme: SigningScheme  # EIP712 or ETHSIGN
+    data: str              # Hex-encoded signature (65 bytes)
+
+    def to_string(self) -> str:
+        return self.data if self.data.startswith("0x") else f"0x{self.data}"
+```
+
+## ETHSIGN Signatures
+
+<Warning>
+  ETHSIGN is deprecated and should only be used for compatibility with older systems. Always prefer EIP-712 when possible.
+</Warning>
+
+```python
+signature = sign_order(
+    domain=order_domain,
+    order=order,
+    owner=account,
+    scheme=SigningScheme.ETHSIGN
+)
+```
+
+## EIP-1271 Signatures
+
+**EIP-1271** enables smart contract wallets (Gnosis Safe, Argent, etc.) to sign orders.
+
+```python
+from cowdao_cowpy.contracts.sign import (
+    Eip1271Signature, Eip1271SignatureData, SigningScheme,
+    encode_eip1271_signature_data, decode_eip1271_signature_data
+)
+from web3 import Web3
+
+safe_address = Web3.to_checksum_address("0xYourSafeAddress")
+owner_signature = bytes.fromhex("abcd1234...")
+
+sig_data = Eip1271SignatureData(
+    verifier=safe_address,
+    signature=owner_signature
+)
+
+signature = Eip1271Signature(
+    scheme=SigningScheme.EIP1271,
+    data=sig_data
+)
+
+# Encode for submission
+encoded = encode_eip1271_signature_data(safe_address, owner_signature.hex())
+
+# Decode signature data
+decoded = decode_eip1271_signature_data(signature.to_string())
+print(f"Verifier: {decoded.verifier}")
+```
+
+### EIP-1271 Magic Value
+
+```python
+from cowdao_cowpy.contracts.sign import EIP1271_MAGICVALUE
+
+print(f"Magic value: {EIP1271_MAGICVALUE}")
+# Output: 0x1626ba7e
+```
+
+## PreSign Signatures
+
+**PRESIGN** allows orders to be authorized on-chain before submission. Useful for smart contracts that need to place orders, pre-authorized trading strategies, and orders that don't require immediate signing.
+
+```python
+from cowdao_cowpy.contracts.sign import PreSignSignature, SigningScheme, PRE_SIGNED
+from cowdao_cowpy.contracts.order import compute_order_uid
+from web3 import Web3, Account
+import os
+
+order_uid = compute_order_uid(order_domain, order, account.address)
+
+# Call setPreSignature on settlement contract
+settlement_address = Web3.to_checksum_address("0x9008D19f58AAbD9eD0D60971565AA8510560ab41")
+provider = Web3(Web3.HTTPProvider("https://rpc.ankr.com/eth"))
+account = Account.from_key(os.getenv("PRIVATE_KEY"))
+
+abi = [{
+    "name": "setPreSignature",
+    "type": "function",
+    "inputs": [
+        {"name": "orderUid", "type": "bytes"},
+        {"name": "signed", "type": "bool"}
+    ]
+}]
+
+contract = provider.eth.contract(address=settlement_address, abi=abi)
+
+tx = contract.functions.setPreSignature(
+    bytes.fromhex(order_uid[2:]),
+    True
+).build_transaction({
+    'from': account.address,
+    'gas': 100000,
+    'gasPrice': provider.eth.gas_price,
+    'nonce': provider.eth.get_transaction_count(account.address)
+})
+
+signed_tx = account.sign_transaction(tx)
+tx_hash = provider.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+# Submit order with PreSign signature
+presign_signature = PreSignSignature(
+    scheme=SigningScheme.PRESIGN,
+    data=PRE_SIGNED
+)
+```
+
+## Signing Order Cancellations
+
+```python
+from cowdao_cowpy.contracts.sign import sign_order_cancellation, sign_order_cancellations
+
+# Cancel a single order
+cancellation_sig = sign_order_cancellation(
+    domain=order_domain,
+    order_uid=order_uid,
+    owner=account,
+    scheme=SigningScheme.EIP712
+)
+
+# Cancel multiple orders at once
+order_uids = [order_uid_1, order_uid_2, order_uid_3]
+cancellations_sig = sign_order_cancellations(
+    domain=order_domain,
+    order_uids=order_uids,
+    owner=account,
+    scheme=SigningScheme.EIP712
+)
+```
+
+## Signature Union Type
+
+```python
+from typing import Union
+from cowdao_cowpy.contracts.sign import EcdsaSignature, Eip1271Signature, PreSignSignature
+
+Signature = Union[EcdsaSignature, Eip1271Signature, PreSignSignature]
+
+def process_signature(sig: Signature):
+    print(f"Scheme: {sig.scheme}")
+    print(f"Data: {sig.to_string()}")
+```
+
+## Choosing the Right Signing Scheme
+
+<AccordionGroup>
+  <Accordion title="EIP-712 -- Recommended for EOAs">
+    Use for standard wallet accounts (MetaMask, Ledger, etc.). Provides the best UX and security.
+  </Accordion>
+  <Accordion title="EIP-1271 -- For Smart Contracts">
+    Required for Gnosis Safe, Argent, and other smart contract wallets. The contract must implement `isValidSignature()`.
+  </Accordion>
+  <Accordion title="PRESIGN -- For Automated Orders">
+    Best for contracts that need to place orders automatically or for pre-authorizing orders before submission.
+  </Accordion>
+  <Accordion title="ETHSIGN -- Legacy Only">
+    Avoid using ETHSIGN. Only include for backward compatibility with old systems.
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+- **Always Use EIP-712**: For standard wallets, consistently apply EIP-712 for enhanced security and UX
+- **Validate Signatures**: Always verify signatures before submitting orders to the API
+- **Handle All Schemes**: Support multiple schemes to work with different wallet types
+- **Test Thoroughly**: Test signature creation and validation on testnets first
+
+## Related Resources
+
+- [Order Structure](/cow-py/concepts/orders) -- Learn about order data structures
+- [Contract Interaction](/cow-py/guides/contract-interaction) -- Guide to creating and submitting orders
+- [Composable Orders](/cow-py/advanced/composable-orders) -- Build conditional orders

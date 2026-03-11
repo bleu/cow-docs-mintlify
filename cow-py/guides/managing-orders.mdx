@@ -1,0 +1,404 @@
+---
+title: "Managing Orders"
+description: "Create, fetch, and cancel orders using the OrderBookApi"
+---
+
+## Overview
+
+The `OrderBookApi` class provides a comprehensive interface for interacting with the CoW Protocol order book. This guide covers creating orders, querying order status, fetching trades, and canceling orders.
+
+## Initializing the API Client
+
+```python
+from cowdao_cowpy.order_book.api import OrderBookApi
+from cowdao_cowpy.order_book.config import OrderBookAPIConfigFactory
+from cowdao_cowpy.common.config import SupportedChainId
+
+# Use default configuration (mainnet, production)
+order_book_api = OrderBookApi()
+
+# Or specify chain and environment
+config = OrderBookAPIConfigFactory.get_config(
+    env="prod",  # or "staging"
+    chain_id=SupportedChainId.MAINNET
+)
+order_book_api = OrderBookApi(config)
+```
+
+## Creating Orders
+
+<Steps>
+  <Step title="Request a Quote">
+    Before creating an order, get a price quote from the API:
+
+    ```python
+    from cowdao_cowpy.order_book.generated.model import (
+        OrderQuoteRequest,
+        OrderQuoteSide1,
+        OrderQuoteSideKindSell,
+        TokenAmount,
+    )
+    from web3 import Web3
+
+    # Prepare quote request
+    quote_request = OrderQuoteRequest(
+        sellToken=Web3.to_checksum_address(
+            "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"  # USDC
+        ),
+        buyToken=Web3.to_checksum_address(
+            "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"  # WETH
+        ),
+        from_=account.address,
+        appData="0x0000000000000000000000000000000000000000000000000000000000000000",
+    )
+
+    # Specify sell side with amount
+    order_side = OrderQuoteSide1(
+        kind=OrderQuoteSideKindSell.sell,
+        sellAmountBeforeFee=TokenAmount("1000000000")  # 1000 USDC (6 decimals)
+    )
+
+    # Get quote
+    quote_response = await order_book_api.post_quote(
+        request=quote_request,
+        side=order_side
+    )
+
+    print(f"Buy amount: {quote_response.quote.buyAmount}")
+    print(f"Valid until: {quote_response.quote.validTo}")
+    ```
+  </Step>
+  <Step title="Create and Sign Order">
+    Build an order from the quote and sign it:
+
+    ```python
+    from cowdao_cowpy.contracts.order import Order
+    from cowdao_cowpy.contracts.sign import sign_order, SigningScheme
+    from cowdao_cowpy.contracts.domain import domain
+    from cowdao_cowpy.common.constants import CowContractAddress
+    from cowdao_cowpy.common.chains import Chain
+    from eth_account.signers.local import LocalAccount
+    from web3 import Account
+
+    account: LocalAccount = Account.from_key("YOUR_PRIVATE_KEY")
+
+    order = Order(
+        sell_token=quote_request.sellToken,
+        buy_token=quote_request.buyToken,
+        receiver=account.address,
+        sell_amount=str(1000000000),
+        buy_amount=str(quote_response.quote.buyAmount.root),
+        valid_to=quote_response.quote.validTo,
+        app_data="0x0000000000000000000000000000000000000000000000000000000000000000",
+        fee_amount="0",
+        kind="sell",
+        partially_fillable=False,
+        sell_token_balance="erc20",
+        buy_token_balance="erc20",
+    )
+
+    order_domain = domain(
+        chain=Chain.MAINNET,
+        verifying_contract=CowContractAddress.SETTLEMENT_CONTRACT.value
+    )
+    signature = sign_order(order_domain, order, account, SigningScheme.EIP712)
+    ```
+  </Step>
+  <Step title="Submit Order">
+    Post the signed order to the order book:
+
+    ```python
+    from cowdao_cowpy.order_book.generated.model import OrderCreation
+
+    order_creation = OrderCreation(
+        from_=account.address,
+        sellToken=order.sellToken,
+        buyToken=order.buyToken,
+        sellAmount=order.sellAmount,
+        buyAmount=order.buyAmount,
+        validTo=order.validTo,
+        appData=order.appData,
+        feeAmount=order.feeAmount,
+        kind=order.kind,
+        partiallyFillable=order.partiallyFillable,
+        receiver=order.receiver,
+        signature=signature.to_string(),
+        signingScheme=signature.scheme.name.lower(),
+    )
+
+    order_uid = await order_book_api.post_order(order_creation)
+    print(f"Order UID: {order_uid}")
+    ```
+  </Step>
+</Steps>
+
+## Fetching Orders
+
+### Get Order by UID
+
+```python
+from cowdao_cowpy.order_book.generated.model import UID
+
+order_uid = UID("0x...")
+order = await order_book_api.get_order_by_uid(order_uid)
+
+print(f"Status: {order.status}")
+print(f"Sell amount: {order.sellAmount}")
+print(f"Buy amount: {order.buyAmount}")
+```
+
+### Get All Orders for an Owner
+
+```python
+from cowdao_cowpy.order_book.generated.model import Address
+
+owner = Address("0x...")
+orders = await order_book_api.get_orders_by_owner(
+    owner=owner,
+    limit=100,
+    offset=0,
+)
+
+for order in orders:
+    print(f"Order {order.uid}: {order.status}")
+```
+
+### Search Across Environments
+
+```python
+order = await order_book_api.get_order_multi_env(order_uid)
+
+if order:
+    print(f"Order found: {order.status}")
+else:
+    print("Order not found in any environment")
+```
+
+## Fetching Trades
+
+### Trades by Order UID
+
+```python
+trades = await order_book_api.get_trades_by_order_uid(order_uid)
+
+for trade in trades:
+    print(f"Trade executed at block {trade.blockNumber}")
+    print(f"Sell amount: {trade.sellAmount}")
+    print(f"Buy amount: {trade.buyAmount}")
+```
+
+### Trades by Owner
+
+```python
+owner = Address("0x...")
+trades = await order_book_api.get_trades_by_owner(owner)
+
+print(f"Total trades: {len(trades)}")
+```
+
+## Canceling Orders
+
+<Warning>
+  Order cancellations must be signed by the order owner using EIP-712 typed data.
+</Warning>
+
+### Cancel Single Order
+
+```python
+from cowdao_cowpy.contracts.sign import sign_order_cancellation, SigningScheme
+from cowdao_cowpy.order_book.generated.model import OrderCancellations
+
+cancellation_signature = sign_order_cancellation(
+    domain=order_domain,
+    order_uid=order_uid.root,
+    owner=account,
+    scheme=SigningScheme.EIP712
+)
+
+order_cancellations = OrderCancellations(
+    orderUids=[order_uid.root],
+    signature=cancellation_signature.to_string(),
+    signingScheme=cancellation_signature.scheme.name.lower(),
+)
+
+result = await order_book_api.delete_order(order_cancellations)
+print(f"Cancellation result: {result}")
+```
+
+### Cancel Multiple Orders
+
+```python
+from cowdao_cowpy.contracts.sign import sign_order_cancellations
+
+order_uids_to_cancel = ["0x...", "0x...", "0x..."]
+
+cancellation_signature = sign_order_cancellations(
+    domain=order_domain,
+    order_uids=order_uids_to_cancel,
+    owner=account,
+    scheme=SigningScheme.EIP712
+)
+
+order_cancellations = OrderCancellations(
+    orderUids=order_uids_to_cancel,
+    signature=cancellation_signature.to_string(),
+    signingScheme=cancellation_signature.scheme.name.lower(),
+)
+
+result = await order_book_api.delete_order(order_cancellations)
+print(f"Cancelled {len(order_uids_to_cancel)} orders")
+```
+
+## Transaction and Pricing Data
+
+### Orders by Transaction Hash
+
+```python
+from cowdao_cowpy.order_book.generated.model import TransactionHash
+
+tx_hash = TransactionHash("0x...")
+orders = await order_book_api.get_tx_orders(tx_hash)
+
+for order in orders:
+    print(f"Order {order.uid} in transaction")
+```
+
+### Native Token Price
+
+```python
+token_address = Address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")
+price = await order_book_api.get_native_price(token_address)
+
+print(f"Token price: ${price.price}")
+```
+
+### User Surplus
+
+```python
+user_address = Address("0x...")
+surplus = await order_book_api.get_total_surplus(user_address)
+
+print(f"Total surplus: {surplus.totalSurplus}")
+```
+
+## Solver Competition Data
+
+```python
+# Get latest solver competition
+competition = await order_book_api.get_solver_competition("latest")
+
+print(f"Auction ID: {competition.auctionId}")
+print(f"Winner: {competition.winner}")
+
+# Get competition by transaction
+competition = await order_book_api.get_solver_competition_by_tx_hash(
+    TransactionHash("0x...")
+)
+```
+
+## Working with App Data
+
+### Upload App Data
+
+```python
+from cowdao_cowpy.order_book.generated.model import AppDataObject, AppData, AppDataHash
+import json
+
+app_data_json = {
+    "appCode": "MyTradingApp",
+    "metadata": {
+        "referrer": {"address": "0x..."},
+    }
+}
+
+app_data_object = AppDataObject(
+    fullAppData=AppData(json.dumps(app_data_json))
+)
+
+app_data_hash = await order_book_api.put_app_data(app_data=app_data_object)
+print(f"App data hash: {app_data_hash.root}")
+```
+
+### Retrieve App Data
+
+```python
+app_data_hash = AppDataHash(root="0x...")
+app_data = await order_book_api.get_app_data(app_data_hash)
+print(f"App data: {app_data}")
+```
+
+## Complete Order Management Example
+
+```python
+import asyncio
+from web3 import Web3, Account
+from cowdao_cowpy.order_book.api import OrderBookApi
+from cowdao_cowpy.order_book.config import OrderBookAPIConfigFactory
+from cowdao_cowpy.common.config import SupportedChainId
+from cowdao_cowpy.order_book.generated.model import Address, UID
+
+async def manage_orders():
+    config = OrderBookAPIConfigFactory.get_config(
+        env="prod",
+        chain_id=SupportedChainId.MAINNET
+    )
+    order_book_api = OrderBookApi(config)
+
+    account_address = Address("0x...")
+
+    orders = await order_book_api.get_orders_by_owner(account_address)
+    print(f"Found {len(orders)} orders")
+
+    for order in orders:
+        print(f"\nOrder {order.uid}")
+        print(f"  Status: {order.status}")
+        print(f"  Sell: {order.sellAmount} {order.sellToken}")
+        print(f"  Buy: {order.buyAmount} {order.buyToken}")
+
+        trades = await order_book_api.get_trades_by_order_uid(UID(order.uid))
+        print(f"  Trades: {len(trades)}")
+
+        order_link = order_book_api.get_order_link(UID(order.uid))
+        print(f"  Explorer: {order_link}")
+
+if __name__ == "__main__":
+    asyncio.run(manage_orders())
+```
+
+## API Reference
+
+| Method | Description |
+|--------|-------------|
+| `post_order(order_creation)` | Submit a new order |
+| `get_order_by_uid(order_uid)` | Fetch order by UID |
+| `get_orders_by_owner(owner, limit, offset)` | Get all orders for an address |
+| `delete_order(order_cancellations)` | Cancel one or more orders |
+| `post_quote(request, side, validity)` | Request a price quote |
+| `get_trades_by_order_uid(order_uid)` | Get trades for an order |
+| `get_trades_by_owner(owner)` | Get all trades for an address |
+| `get_tx_orders(tx_hash)` | Get orders in a transaction |
+| `get_native_price(token_address)` | Get token price in native currency |
+| `get_total_surplus(user)` | Get total surplus for a user |
+| `get_solver_competition(action_id)` | Get solver competition data |
+| `put_app_data(app_data, hash)` | Upload app data |
+| `get_app_data(app_data_hash)` | Retrieve app data |
+
+## Order Status Values
+
+Orders can have the following statuses:
+
+- `open` -- Order is available for solvers
+- `fulfilled` -- Order has been completely filled
+- `expired` -- Order validity period has passed
+- `cancelled` -- Order was cancelled by the owner
+- `presignaturePending` -- Waiting for Safe presignature
+
+<Tip>
+  Use the `get_order_link()` method to get a direct URL to view the order on CoW Explorer.
+</Tip>
+
+## Next Steps
+
+- Learn about [Swapping Tokens](/cow-py/guides/swapping-tokens) for a simpler interface
+- Explore [App Data](/cow-py/guides/app-data) to attach metadata to orders
+- Check [Contract Interaction](/cow-py/guides/contract-interaction) for signing details

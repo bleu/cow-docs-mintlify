@@ -1,0 +1,213 @@
+---
+title: "Quote Selection"
+description: "Understanding CoW Protocol's quoting strategies — fast vs optimal quotes, latency tradeoffs, and timing between quote and order creation."
+---
+
+The `/quote` endpoint is the starting point for every trade on CoW Protocol. Before a user can sign an [intent](/cow-protocol/explanation/how-it-works/how-intents-are-formed), the protocol needs to determine what price is available and what fees apply. This page explains how quoting works, the different quoting strategies available, and best practices for keeping quotes fresh.
+
+## How Quoting Works
+
+When you call `POST /api/v1/quote`, the protocol:
+
+1. Evaluates available liquidity across on-chain sources (AMMs, aggregators) and off-chain sources (CoW Protocol solvers)
+2. Estimates network costs (gas) for settlement
+3. Returns a price estimate including fee breakdowns
+
+```bash
+curl -X POST "https://api.cow.fi/mainnet/api/v1/quote" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sellToken": "0xA0b86a33E6411Ec5d0b9dd2E7dC15A9CAA6C1F8e",
+    "buyToken": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    "sellAmountBeforeFee": "1000000000000000000",
+    "kind": "sell",
+    "from": "0xYourWalletAddress"
+  }'
+```
+
+<Note>
+Quotes are **not guaranteed**. They represent the best estimate at the time of the request. Market conditions, gas prices, and available liquidity can all change between when a quote is fetched and when the order is executed.
+</Note>
+
+Every quote response includes a `validTo` timestamp. The signed order must be submitted before this time expires, or it will be rejected.
+
+## Quote Types
+
+CoW Protocol supports different quoting strategies via the `priceQuality` parameter, allowing you to trade off between response speed and price accuracy.
+
+### Fast Quotes
+
+```bash
+curl -X POST "https://api.cow.fi/mainnet/api/v1/quote" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sellToken": "0xA0b86a33E6411Ec5d0b9dd2E7dC15A9CAA6C1F8e",
+    "buyToken": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    "sellAmountBeforeFee": "1000000000000000000",
+    "kind": "sell",
+    "from": "0xYourWalletAddress",
+    "priceQuality": "fast"
+  }'
+```
+
+- Returns quickly (typically under 1 second)
+- Uses cached or approximate pricing data
+- Best for UI display, price previews, and showing users an estimate before they commit
+- Trade-off: price may be less accurate, especially for large orders or illiquid token pairs
+
+### Optimal Quotes
+
+```bash
+curl -X POST "https://api.cow.fi/mainnet/api/v1/quote" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sellToken": "0xA0b86a33E6411Ec5d0b9dd2E7dC15A9CAA6C1F8e",
+    "buyToken": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    "sellAmountBeforeFee": "1000000000000000000",
+    "kind": "sell",
+    "from": "0xYourWalletAddress",
+    "priceQuality": "optimal"
+  }'
+```
+
+- This is the **default** when `priceQuality` is not specified
+- Takes longer (typically 1-5 seconds)
+- Queries multiple liquidity sources and solvers for the best available price
+- Best for order signing and final price confirmation in production order flows
+- Trade-off: slower response time
+
+### Verified Quotes
+
+```bash
+curl -X POST "https://api.cow.fi/mainnet/api/v1/quote" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sellToken": "0xA0b86a33E6411Ec5d0b9dd2E7dC15A9CAA6C1F8e",
+    "buyToken": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    "sellAmountBeforeFee": "50000000000000000000000",
+    "kind": "sell",
+    "from": "0xYourWalletAddress",
+    "priceQuality": "verified"
+  }'
+```
+
+- Most thorough price discovery process
+- Verifies that the proposed settlement is feasible on-chain
+- Best for large orders where accuracy is critical
+- Trade-off: longest response time (3-10 seconds)
+
+### Comparison
+
+| Property | Fast | Optimal | Verified |
+|---|---|---|---|
+| Response time | Under 1s | 1–5s | 3–10s |
+| Price accuracy | Approximate | Good | Best |
+| Use case | UI preview | Order signing | Large/critical orders |
+| Recommended for | Price display | Most integrations | DAOs, large trades |
+
+## Timing Between Quote and Order
+
+The time gap between fetching a quote and submitting the signed order is one of the most common sources of integration bugs.
+
+<Warning>
+A quote is a **snapshot** of market conditions. The longer you wait between receiving a quote and submitting the signed order, the more likely it is that market conditions have changed and the order will not fill.
+</Warning>
+
+### The `validTo` field
+
+Every quote response includes a `validTo` timestamp (Unix epoch seconds). This defines the latest point at which the order can still be considered valid by the protocol. If you submit an order after `validTo` has passed, it will be rejected.
+
+### Recommended pattern
+
+<Steps>
+  <Step title="Fetch a quote">
+    Call `/api/v1/quote` with the user's trade parameters.
+  </Step>
+  <Step title="Display to user">
+    Show the estimated amounts, fees, and exchange rate in your UI.
+  </Step>
+  <Step title="User confirms">
+    Wait for the user to review and click "Confirm" or "Swap".
+  </Step>
+  <Step title="Re-quote if stale">
+    If more than 30 seconds have elapsed since the quote was fetched, fetch a new quote before proceeding.
+  </Step>
+  <Step title="Sign with quote amounts">
+    Build the order using the quote's `sellAmount`, `buyAmount`, and `feeAmount` values, apply slippage, and have the user sign it.
+  </Step>
+  <Step title="Submit immediately">
+    Send the signed order to `POST /api/v1/orders` right away. Do not hold it.
+  </Step>
+</Steps>
+
+### Anti-patterns to avoid
+
+- **Caching quotes for minutes.** A quote fetched 5 minutes ago is almost certainly stale. Prices, gas costs, and liquidity can all shift in that time.
+- **Quoting once on page load.** If your UI fetches a quote when the page loads and uses it when the user clicks "Swap" minutes later, the order is unlikely to fill at the quoted price.
+- **Ignoring `validTo`.** Even if you submit before `validTo`, a very old quote means the signed amounts may not match current market conditions, leading to unfilled orders.
+
+## Slippage and Quote Freshness
+
+[Slippage tolerance](/cow-protocol/explanation/how-it-works/how-intents-are-formed#4-fees--slippage) and quote freshness are closely related. Slippage defines how much worse than the quoted price a user is willing to accept:
+
+- **Tight slippage + stale quote** = high chance the order expires without filling, because the market has already moved beyond the narrow tolerance window.
+- **Wide slippage + stale quote** = order may fill, but the user could receive a significantly worse price than expected.
+- **Fresh quote + reasonable slippage** = the ideal combination. The quoted price is close to the current market, and the slippage buffer handles normal short-term volatility.
+
+<Note>
+As a general rule, re-quote if more than **30 seconds** have elapsed since the last quote. For volatile markets or large orders, consider re-quoting even more frequently.
+</Note>
+
+## Best Practices for Integrators
+
+### For frontend/UI integrations
+
+- Use `priceQuality: "fast"` for initial price previews and display
+- Switch to `priceQuality: "optimal"` when the user is ready to sign
+- Implement a **quote refresh** mechanism: periodically re-fetch the quote while the user is on the confirmation screen
+- Show a visual indicator when the quote is being refreshed so users understand why amounts may change
+
+### For bots and automated systems
+
+- Always use fresh quotes immediately before signing -- never cache
+- Use `priceQuality: "optimal"` as the baseline
+- For large orders, use `priceQuality: "verified"` or consider splitting into a [TWAP order](/cow-protocol/explanation/order-types/twap-orders) to reduce market impact
+
+### For large or DAO trades
+
+- Use `priceQuality: "verified"` to confirm settlement feasibility before signing
+- Consider [TWAP orders](/cow-protocol/explanation/order-types/twap-orders) to spread execution over time and reduce slippage
+- Set slippage tolerance carefully -- too tight and the order will not fill; too loose and you may lose value
+
+### General guidelines
+
+```typescript
+// Example: quote refresh logic
+async function getQuoteWithRefresh(params: QuoteParams): Promise<QuoteResponse> {
+  const quote = await fetchQuote(params);
+  const quoteTimestamp = Date.now();
+
+  // Before signing, check if the quote is still fresh
+  function isQuoteFresh(): boolean {
+    return Date.now() - quoteTimestamp < 30_000; // 30 seconds
+  }
+
+  // If the user takes too long, re-fetch
+  if (!isQuoteFresh()) {
+    return fetchQuote(params);
+  }
+
+  return quote;
+}
+```
+
+<Warning>
+Never use `--no-verify` or skip quote validation in production. Always confirm that the quote's `validTo` has not passed before submitting the signed order.
+</Warning>
+
+## Further Reading
+
+- [How Intents Are Formed](/cow-protocol/explanation/how-it-works/how-intents-are-formed) -- detailed breakdown of quote responses and fee calculations
+- [Flow of an Order](/cow-protocol/explanation/how-it-works/flow-of-an-order) -- end-to-end order lifecycle
+- [API Integration](/cow-protocol/howto/integrate/api) -- endpoint reference and quick start
+- [Order Book API Reference](/cow-protocol/reference/apis/orderbook) -- complete API documentation

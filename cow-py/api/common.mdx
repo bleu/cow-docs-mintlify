@@ -1,0 +1,241 @@
+---
+title: "Common"
+description: "API reference for common types, configuration, and utilities in the CoW Protocol Python SDK"
+---
+
+The `common` module provides core types, configuration, constants, and error handling used throughout the SDK.
+
+## Chain
+
+Enum representing supported blockchain networks.
+
+```python
+from cowdao_cowpy.common.chains import Chain
+
+class Chain(Enum):
+    MAINNET = (SupportedChainId.MAINNET, "ethereum", "https://etherscan.io")
+    SEPOLIA = (SupportedChainId.SEPOLIA, "sepolia", "https://sepolia.etherscan.io")
+    GNOSIS = (SupportedChainId.GNOSIS_CHAIN, "gnosis", "https://gnosisscan.io")
+    ARBITRUM_ONE = (SupportedChainId.ARBITRUM_ONE, "arbitrum_one", "https://arbiscan.io")
+    BASE = (SupportedChainId.BASE, "base", "https://basescan.org/")
+    POLYGON = (SupportedChainId.POLYGON, "polygon", "https://polygonscan.com")
+    AVALANCHE = (SupportedChainId.AVALANCHE, "avalanche", "https://snowtrace.io")
+    BNB = (SupportedChainId.BNB, "bnb", "https://bscscan.com")
+    LENS = (SupportedChainId.LENS, "lens", "https://explorer.lens.xyz/")
+```
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `chain_id` | `SupportedChainId` | The numeric chain ID as an enum value |
+| `name` | `str` | Human-readable network name |
+| `explorer` | `str` | Block explorer URL |
+
+```python
+chain = Chain.MAINNET
+chain.chain_id      # SupportedChainId.MAINNET (value: 1)
+chain.name          # "ethereum"
+chain.explorer      # "https://etherscan.io"
+```
+
+---
+
+## Configuration
+
+### SupportedChainId
+
+```python
+from cowdao_cowpy.common.config import SupportedChainId
+
+class SupportedChainId(Enum):
+    MAINNET = 1
+    GNOSIS_CHAIN = 100
+    SEPOLIA = 11155111
+    ARBITRUM_ONE = 42161
+    BASE = 8453
+    POLYGON = 137
+    AVALANCHE = 43114
+    BNB = 56
+    LENS = 232
+```
+
+### CowEnv
+
+```python
+from cowdao_cowpy.common.config import CowEnv
+
+class CowEnv(Enum):
+    PROD = "prod"
+    STAGING = "staging"
+```
+
+### ApiContext
+
+```python
+from cowdao_cowpy.common.config import ApiContext, SupportedChainId, CowEnv
+
+context = ApiContext(
+    chain_id=SupportedChainId.MAINNET,
+    env=CowEnv.PROD,
+    base_urls=None,
+    max_tries=5
+)
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `chain_id` | `SupportedChainId` | Required | The blockchain network to use |
+| `env` | `CowEnv` | Required | The API environment |
+| `base_urls` | `Optional[ApiBaseUrls]` | `None` | Custom base URLs for API endpoints |
+| `max_tries` | `Optional[int]` | `5` | Maximum retry attempts for API requests |
+
+### DEFAULT_COW_API_CONTEXT
+
+```python
+DEFAULT_COW_API_CONTEXT = ApiContext(
+    env=CowEnv.PROD,
+    chain_id=SupportedChainId.MAINNET
+)
+```
+
+### IPFSConfig
+
+```python
+class IPFSConfig(Enum):
+    READ_URI = "https://gnosis.mypinata.cloud/ipfs"
+    WRITE_URI = "https://api.pinata.cloud"
+```
+
+---
+
+## Constants
+
+### CowContractAddress
+
+```python
+from cowdao_cowpy.common.constants import CowContractAddress
+
+class CowContractAddress(Enum):
+    VAULT_RELAYER = "0xC92E8bdf79f0507f65a392b0ab4667716BFE0110"
+    COMPOSABLE_COW = "0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74"
+    SETTLEMENT_CONTRACT = "0x9008D19f58AAbD9eD0D60971565AA8510560ab41"
+    EXTENSIBLE_FALLBACK_HANDLER = "0x2f55e8b20D0B9FEFA187AA7d00B6Cbe563605bF5"
+```
+
+### Contract Address Maps
+
+```python
+from cowdao_cowpy.common.constants import (
+    COW_PROTOCOL_SETTLEMENT_CONTRACT_CHAIN_ADDRESS_MAP,
+    COW_PROTOCOL_VAULT_RELAYER_CHAIN_ADDRESS_MAP,
+    COMPOSABLE_COW_CONTRACT_CHAIN_ADDRESS_MAP,
+    EXTENSIBLE_FALLBACK_HANDLER_CONTRACT_CHAIN_ADDRESS_MAP,
+)
+
+# Get settlement contract for mainnet
+settlement_address = COW_PROTOCOL_SETTLEMENT_CONTRACT_CHAIN_ADDRESS_MAP[
+    SupportedChainId.MAINNET
+].value
+```
+
+### ZERO_APP_DATA
+
+```python
+ZERO_APP_DATA = "0x0000000000000000000000000000000000000000000000000000000000000000"
+```
+
+---
+
+## Error Handling
+
+### CowError
+
+Base exception class for CoW Protocol SDK errors.
+
+```python
+from cowdao_cowpy.common.cow_error import CowError
+
+class CowError(Exception):
+    def __init__(self, message, error_code=None):
+        super().__init__(message)
+        self.error_code = error_code
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `message` | `str` | Required | Error description |
+| `error_code` | `Optional[Any]` | `None` | Optional error code for programmatic handling |
+
+```python
+try:
+    # SDK operation
+    pass
+except CowError as e:
+    print(f"CoW SDK Error: {e}")
+    if e.error_code:
+        print(f"Error code: {e.error_code}")
+```
+
+### LOG_PREFIX
+
+```python
+from cowdao_cowpy.common.cow_error import LOG_PREFIX
+# "cow-sdk: "
+```
+
+---
+
+## Complete Example
+
+```python
+from cowdao_cowpy.common.chains import Chain, SUPPORTED_CHAINS
+from cowdao_cowpy.common.config import ApiContext, CowEnv, SupportedChainId
+from cowdao_cowpy.common.constants import (
+    COW_PROTOCOL_SETTLEMENT_CONTRACT_CHAIN_ADDRESS_MAP,
+    COMPOSABLE_COW_CONTRACT_CHAIN_ADDRESS_MAP,
+    ZERO_APP_DATA,
+)
+from cowdao_cowpy.common.cow_error import CowError, LOG_PREFIX
+
+def setup_chain_config(chain: Chain):
+    try:
+        chain_id = chain.chain_id
+
+        context = ApiContext(
+            chain_id=chain_id,
+            env=CowEnv.PROD,
+            max_tries=3
+        )
+
+        settlement = COW_PROTOCOL_SETTLEMENT_CONTRACT_CHAIN_ADDRESS_MAP[chain_id].value
+        composable_cow = COMPOSABLE_COW_CONTRACT_CHAIN_ADDRESS_MAP[chain_id].value
+
+        print(f"{LOG_PREFIX} Chain: {chain.name}")
+        print(f"{LOG_PREFIX} Settlement: {settlement}")
+        print(f"{LOG_PREFIX} ComposableCow: {composable_cow}")
+
+        return context
+    except KeyError:
+        raise CowError(
+            f"Chain {chain.name} not supported",
+            error_code="UNSUPPORTED_CHAIN"
+        )
+
+config = setup_chain_config(Chain.MAINNET)
+
+# List all supported chains
+for chain in SUPPORTED_CHAINS:
+    print(f"  - {chain.name} (ID: {chain.chain_id.value})")
+```
+
+## Best Practices
+
+```python
+# Use enum values for chain selection
+chain = Chain.MAINNET  # Good
+
+# Create explicit contexts for different environments
+prod_context = ApiContext(chain_id=SupportedChainId.MAINNET, env=CowEnv.PROD)
+staging_context = ApiContext(chain_id=SupportedChainId.SEPOLIA, env=CowEnv.STAGING)
+```

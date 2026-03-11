@@ -1,0 +1,137 @@
+---
+title: "App Data API"
+description: "API reference for app data management in the CoW Protocol Python SDK"
+---
+
+The `app_data` module provides tools for creating, encoding, and managing app data for CoW Protocol orders.
+
+## AppDataDoc
+
+Creates and manages app data documents that can be hashed or converted to IPFS CIDs.
+
+### Constructor
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `app_data_doc` | `Dict[str, Any]` | `{}` | Dictionary containing app data fields |
+| `app_data_doc_string` | `str` | `""` | Pre-serialized app data string (takes precedence) |
+
+### Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `to_string()` | `str` | Serialize app data to deterministic JSON string |
+| `to_hex()` | `str` | Generate keccak256 hash of the app data (with `0x` prefix) |
+| `to_cid()` | `str` | Convert app data to IPFS CID |
+
+## AppDataHex
+
+Converts app data hashes to IPFS CIDs and retrieves documents from IPFS.
+
+### Constructor
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `app_data_hex` | `str` | Hex string without `0x` prefix |
+
+### Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `to_cid()` | `str` | Returns IPFS CID (v1, base16 encoded with keccak-256 hash) |
+| `async to_doc(ipfs_uri)` | `dict` | Fetch the app data document from IPFS |
+
+## AppDataCid
+
+Converts IPFS CIDs to app data hashes and retrieves documents.
+
+### Constructor
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `app_data_cid` | `str` | IPFS CID string |
+
+### Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `to_hex()` | `str` | Extract the app data hash from the CID (with `0x` prefix) |
+| `async to_doc(ipfs_uri)` | `dict` | Fetch app data document from IPFS |
+
+## Utility Functions
+
+### generate_app_data
+
+Generate app data with common parameters like referrer address and partner fees.
+
+```python
+from cowdao_cowpy.app_data.utils import generate_app_data, PartnerFee
+
+result = generate_app_data(
+    app_code="MyApp",
+    partner_fee=PartnerFee(bps=50, recipient="0x..."),
+    referrer_address="0x...",
+    graffiti="Hello CoW Protocol!"
+)
+```
+
+Returns a `CreateAppData` object containing `app_data_object` and `app_data_hash`.
+
+### build_and_post_app_data
+
+Build app data and upload it to the CoW Protocol orderbook API. Requires an `OrderBookApi` instance.
+
+### build_all_app_codes
+
+Build and post app data across all supported chains.
+
+### stringify_deterministic
+
+Serialize a dictionary to deterministic JSON (sorted keys).
+
+### extract_digest
+
+Extract the hash digest from an IPFS CID.
+
+### fetch_doc_from_cid
+
+Fetch a document from IPFS using a CID.
+
+## Data Classes
+
+### PartnerFee
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `bps` | `int` | Basis points (100 = 1%) |
+| `recipient` | `str` | Recipient address |
+
+### QuoteFee
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `slippageBips` | `int` | `1` | Slippage in basis points |
+| `version` | `str` | `"0.2.0"` | Version string |
+
+### CreateAppData
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `app_data_object` | `AppDataObject` | The full app data object |
+| `app_data_hash` | `AppDataHash` | The keccak256 hash |
+
+## Constants
+
+```python
+from cowdao_cowpy.app_data.consts import (
+    DEFAULT_APP_DATA_DOC,
+    DEFAULT_IPFS_READ_URI,     # "https://cloudflare-ipfs.com/ipfs"
+    DEFAULT_APP_CODE,          # "cowdao_cowpy"
+    DEFAULT_GRAFFITI,
+    LATEST_APP_DATA_VERSION,   # "1.3.0"
+)
+```
+
+## Errors
+
+**MetaDataError** -- Raised when there are issues with app data encoding, decoding, or CID conversion.

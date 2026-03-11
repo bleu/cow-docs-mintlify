@@ -1,0 +1,320 @@
+---
+title: "Multi-Chain Trading"
+description: "Execute trades across Ethereum, Gnosis Chain, Arbitrum, Base, Polygon, Avalanche, BNB, and Lens networks"
+---
+
+## Overview
+
+CoW Protocol Python SDK supports trading on **multiple EVM-compatible chains**, enabling you to build cross-chain trading strategies and multi-network applications.
+
+## Supported Chains
+
+```python
+from cowdao_cowpy.common.chains import Chain
+
+for chain in Chain:
+    print(f"  {chain.name}: Chain ID {chain.chain_id.value}")
+    print(f"    Explorer: {chain.explorer}")
+```
+
+<CardGroup cols={2}>
+  <Card title="Ethereum Mainnet" icon="ethereum">
+    Chain ID: 1 | `Chain.MAINNET`
+  </Card>
+  <Card title="Gnosis Chain" icon="circle-nodes">
+    Chain ID: 100 | `Chain.GNOSIS`
+  </Card>
+  <Card title="Arbitrum One" icon="layer-group">
+    Chain ID: 42161 | `Chain.ARBITRUM_ONE`
+  </Card>
+  <Card title="Base" icon="b">
+    Chain ID: 8453 | `Chain.BASE`
+  </Card>
+  <Card title="Polygon" icon="p">
+    Chain ID: 137 | `Chain.POLYGON`
+  </Card>
+  <Card title="Avalanche" icon="mountain">
+    Chain ID: 43114 | `Chain.AVALANCHE`
+  </Card>
+  <Card title="BNB Chain" icon="coins">
+    Chain ID: 56 | `Chain.BNB`
+  </Card>
+  <Card title="Lens" icon="camera">
+    Chain ID: 232 | `Chain.LENS`
+  </Card>
+</CardGroup>
+
+### Testnet Support
+
+```python
+testnet_chain = Chain.SEPOLIA
+print(f"Chain ID: {testnet_chain.chain_id.value}")  # 11155111
+```
+
+## Chain-Specific Configuration
+
+### Selecting a Chain for Trading
+
+```python
+import asyncio
+from web3 import Account, Web3
+from web3.types import Wei
+from cowdao_cowpy.cow.swap import swap_tokens
+from cowdao_cowpy.common.chains import Chain
+import os
+
+async def swap_on_mainnet():
+    account = Account.from_key(os.getenv("PRIVATE_KEY"))
+
+    await swap_tokens(
+        amount=Wei(1000000),
+        account=account,
+        chain=Chain.MAINNET,
+        sell_token=Web3.to_checksum_address("0xUSDC_ADDRESS"),
+        buy_token=Web3.to_checksum_address("0xWETH_ADDRESS")
+    )
+
+async def swap_on_arbitrum():
+    account = Account.from_key(os.getenv("PRIVATE_KEY"))
+
+    await swap_tokens(
+        amount=Wei(1000000),
+        account=account,
+        chain=Chain.ARBITRUM_ONE,
+        sell_token=Web3.to_checksum_address("0xARB_USDC_ADDRESS"),
+        buy_token=Web3.to_checksum_address("0xARB_WETH_ADDRESS")
+    )
+```
+
+### Chain-Specific Contract Addresses
+
+```python
+from cowdao_cowpy.common.constants import (
+    COW_PROTOCOL_SETTLEMENT_CONTRACT_CHAIN_ADDRESS_MAP,
+    COW_PROTOCOL_VAULT_RELAYER_CHAIN_ADDRESS_MAP
+)
+
+chain = Chain.GNOSIS
+settlement_address = COW_PROTOCOL_SETTLEMENT_CONTRACT_CHAIN_ADDRESS_MAP[
+    chain.chain_id
+].value
+print(f"Settlement contract on {chain.name}: {settlement_address}")
+```
+
+## Working with Chain IDs
+
+```python
+from cowdao_cowpy.common.config import SupportedChainId
+
+print(SupportedChainId.MAINNET.value)       # 1
+print(SupportedChainId.GNOSIS_CHAIN.value)  # 100
+print(SupportedChainId.ARBITRUM_ONE.value)  # 42161
+print(SupportedChainId.BASE.value)          # 8453
+
+# Convert between Chain and SupportedChainId
+chain = Chain.BASE
+chain_id = chain.chain_id
+print(f"Numeric ID: {chain_id.value}")  # 8453
+```
+
+## Multi-Chain Order Management
+
+```python
+from cowdao_cowpy.order_book.api import OrderBookApi
+from cowdao_cowpy.order_book.config import OrderBookAPIConfigFactory
+
+async def get_orders_multichain(owner_address: str):
+    chains_to_check = [
+        Chain.MAINNET, Chain.GNOSIS,
+        Chain.ARBITRUM_ONE, Chain.BASE
+    ]
+
+    for chain in chains_to_check:
+        config = OrderBookAPIConfigFactory.get_config("prod", chain.chain_id)
+        api = OrderBookApi(config)
+
+        try:
+            orders = await api.get_orders(owner=owner_address)
+            print(f"\n{chain.name} ({chain.chain_id.value}):")
+            print(f"  Found {len(orders)} orders")
+        except Exception as e:
+            print(f"  Error fetching from {chain.name}: {e}")
+
+await get_orders_multichain("0xYourAddress")
+```
+
+## Composable Orders Across Chains
+
+```python
+from cowdao_cowpy.composable.order_types.twap import Twap, TwapData, StartType, DurationType
+
+def create_twap_for_chain(chain: Chain) -> Twap:
+    token_addresses = {
+        Chain.MAINNET: {
+            "USDC": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "WETH": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+        },
+        Chain.ARBITRUM_ONE: {
+            "USDC": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+            "WETH": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"
+        },
+        Chain.BASE: {
+            "USDC": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+            "WETH": "0x4200000000000000000000000000000000000006"
+        }
+    }
+
+    tokens = token_addresses.get(chain)
+    if not tokens:
+        raise ValueError(f"No token addresses configured for {chain.name}")
+
+    twap_data = TwapData(
+        sell_token=Web3.to_checksum_address(tokens["USDC"]),
+        buy_token=Web3.to_checksum_address(tokens["WETH"]),
+        receiver=Web3.to_checksum_address("0xYourAddress"),
+        sell_amount=1000 * 10**6,
+        buy_amount=int(0.5 * 10**18),
+        start_type=StartType.AT_MINING_TIME,
+        number_of_parts=10,
+        time_between_parts=3600,
+        duration_type=DurationType.AUTO,
+        app_data="0x" + "0" * 64
+    )
+
+    return Twap.from_data(twap_data)
+```
+
+## RPC Provider Configuration
+
+```python
+from web3 import Web3, AsyncWeb3
+from typing import Dict
+
+RPC_URLS: Dict[Chain, str] = {
+    Chain.MAINNET: "https://rpc.ankr.com/eth",
+    Chain.SEPOLIA: "https://rpc.ankr.com/eth_sepolia",
+    Chain.GNOSIS: "https://rpc.ankr.com/gnosis",
+    Chain.ARBITRUM_ONE: "https://rpc.ankr.com/arbitrum",
+    Chain.BASE: "https://rpc.ankr.com/base",
+    Chain.POLYGON: "https://rpc.ankr.com/polygon",
+    Chain.AVALANCHE: "https://rpc.ankr.com/avalanche",
+    Chain.BNB: "https://rpc.ankr.com/bsc",
+}
+
+def get_provider(chain: Chain) -> Web3:
+    rpc_url = RPC_URLS.get(chain)
+    if not rpc_url:
+        raise ValueError(f"No RPC URL configured for {chain.name}")
+    return Web3(Web3.HTTPProvider(rpc_url))
+
+def get_async_provider(chain: Chain) -> AsyncWeb3:
+    rpc_url = RPC_URLS.get(chain)
+    if not rpc_url:
+        raise ValueError(f"No RPC URL configured for {chain.name}")
+    return AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(rpc_url))
+```
+
+## API Configuration Per Chain
+
+```python
+from cowdao_cowpy.order_book.config import OrderBookAPIConfigFactory
+from cowdao_cowpy.common.config import SupportedChainId
+
+mainnet_config = OrderBookAPIConfigFactory.get_config("prod", SupportedChainId.MAINNET)
+gnosis_config = OrderBookAPIConfigFactory.get_config("prod", SupportedChainId.GNOSIS_CHAIN)
+arbitrum_config = OrderBookAPIConfigFactory.get_config("prod", SupportedChainId.ARBITRUM_ONE)
+
+# Staging environment
+staging_config = OrderBookAPIConfigFactory.get_config("staging", SupportedChainId.SEPOLIA)
+```
+
+## Chain Detection and Validation
+
+```python
+from cowdao_cowpy.common.chains import Chain, SUPPORTED_CHAINS
+
+def is_chain_supported(chain_id: int) -> bool:
+    supported_ids = [chain.chain_id.value for chain in SUPPORTED_CHAINS]
+    return chain_id in supported_ids
+
+def get_chain_by_id(chain_id: int) -> Chain:
+    for chain in Chain:
+        if chain.chain_id.value == chain_id:
+            return chain
+    raise ValueError(f"Unsupported chain ID: {chain_id}")
+
+print(is_chain_supported(1))        # True (Mainnet)
+print(is_chain_supported(42161))    # True (Arbitrum)
+print(is_chain_supported(999999))   # False
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Chain-Specific Token Addresses">
+    Token addresses differ across chains. Always maintain a mapping of token addresses per chain.
+  </Accordion>
+  <Accordion title="Configure Appropriate RPC Providers">
+    Use reliable RPC providers for each chain. Consider rate limits and latency for your use case.
+  </Accordion>
+  <Accordion title="Handle Chain-Specific Gas">
+    Gas prices and confirmation times vary significantly between chains. Adjust your strategies accordingly.
+  </Accordion>
+  <Accordion title="Test on Testnets">
+    Use Sepolia for Ethereum testing. Other chains may have their own testnets.
+  </Accordion>
+  <Accordion title="Monitor Chain Health">
+    Implement monitoring for RPC endpoint health and chain congestion across all chains you support.
+  </Accordion>
+</AccordionGroup>
+
+## Complete Multi-Chain Example
+
+```python
+import asyncio
+import os
+from web3 import Account
+from cowdao_cowpy.cow.swap import swap_tokens
+from cowdao_cowpy.common.chains import Chain
+
+async def execute_multichain_strategy():
+    account = Account.from_key(os.getenv("PRIVATE_KEY"))
+
+    trades = [
+        {
+            "chain": Chain.MAINNET,
+            "sell_token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "buy_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "amount": 1000 * 10**6
+        },
+        {
+            "chain": Chain.ARBITRUM_ONE,
+            "sell_token": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+            "buy_token": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+            "amount": 500 * 10**6
+        },
+        {
+            "chain": Chain.BASE,
+            "sell_token": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+            "buy_token": "0x4200000000000000000000000000000000000006",
+            "amount": 250 * 10**6
+        }
+    ]
+
+    results = await asyncio.gather(
+        *[swap_tokens(
+            amount=t["amount"], account=account, chain=t["chain"],
+            sell_token=t["sell_token"], buy_token=t["buy_token"]
+        ) for t in trades],
+        return_exceptions=True
+    )
+
+    for trade, result in zip(trades, results):
+        if isinstance(result, Exception):
+            print(f"Failed on {trade['chain'].name}: {result}")
+        else:
+            print(f"Success on {trade['chain'].name}: {result.url}")
+
+if __name__ == "__main__":
+    asyncio.run(execute_multichain_strategy())
+```

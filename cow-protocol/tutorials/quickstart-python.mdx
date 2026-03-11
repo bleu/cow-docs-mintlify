@@ -1,0 +1,290 @@
+---
+title: "Quickstart: Python"
+description: "Place your first CoW Protocol order using Python — from quote to confirmed trade in under 10 minutes."
+---
+
+This guide walks you through placing a real order on CoW Protocol using nothing but Python and the CoW Protocol REST API. By the end, you will have submitted a signed intent on the Sepolia testnet and watched it get filled.
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+- **Python 3.8+** installed
+- A wallet with **test tokens on Sepolia** (get Sepolia ETH from a [faucet](https://sepoliafaucet.com/), then wrap it to WETH)
+- The wallet's **private key** (never use a key that controls real funds for testing)
+
+<Warning>
+This guide uses the **Sepolia testnet**. Never hardcode private keys in production code. Use environment variables or a secrets manager.
+</Warning>
+
+## Installation
+
+Install the required packages:
+
+```bash
+pip install web3 requests eth-account
+```
+
+## Walkthrough
+
+<Steps>
+
+### Setup
+
+Configure your connection, wallet, and constants.
+
+```python
+import json
+import time
+import requests
+from eth_account import Account
+from eth_account.messages import encode_typed_data
+from web3 import Web3
+
+# --------------- Configuration ---------------
+PRIVATE_KEY = "0xYOUR_PRIVATE_KEY"  # Replace with your Sepolia wallet key
+API_BASE = "https://api.cow.fi/sepolia/api/v1"
+CHAIN_ID = 11155111  # Sepolia
+
+# Contract addresses (same across all chains unless noted)
+SETTLEMENT_CONTRACT = "0x9008D19f58AAbD9eD0D60971565AA8510560ab41"
+VAULT_RELAYER = "0xC92E8bdf79f0507f65a392b0ab4667716BFE0110"
+
+# Tokens on Sepolia
+SELL_TOKEN = "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"  # WETH
+BUY_TOKEN = "0xbe72E441BF55620febc26715db68d3494213D8Cb"   # COW
+
+account = Account.from_key(PRIVATE_KEY)
+w3 = Web3(Web3.HTTPProvider("https://rpc.sepolia.org"))
+
+print(f"Wallet: {account.address}")
+print(f"Balance: {w3.eth.get_balance(account.address)} wei")
+```
+
+<Note>
+You can use any Sepolia RPC endpoint — Alchemy, Infura, or the public `https://rpc.sepolia.org`.
+</Note>
+
+### Approve tokens
+
+CoW Protocol's settlement contract does not pull tokens directly from your wallet. Instead, the **GPv2VaultRelayer** contract transfers tokens on your behalf. You must approve it to spend your sell token.
+
+If you have already approved the relayer for this token, you can skip this step.
+
+```python
+# Minimal ERC-20 ABI — only the approve function
+erc20_abi = [
+    {
+        "inputs": [
+            {"name": "spender", "type": "address"},
+            {"name": "amount", "type": "uint256"},
+        ],
+        "name": "approve",
+        "outputs": [{"name": "", "type": "bool"}],
+        "type": "function",
+    }
+]
+
+token = w3.eth.contract(
+    address=Web3.to_checksum_address(SELL_TOKEN), abi=erc20_abi
+)
+
+tx = token.functions.approve(
+    Web3.to_checksum_address(VAULT_RELAYER),
+    2**256 - 1,  # max approval
+).build_transaction(
+    {
+        "from": account.address,
+        "nonce": w3.eth.get_transaction_count(account.address),
+        "gas": 50_000,
+        "gasPrice": w3.eth.gas_price,
+    }
+)
+
+signed_tx = account.sign_transaction(tx)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+
+print(f"Approval tx: {tx_hash.hex()}")
+print(f"Status: {'success' if receipt.status == 1 else 'failed'}")
+```
+
+<Warning>
+This issues an **unlimited approval** for simplicity. In production, approve only the amount you intend to trade.
+</Warning>
+
+### Get a quote
+
+Send your trade intention to the `/quote` endpoint. The API returns estimated amounts and fee information.
+
+```python
+quote_request = {
+    "sellToken": SELL_TOKEN,
+    "buyToken": BUY_TOKEN,
+    "sellAmountBeforeFee": str(10**17),  # 0.1 WETH
+    "kind": "sell",
+    "from": account.address,
+    "receiver": account.address,
+    "validFor": 1800,  # 30 minutes
+    "signingScheme": "eip712",
+}
+
+response = requests.post(f"{API_BASE}/quote", json=quote_request)
+response.raise_for_status()
+quote_data = response.json()
+
+quote = quote_data["quote"]
+print(f"Sell amount (after network costs): {quote['sellAmount']}")
+print(f"Buy amount (estimated):            {quote['buyAmount']}")
+print(f"Fee amount (network costs):        {quote['feeAmount']}")
+print(f"Valid until:                        {quote['validTo']}")
+```
+
+<Note>
+The quote is valid for a limited time (controlled by `validFor`). You must sign and submit the order before it expires. If you get an `ExpiredQuote` error later, simply request a fresh quote.
+</Note>
+
+### Sign the order (EIP-712)
+
+CoW Protocol orders are **intents** — signed messages that authorize the protocol to execute the trade on your behalf. Orders are signed using the [EIP-712](https://eips.ethereum.org/EIPS/eip-712) typed data standard.
+
+```python
+# EIP-712 domain for CoW Protocol
+domain_data = {
+    "name": "Gnosis Protocol",
+    "version": "v2",
+    "chainId": CHAIN_ID,
+    "verifyingContract": SETTLEMENT_CONTRACT,
+}
+
+# Order type definition — must match the contract exactly
+order_types = {
+    "Order": [
+        {"name": "sellToken", "type": "address"},
+        {"name": "buyToken", "type": "address"},
+        {"name": "receiver", "type": "address"},
+        {"name": "sellAmount", "type": "uint256"},
+        {"name": "buyAmount", "type": "uint256"},
+        {"name": "validTo", "type": "uint32"},
+        {"name": "appData", "type": "bytes32"},
+        {"name": "feeAmount", "type": "uint256"},
+        {"name": "kind", "type": "string"},
+        {"name": "partiallyFillable", "type": "bool"},
+        {"name": "sellTokenBalance", "type": "string"},
+        {"name": "buyTokenBalance", "type": "string"},
+    ]
+}
+
+# Build the order data from the quote
+# For sell orders: sellAmount = quote.sellAmount + quote.feeAmount (spot price)
+#                  buyAmount  = quote.buyAmount (minimum to receive)
+order_data = {
+    "sellToken": quote["sellToken"],
+    "buyToken": quote["buyToken"],
+    "receiver": quote["receiver"],
+    "sellAmount": int(quote["sellAmount"]) + int(quote["feeAmount"]),
+    "buyAmount": int(quote["buyAmount"]),
+    "validTo": quote["validTo"],
+    "appData": bytes.fromhex(quote["appData"][2:]),
+    "feeAmount": 0,
+    "kind": "sell",
+    "partiallyFillable": False,
+    "sellTokenBalance": "erc20",
+    "buyTokenBalance": "erc20",
+}
+
+# Sign the typed data
+signable = encode_typed_data(domain_data, order_types, order_data)
+signed = account.sign_message(signable)
+signature = signed.signature.hex()
+
+print(f"Order signed successfully")
+print(f"Signature: 0x{signature[:16]}...")
+```
+
+<Note>
+The `feeAmount` in the signed order is set to `0` and the `sellAmount` is set to the spot price amount (`quote.sellAmount + quote.feeAmount`). The settlement contract deducts network costs from the sell amount automatically. See [How Intents Are Formed](/cow-protocol/explanation/how-it-works/how-intents-are-formed) for details on the fee pipeline.
+</Note>
+
+### Submit the order
+
+Post the signed order to the `/orders` endpoint. The API returns an **order UID** that you can use to track execution.
+
+```python
+submit_body = {
+    "sellToken": quote["sellToken"],
+    "buyToken": quote["buyToken"],
+    "receiver": quote["receiver"],
+    "sellAmount": str(int(quote["sellAmount"]) + int(quote["feeAmount"])),
+    "buyAmount": quote["buyAmount"],
+    "validTo": quote["validTo"],
+    "appData": quote["appData"],
+    "feeAmount": "0",
+    "kind": "sell",
+    "partiallyFillable": False,
+    "sellTokenBalance": "erc20",
+    "buyTokenBalance": "erc20",
+    "signingScheme": "eip712",
+    "signature": "0x" + signature,
+    "from": account.address,
+}
+
+response = requests.post(f"{API_BASE}/orders", json=submit_body)
+response.raise_for_status()
+order_uid = response.json()
+
+print(f"Order UID: {order_uid}")
+print(f"Track at:  https://explorer.cow.fi/sepolia/orders/{order_uid}")
+```
+
+### Monitor the order
+
+Poll the API to watch the order progress from `open` to `fulfilled`.
+
+```python
+print("Waiting for order to be filled...")
+
+for _ in range(60):  # poll for up to 5 minutes
+    resp = requests.get(f"{API_BASE}/orders/{order_uid}")
+    resp.raise_for_status()
+    status = resp.json()["status"]
+    print(f"  Status: {status}")
+
+    if status in ("fulfilled", "expired", "cancelled"):
+        break
+    time.sleep(5)
+
+if status == "fulfilled":
+    print("Order filled successfully!")
+elif status == "expired":
+    print("Order expired before a solver could fill it. Try again with a fresh quote.")
+else:
+    print(f"Final status: {status}")
+```
+
+</Steps>
+
+## Troubleshooting
+
+| Error | Cause | Fix |
+|---|---|---|
+| `InsufficientAllowance` | The vault relayer is not approved to spend your sell token | Run the approval step (Step 2) |
+| `InvalidSignature` | EIP-712 domain or type definitions do not match the contract | Verify `domain_data` and `order_types` match exactly as shown above |
+| `ExpiredQuote` | The quote validity period has elapsed | Request a fresh quote and sign/submit immediately |
+| `InsufficientBalance` | Your wallet does not hold enough sell token | Get test tokens from a Sepolia faucet and wrap ETH to WETH |
+| `SellAmountDoesNotCoverFee` | Trade amount is too small to cover network costs | Increase the `sellAmountBeforeFee` in your quote request |
+
+<Note>
+For a full list of API error codes, see the [Order Book API Reference](/cow-protocol/reference/apis/orderbook).
+</Note>
+
+## Next Steps
+
+Now that you have placed your first order, explore more of CoW Protocol:
+
+- **[TypeScript SDK Quickstart](/cow-sdk/quickstart)** — Use the official SDK for a higher-level integration experience
+- **[Limit Orders](/cow-protocol/tutorials/cow-swap/limit)** — Place limit orders that execute at your target price
+- **[TWAP Orders](/cow-protocol/tutorials/cow-swap/twap)** — Split large orders over time with Time-Weighted Average Price
+- **[API Integration Guide](/cow-protocol/howto/integrate/api)** — Deep dive into the REST API, including rate limits and all endpoints
+- **[How Intents Are Formed](/cow-protocol/explanation/how-it-works/how-intents-are-formed)** — Understand the fee pipeline and amount calculations
+- **[Signing Schemes](/cow-protocol/reference/core/signing-schemes)** — Learn about EIP-712, `ethSign`, and pre-signed orders

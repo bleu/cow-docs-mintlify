@@ -1,0 +1,366 @@
+---
+title: "Token Approvals & GPv2VaultRelayer"
+description: "How to approve tokens for trading on CoW Protocol — standard approvals, gasless approvals, and per-chain VaultRelayer addresses."
+---
+
+## How Approvals Work on CoW Protocol
+
+Before you can trade any ERC-20 token on CoW Protocol, you must grant the protocol permission to transfer your sell tokens. This is standard ERC-20 behavior, but there is one critical detail that trips up many integrators:
+
+<Warning>
+  You must approve the **GPv2VaultRelayer** contract, **not** the GPv2Settlement contract. Approving the Settlement contract (`0x9008...`) will not work.
+</Warning>
+
+Here is how the approval flow works at a high level:
+
+<Steps>
+  <Step title="Approve the VaultRelayer">
+    You call `approve()` on the ERC-20 token contract, granting the GPv2VaultRelayer permission to spend your sell token.
+  </Step>
+  <Step title="Submit your order">
+    You sign and submit your order to the CoW Protocol order book (off-chain).
+  </Step>
+  <Step title="Settlement occurs">
+    When a solver settles your order, the GPv2Settlement contract instructs the VaultRelayer to transfer your sell tokens. The VaultRelayer can **only** transfer tokens to the Settlement contract, protecting your funds from malicious solvers.
+  </Step>
+</Steps>
+
+<Note>
+  Token approval is a **one-time operation per token**. Once you approve the VaultRelayer for a given token, you do not need to approve again for future trades of that same token (unless you revoke or the allowance is exhausted).
+</Note>
+
+## GPv2VaultRelayer Addresses
+
+All core CoW Protocol contracts are deployed at **identical addresses** across every supported chain using CREATE2 deterministic deployment.
+
+| Network | Chain ID | VaultRelayer Address |
+|---|---|---|
+| Ethereum Mainnet | 1 | `0xC92E8bdf79f0507f65a392b0ab4667716BFE0110` |
+| Gnosis Chain | 100 | `0xC92E8bdf79f0507f65a392b0ab4667716BFE0110` |
+| Arbitrum One | 42161 | `0xC92E8bdf79f0507f65a392b0ab4667716BFE0110` |
+| Base | 8453 | `0xC92E8bdf79f0507f65a392b0ab4667716BFE0110` |
+| Sepolia (Testnet) | 11155111 | `0xC92E8bdf79f0507f65a392b0ab4667716BFE0110` |
+
+<Note>
+  The address is the same on all chains. You can hardcode `0xC92E8bdf79f0507f65a392b0ab4667716BFE0110` in your integration.
+</Note>
+
+## Standard Approval (On-Chain Transaction)
+
+A standard approval sends a transaction to the token's `approve` function, granting the VaultRelayer a spending allowance. This costs gas but works with every ERC-20 token.
+
+### Using the CoW SDK (TypeScript)
+
+The SDK provides built-in methods that automatically target the correct VaultRelayer address for your chain:
+
+<CodeGroup>
+```typescript Viem
+import { TradingSdk, SupportedChainId } from '@cowprotocol/sdk-trading'
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+import { parseUnits, maxUint256 } from 'viem'
+import { createPublicClient, http, privateKeyToAccount } from 'viem'
+import { mainnet } from 'viem/chains'
+
+const publicClient = createPublicClient({
+  chain: mainnet,
+  transport: http('YOUR_RPC_URL'),
+})
+
+const adapter = new ViemAdapter({
+  provider: publicClient,
+  signer: privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`),
+})
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.MAINNET,
+  appCode: 'YOUR_APP_CODE',
+}, {}, adapter)
+
+const sellToken = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' // USDC
+const owner = '0xYourWalletAddress'
+const sellAmount = parseUnits('1000', 6) // 1000 USDC
+
+// Step 1: Check current allowance
+const currentAllowance = await sdk.getCowProtocolAllowance({
+  tokenAddress: sellToken,
+  owner,
+})
+
+// Step 2: Approve if insufficient
+if (currentAllowance < sellAmount) {
+  const txHash = await sdk.approveCowProtocol({
+    tokenAddress: sellToken,
+    amount: maxUint256, // Infinite approval (one-time)
+  })
+
+  await publicClient.waitForTransactionReceipt({ hash: txHash })
+  console.log('Approval confirmed:', txHash)
+} else {
+  console.log('Sufficient allowance already exists')
+}
+```
+
+```typescript Ethers v6
+import { TradingSdk, SupportedChainId } from '@cowprotocol/sdk-trading'
+import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter'
+import { parseUnits, MaxUint256 } from 'ethers'
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.MAINNET,
+  appCode: 'YOUR_APP_CODE',
+}, {}, adapter)
+
+const sellToken = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' // USDC
+const owner = '0xYourWalletAddress'
+const sellAmount = parseUnits('1000', 6)
+
+// Step 1: Check current allowance
+const currentAllowance = await sdk.getCowProtocolAllowance({
+  tokenAddress: sellToken,
+  owner,
+})
+
+// Step 2: Approve if insufficient
+if (currentAllowance < sellAmount) {
+  const txHash = await sdk.approveCowProtocol({
+    tokenAddress: sellToken,
+    amount: MaxUint256, // Infinite approval
+  })
+
+  await provider.waitForTransaction(txHash)
+  console.log('Approval confirmed:', txHash)
+}
+```
+</CodeGroup>
+
+### Using Python (web3.py)
+
+```python
+from web3 import Web3
+
+VAULT_RELAYER = "0xC92E8bdf79f0507f65a392b0ab4667716BFE0110"
+MAX_UINT256 = 2**256 - 1
+
+# Minimal ERC-20 ABI for approvals
+ERC20_ABI = [
+    {
+        "inputs": [
+            {"name": "spender", "type": "address"},
+            {"name": "amount", "type": "uint256"}
+        ],
+        "name": "approve",
+        "outputs": [{"name": "", "type": "bool"}],
+        "type": "function",
+        "stateMutability": "nonpayable"
+    },
+    {
+        "inputs": [
+            {"name": "owner", "type": "address"},
+            {"name": "spender", "type": "address"}
+        ],
+        "name": "allowance",
+        "outputs": [{"name": "", "type": "uint256"}],
+        "type": "function",
+        "stateMutability": "view"
+    }
+]
+
+w3 = Web3(Web3.HTTPProvider("YOUR_RPC_URL"))
+
+sell_token_address = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"  # USDC
+user_address = "0xYourWalletAddress"
+sell_amount = 1000 * 10**6  # 1000 USDC (6 decimals)
+
+token = w3.eth.contract(
+    address=Web3.to_checksum_address(sell_token_address),
+    abi=ERC20_ABI
+)
+
+# Step 1: Check current allowance
+current_allowance = token.functions.allowance(user_address, VAULT_RELAYER).call()
+print(f"Current allowance: {current_allowance}")
+
+# Step 2: Approve if insufficient
+if current_allowance < sell_amount:
+    tx = token.functions.approve(VAULT_RELAYER, MAX_UINT256).build_transaction({
+        "from": user_address,
+        "nonce": w3.eth.get_transaction_count(user_address),
+        "gas": 60000,
+        "gasPrice": w3.eth.gas_price,
+    })
+
+    signed_tx = w3.eth.account.sign_transaction(tx, private_key="YOUR_PRIVATE_KEY")
+    tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    print(f"Approval confirmed in tx: {receipt.transactionHash.hex()}")
+else:
+    print("Sufficient allowance already exists")
+```
+
+### Using cast (Foundry)
+
+```bash
+# Check current allowance
+cast call $SELL_TOKEN \
+  "allowance(address,address)(uint256)" \
+  $USER_ADDRESS \
+  0xC92E8bdf79f0507f65a392b0ab4667716BFE0110 \
+  --rpc-url $RPC_URL
+
+# Approve VaultRelayer for max uint256
+cast send $SELL_TOKEN \
+  "approve(address,uint256)" \
+  0xC92E8bdf79f0507f65a392b0ab4667716BFE0110 \
+  $(cast max-uint) \
+  --private-key $PRIVATE_KEY \
+  --rpc-url $RPC_URL
+```
+
+## Gasless Approval (EIP-2612 Permit)
+
+Some ERC-20 tokens support [EIP-2612](https://eips.ethereum.org/EIPS/eip-2612), which allows approvals via an off-chain signature instead of an on-chain transaction. This means the user pays **zero gas** for the approval step.
+
+### How It Works
+
+<Steps>
+  <Step title="User signs a permit message">
+    The user signs an EIP-712 typed data message off-chain. This signature authorizes the VaultRelayer to spend a specific amount of tokens. No transaction is sent, so no gas is consumed.
+  </Step>
+  <Step title="Permit is submitted with the order">
+    The permit signature is included alongside the order when it is submitted to the CoW Protocol order book.
+  </Step>
+  <Step title="VaultRelayer executes the permit on-chain">
+    During settlement, the solver calls `permit()` on the token contract using the user's signature, granting the allowance just-in-time before the trade executes.
+  </Step>
+</Steps>
+
+### Which Tokens Support Permit?
+
+Not every token supports EIP-2612. Here are some guidelines:
+
+- **Supported**: USDC, DAI, and most tokens deployed after 2021
+- **Not supported**: WETH, USDT, and many older ERC-20 tokens
+- **How to check**: Call `token.nonces(address)` on the token contract. If the call succeeds (does not revert), the token likely supports permit.
+
+### Using the SDK (Automatic Detection)
+
+The CoW SDK automatically detects whether a token supports EIP-2612 and uses permit when available:
+
+```typescript
+import { TradingSdk, SupportedChainId, OrderKind } from '@cowprotocol/sdk-trading'
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.MAINNET,
+  appCode: 'YOUR_APP_CODE',
+}, {}, adapter)
+
+// The SDK handles permit detection and signing automatically.
+// If the sell token supports EIP-2612, the SDK will use a gasless
+// permit instead of requiring an on-chain approval transaction.
+const { orderId } = await sdk.postSwapOrder({
+  kind: OrderKind.SELL,
+  sellToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+  sellTokenDecimals: 6,
+  buyToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+  buyTokenDecimals: 18,
+  amount: '1000000000', // 1000 USDC
+})
+
+console.log('Order submitted:', orderId)
+```
+
+### Limitations
+
+<Warning>
+  Permit signatures are **single-use** and have an expiration. They are not a replacement for standard approvals in all scenarios. If you plan to submit many orders for the same token, a one-time standard approval is more practical.
+</Warning>
+
+- Not all tokens support EIP-2612 (notably WETH and USDT)
+- Permit signatures expire and cannot be reused
+- Some token implementations have non-standard permit behavior
+
+## Revoking Approvals
+
+To revoke an existing approval, set the allowance to zero:
+
+<CodeGroup>
+```typescript SDK
+const txHash = await sdk.approveCowProtocol({
+  tokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+  amount: 0n, // Revoke approval
+})
+console.log('Approval revoked:', txHash)
+```
+
+```python web3.py
+tx = token.functions.approve(VAULT_RELAYER, 0).build_transaction({
+    "from": user_address,
+    "nonce": w3.eth.get_transaction_count(user_address),
+    "gas": 60000,
+    "gasPrice": w3.eth.gas_price,
+})
+
+signed_tx = w3.eth.account.sign_transaction(tx, private_key="YOUR_PRIVATE_KEY")
+tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+print(f"Approval revoked in tx: {tx_hash.hex()}")
+```
+
+```bash cast
+cast send $SELL_TOKEN \
+  "approve(address,uint256)" \
+  0xC92E8bdf79f0507f65a392b0ab4667716BFE0110 \
+  0 \
+  --private-key $PRIVATE_KEY \
+  --rpc-url $RPC_URL
+```
+</CodeGroup>
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="InsufficientAllowance error">
+    You have not approved the VaultRelayer for the sell token, or the approved amount is less than the order's sell amount (including fees).
+
+    **Fix**: Approve the VaultRelayer for at least the sell amount, or use `maxUint256` for an infinite approval. Then resubmit your order.
+  </Accordion>
+
+  <Accordion title="I approved the Settlement contract instead of the VaultRelayer">
+    This is the most common mistake. The GPv2Settlement contract address is `0x9008D19f58AAbD9eD0D60971565AA8510560ab41`, but approvals must go to the GPv2VaultRelayer at `0xC92E8bdf79f0507f65a392b0ab4667716BFE0110`.
+
+    **Fix**: Send a new approval transaction targeting the VaultRelayer address.
+  </Accordion>
+
+  <Accordion title="Approval transaction succeeded but order still fails">
+    Several things can cause this:
+    - You approved the **wrong token** (e.g., buy token instead of sell token)
+    - The approved **amount is too low** (remember to account for fees)
+    - The approval transaction has not been **confirmed yet** (wait for at least 1 block confirmation)
+    - Your wallet does not have a sufficient **token balance**
+
+    **Fix**: Verify the token address, amount, and that the transaction is confirmed on-chain.
+  </Accordion>
+
+  <Accordion title="Token uses non-standard approve (e.g., USDT)">
+    Some tokens like USDT require the allowance to be set to **zero before setting a new non-zero value**. If you try to change the allowance directly from one non-zero value to another, the transaction will revert.
+
+    **Fix**: First approve with amount `0`, wait for confirmation, then approve with your desired amount.
+
+    ```bash
+    # Step 1: Reset to zero
+    cast send $USDT "approve(address,uint256)" \
+      0xC92E8bdf79f0507f65a392b0ab4667716BFE0110 0 \
+      --private-key $PRIVATE_KEY --rpc-url $RPC_URL
+
+    # Step 2: Set new allowance
+    cast send $USDT "approve(address,uint256)" \
+      0xC92E8bdf79f0507f65a392b0ab4667716BFE0110 $(cast max-uint) \
+      --private-key $PRIVATE_KEY --rpc-url $RPC_URL
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+- **[CoW SDK Quickstart](/cow-sdk/guides/token-approvals)** -- Detailed SDK reference for approval methods
+- **[API Integration](/cow-protocol/howto/integrate/api)** -- Submit orders via the REST API after approving
+- **[GPv2VaultRelayer Reference](/cow-protocol/reference/contracts/core/vault-relayer)** -- Architecture details and advanced balance mechanisms (Balancer external/internal balances)

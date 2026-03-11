@@ -1,0 +1,313 @@
+---
+title: "Swapping Tokens"
+description: "Learn how to swap tokens using the CoW Protocol Python SDK with MEV protection"
+---
+
+## Overview
+
+The CoW Protocol Python SDK provides a high-level `swap_tokens` function that enables you to execute token swaps with built-in MEV protection through batch auctions. This guide covers the complete swap workflow including token approval and order execution.
+
+## Prerequisites
+
+Before swapping tokens, ensure you have:
+
+- An Ethereum account with a private key
+- Sufficient balance of the token you want to sell
+- Token approval for the CoW Protocol Vault Relayer
+
+## Token Approval Flow
+
+<Warning>
+  Before calling `swap_tokens`, you **must** approve the `CowContractAddress.VAULT_RELAYER` to spend your sell token. The swap will fail without proper approval.
+</Warning>
+
+<Steps>
+  <Step title="Import Required Modules">
+    ```python
+    from web3 import Web3, Account
+    from web3.types import Wei
+    from cowdao_cowpy.cow.swap import swap_tokens
+    from cowdao_cowpy.common.chains import Chain
+    from cowdao_cowpy.common.constants import CowContractAddress
+    ```
+  </Step>
+  <Step title="Approve Token Spending">
+    Grant the Vault Relayer permission to spend your tokens:
+
+    ```python
+    from eth_typing import ChecksumAddress
+
+    # Initialize Web3 and account
+    w3 = Web3(Web3.HTTPProvider('YOUR_RPC_URL'))
+    account = Account.from_key('YOUR_PRIVATE_KEY')
+
+    # Token addresses
+    sell_token: ChecksumAddress = Web3.to_checksum_address(
+        "0xbe72E441BF55620febc26715db68d3494213D8Cb"  # USDC
+    )
+
+    # ERC20 ABI for approve function
+    erc20_abi = [
+        {
+            "constant": False,
+            "inputs": [
+                {"name": "spender", "type": "address"},
+                {"name": "amount", "type": "uint256"}
+            ],
+            "name": "approve",
+            "outputs": [{"name": "", "type": "bool"}],
+            "type": "function"
+        }
+    ]
+
+    # Create contract instance
+    token_contract = w3.eth.contract(address=sell_token, abi=erc20_abi)
+
+    # Approve Vault Relayer
+    vault_relayer = CowContractAddress.VAULT_RELAYER.value
+    approve_amount = Wei(2**256 - 1)  # Max approval
+
+    tx = token_contract.functions.approve(
+        vault_relayer,
+        approve_amount
+    ).build_transaction({
+        'from': account.address,
+        'nonce': w3.eth.get_transaction_count(account.address),
+    })
+
+    signed_tx = account.sign_transaction(tx)
+    tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    ```
+  </Step>
+  <Step title="Execute the Swap">
+    Once approval is complete, you can execute the swap.
+  </Step>
+</Steps>
+
+## Basic Token Swap
+
+Here's a complete example of swapping tokens:
+
+```python
+import os
+import asyncio
+from dotenv import load_dotenv
+from web3 import Account, Web3
+from web3.types import Wei
+from cowdao_cowpy.cow.swap import swap_tokens
+from cowdao_cowpy.common.chains import Chain
+
+# Token addresses (Sepolia testnet)
+BUY_TOKEN = Web3.to_checksum_address(
+    "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"  # WETH
+)
+SELL_TOKEN = Web3.to_checksum_address(
+    "0xbe72E441BF55620febc26715db68d3494213D8Cb"  # USDC
+)
+
+# Amount to sell (50 USDC with 18 decimals)
+SELL_AMOUNT = Wei(50_000_000_000_000_000_000)
+
+load_dotenv()
+PRIVATE_KEY = os.getenv("PRIVATE_KEY")
+ACCOUNT = Account.from_key(PRIVATE_KEY)
+
+async def main():
+    completed_order = await swap_tokens(
+        amount=SELL_AMOUNT,
+        account=ACCOUNT,
+        chain=Chain.SEPOLIA,
+        sell_token=SELL_TOKEN,
+        buy_token=BUY_TOKEN,
+    )
+
+    print(f"Order UID: {completed_order.uid}")
+    print(f"Order URL: {completed_order.url}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+## Advanced Configuration
+
+The `swap_tokens` function accepts several optional parameters for advanced use cases:
+
+```python
+# Custom slippage tolerance (1%)
+completed_order = await swap_tokens(
+    amount=SELL_AMOUNT,
+    account=ACCOUNT,
+    chain=Chain.MAINNET,
+    sell_token=SELL_TOKEN,
+    buy_token=BUY_TOKEN,
+    slippage_tolerance=0.01,
+)
+```
+
+```python
+# Custom order validity
+import time
+
+valid_until = int(time.time()) + 3600  # Valid for 1 hour
+
+completed_order = await swap_tokens(
+    amount=SELL_AMOUNT,
+    account=ACCOUNT,
+    chain=Chain.MAINNET,
+    sell_token=SELL_TOKEN,
+    buy_token=BUY_TOKEN,
+    valid_to=valid_until,
+)
+```
+
+```python
+# Partially fillable order
+completed_order = await swap_tokens(
+    amount=SELL_AMOUNT,
+    account=ACCOUNT,
+    chain=Chain.MAINNET,
+    sell_token=SELL_TOKEN,
+    buy_token=BUY_TOKEN,
+    partially_fillable=True,
+)
+```
+
+```python
+# Safe multi-sig order
+from eth_typing import ChecksumAddress
+
+safe_address: ChecksumAddress = Web3.to_checksum_address("0x...")
+
+completed_order = await swap_tokens(
+    amount=SELL_AMOUNT,
+    account=ACCOUNT,
+    chain=Chain.MAINNET,
+    sell_token=SELL_TOKEN,
+    buy_token=BUY_TOKEN,
+    safe_address=safe_address,
+)
+```
+
+```python
+# Custom app data
+from cowdao_cowpy.app_data.utils import generate_app_data
+
+app_data_result = generate_app_data(
+    app_code="my-trading-app",
+    graffiti="My Custom Message"
+)
+
+completed_order = await swap_tokens(
+    amount=SELL_AMOUNT,
+    account=ACCOUNT,
+    chain=Chain.MAINNET,
+    sell_token=SELL_TOKEN,
+    buy_token=BUY_TOKEN,
+    app_data=app_data_result.app_data_hash.root,
+)
+```
+
+## Function Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `amount` | `Wei` | Yes | - | Amount of sell token to swap |
+| `account` | `LocalAccount` | Yes | - | Ethereum account for signing |
+| `chain` | `Chain` | Yes | - | Target blockchain network |
+| `sell_token` | `ChecksumAddress` | Yes | - | Address of token to sell |
+| `buy_token` | `ChecksumAddress` | Yes | - | Address of token to buy |
+| `safe_address` | `ChecksumAddress \| None` | No | `None` | Safe/multisig address (if applicable) |
+| `app_data` | `str` | No | Default hash | Custom app data hash |
+| `valid_to` | `int \| None` | No | Quote validity | Order expiration (Unix timestamp) |
+| `env` | `Envs` | No | `"prod"` | Environment (`"prod"`, `"staging"`) |
+| `slippage_tolerance` | `float` | No | `0.005` | Maximum slippage (0.005 = 0.5%) |
+| `partially_fillable` | `bool` | No | `False` | Allow partial order fills |
+
+## Return Value
+
+The function returns a `CompletedOrder` object with:
+
+```python
+@dataclass
+class CompletedOrder:
+    uid: UID  # Unique order identifier
+    url: str  # CoW Explorer URL for tracking
+```
+
+## How It Works
+
+<Steps>
+  <Step title="Quote Request">
+    The function requests a quote from the OrderBook API with your sell amount and tokens.
+  </Step>
+  <Step title="Order Construction">
+    Creates an `Order` object with sell/buy amounts (with slippage protection), validity period, token balances configuration, and app data metadata.
+  </Step>
+  <Step title="Order Signing">
+    Signs the order using EIP-712 typed data. For regular accounts: ECDSA signature. For Safe addresses: PreSign signature.
+  </Step>
+  <Step title="Order Submission">
+    Posts the signed order to the OrderBook API for solvers to execute.
+  </Step>
+</Steps>
+
+## Supported Chains
+
+The SDK supports swapping on the following networks:
+
+- **Ethereum Mainnet** -- `Chain.MAINNET`
+- **Gnosis Chain** -- `Chain.GNOSIS`
+- **Arbitrum One** -- `Chain.ARBITRUM_ONE`
+- **Base** -- `Chain.BASE`
+- **Sepolia Testnet** -- `Chain.SEPOLIA`
+
+<Tip>
+  Use `Chain.SEPOLIA` for testing without spending real funds. Get testnet tokens from Sepolia faucets.
+</Tip>
+
+## Error Handling
+
+```python
+import asyncio
+from cowdao_cowpy.common.api.errors import UnexpectedResponseError
+
+async def safe_swap():
+    try:
+        completed_order = await swap_tokens(
+            amount=SELL_AMOUNT,
+            account=ACCOUNT,
+            chain=Chain.MAINNET,
+            sell_token=SELL_TOKEN,
+            buy_token=BUY_TOKEN,
+        )
+        print(f"Swap successful: {completed_order.url}")
+    except UnexpectedResponseError as e:
+        print(f"API error: {e}")
+    except ValueError as e:
+        print(f"Invalid parameter: {e}")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+
+asyncio.run(safe_swap())
+```
+
+## Common Issues
+
+<Warning>
+  **Insufficient Allowance**: If you get an error during swap execution, verify that the Vault Relayer has sufficient token allowance.
+</Warning>
+
+<Note>
+  **Fee Handling**: CoW Protocol charges zero protocol fees. The `fee_amount` is set to `"0"` in the order. You only pay network fees when the order settles.
+</Note>
+
+<Tip>
+  **Slippage vs. Price**: The `buy_amount` in the order is calculated as `quote.buyAmount * (1 - slippage_tolerance)`. This ensures you receive at least your expected minimum.
+</Tip>
+
+## Next Steps
+
+- Learn about [Managing Orders](/cow-py/guides/managing-orders) to track and cancel swaps
+- Explore [App Data](/cow-py/guides/app-data) to add custom metadata
+- Check [Contract Interaction](/cow-py/guides/contract-interaction) for advanced signing scenarios

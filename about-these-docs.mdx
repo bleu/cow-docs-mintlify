@@ -1,0 +1,273 @@
+---
+title: "About These Docs"
+description: "How CoW DAO documentation is structured, organized, and maintained — frameworks, architecture, and contribution guidelines."
+---
+
+## Documentation Architecture
+
+These docs serve multiple audiences across a complex protocol ecosystem. Here's how the entire documentation site is organized:
+
+```mermaid
+graph TB
+    subgraph Landing["Landing"]
+        HOME[Home Page]
+    end
+
+    subgraph Protocol["CoW Protocol"]
+        direction TB
+        OV[Overview] --> EXP[Explanation]
+        OV --> TUT[Tutorials]
+        OV --> HT[How-To Guides]
+        OV --> REF[Reference]
+
+        EXP --> EXP_HW[How It Works]
+        EXP --> EXP_BEN[Benefits]
+        EXP --> EXP_OT[Order Types]
+        EXP --> EXP_FL[Flash Loans]
+        EXP --> EXP_ARCH[Architecture]
+
+        TUT --> TUT_QS[Quickstarts]
+        TUT --> TUT_CS[CoW Swap]
+        TUT --> TUT_CE[CoW Explorer]
+        TUT --> TUT_SOL[Solvers]
+
+        REF --> REF_API[APIs]
+        REF --> REF_CORE[Core Reference]
+        REF --> REF_AUC[Auctions]
+    end
+
+    subgraph SDKs["Developer SDKs"]
+        COWSDK[CoW SDK - TypeScript]
+        COWPY[cow-py - Python]
+    end
+
+    subgraph Contracts["Contracts"]
+        CORE_C[Core Contracts]
+        HOOKS[Hooks Trampoline]
+        COMP[ComposableCoW]
+        COWCON[Contracts SDK]
+        FLASH[Flash Loan Router]
+    end
+
+    subgraph Infra["Infrastructure"]
+        BFF[BFF]
+        SVC[Services]
+        WT[Watch Tower]
+    end
+
+    subgraph Gov["Governance"]
+        MISS[Mission & Token]
+        GRANTS[Grants]
+        FEES[Fees]
+    end
+
+    HOME --> Protocol
+    HOME --> SDKs
+    HOME --> Contracts
+    HOME --> Infra
+    HOME --> Gov
+```
+
+## Framework: Diataxis
+
+Every section follows the [Diataxis framework](https://diataxis.fr), which organizes content into four quadrants based on what readers need:
+
+| | **Learning** | **Working** |
+|---|---|---|
+| **Practical** | **Tutorials** — Step-by-step lessons | **How-To Guides** — Task-oriented guides |
+| **Theoretical** | **Explanation** — Concepts and context | **Reference** — Technical specifications |
+
+### How to decide where content belongs
+
+```mermaid
+flowchart TD
+    A[New content] --> B{Does it teach by doing?}
+    B -->|Yes| C[Tutorial]
+    B -->|No| D{Does it solve a specific task?}
+    D -->|Yes| E[How-To Guide]
+    D -->|No| F{Does it explain why/how?}
+    F -->|Yes| G[Explanation]
+    F -->|No| H[Reference]
+
+    C --> C1["tutorials/ directory"]
+    E --> E1["howto/ directory"]
+    G --> G1["explanation/ directory"]
+    H --> H1["reference/ directory"]
+```
+
+### Quick rules
+
+- **Tutorials** teach. They have a learning outcome. "By the end, you'll have placed your first swap."
+- **How-to guides** accomplish. They solve a task. "How to integrate the widget into your app."
+- **Explanation** clarifies. It provides context. "Why CoW Protocol uses batch auctions."
+- **Reference** describes. It's precise and complete. "The /quote endpoint accepts these parameters."
+
+## Personas
+
+The docs serve distinct audiences with tailored entry points:
+
+| Persona | Entry Point | Primary Sections |
+|---|---|---|
+| **Trader** | [CoW Swap tutorials](/cow-protocol/tutorials/cow-swap/swap) | Order types, CoW Swap, CoW Explorer |
+| **Integrator** | [Integration overview](/cow-protocol/explanation/integration-overview) | Widget, SDK, API, quickstarts |
+| **Solver Operator** | [Create a solver](/cow-protocol/tutorials/solvers/create) | Solver tutorials, auction reference |
+| **Smart Contract Dev** | [Contracts reference](/cow-protocol/reference/contracts/core) | ComposableCoW, Hooks, Flash Loans |
+| **Backend Contributor** | [Services](/services/introduction) | BFF, Services, Watch Tower |
+| **DAO Participant** | [Governance](/governance/explanation/mission) | Grants, fees, voting |
+
+Each persona has a clear path from the [home page](/) — the "Find Your Path" table provides direct links.
+
+## Sitemap
+
+### Tab Structure
+
+```mermaid
+graph LR
+    subgraph Tabs
+        T1["CoW Protocol"]
+        T2["Contracts"]
+        T3["CoW SDK"]
+        T4["cow-py"]
+        T5["Solvers"]
+        T6["BFF & Services"]
+        T7["Governance"]
+    end
+```
+
+### CoW Protocol Tab (detailed)
+
+```mermaid
+graph TD
+    CP[CoW Protocol] --> G1[Overview]
+    CP --> G2[How It Works]
+    CP --> G3[Benefits]
+    CP --> G4[Order Types]
+    CP --> G5[Flash Loans]
+    CP --> G6[CoW AMM]
+    CP --> G7[Trading Tutorials]
+    CP --> G8[How-To Guides]
+    CP --> G9[Architecture]
+    CP --> G10[API Reference]
+    CP --> G11[Core Reference]
+    CP --> G12[Auctions]
+
+    G2 --> F1[Flow of an Order]
+    G2 --> F2[How Intents Are Formed]
+    G2 --> F3[Quote Selection]
+    G2 --> F4[Coincidence of Wants]
+    G2 --> F5[Protocol vs Swap]
+
+    G7 --> QS[Quickstarts]
+    G7 --> CS[CoW Swap]
+    G7 --> CE[CoW Explorer]
+
+    QS --> Q1[cURL]
+    QS --> Q2[Python]
+    QS --> Q3[Token Approvals]
+
+    G11 --> D1[Definitions]
+    G11 --> D2[Signing Schemes]
+    G11 --> D3[Error Reference]
+    G11 --> D4[Rate Limits]
+    G11 --> D5[Intents]
+```
+
+## Tech Stack
+
+| Component | Tool |
+|---|---|
+| **Documentation platform** | [Mintlify](https://mintlify.com) (Sequoia theme) |
+| **Content format** | MDX (Markdown + JSX components) |
+| **Diagrams** | Mermaid (rendered by Mintlify) |
+| **API docs** | OpenAPI specs (auto-rendered) |
+| **Version control** | Git (GitHub) |
+| **AI integration** | Mintlify native (Claude, ChatGPT, Perplexity, Cursor, MCP) |
+| **Search** | Mintlify built-in search |
+
+## Content Guidelines
+
+### Writing style
+
+- **Direct and concise** — lead with the answer, not the reasoning
+- **Code-first** — show, don't tell. Every concept should have a code example
+- **Multi-language** — TypeScript + Python + cURL where applicable
+- **Practical** — every page should help someone do something
+
+### Mintlify components we use
+
+| Component | When to use |
+|---|---|
+| `<Steps>` / `<Step>` | Sequential procedures (quickstarts, tutorials) |
+| `<CardGroup>` / `<Card>` | Navigation grids, feature showcases |
+| `<Accordion>` | Expandable details, FAQ items |
+| `<Note>` | Supplementary information |
+| `<Warning>` | Common mistakes, breaking changes |
+| `<Tabs>` / `<Tab>` | Language-specific code (TypeScript vs Python) |
+| `<CodeGroup>` | Multiple code examples side by side |
+| Mermaid code blocks | Architecture diagrams, flowcharts |
+
+### File naming conventions
+
+```
+section/
+├── explanation/          # Conceptual content ("why")
+│   ├── topic-name.mdx
+├── tutorials/            # Step-by-step lessons
+│   ├── task-name.mdx
+├── howto/                # Task-oriented guides
+│   ├── task-name.mdx
+└── reference/            # Technical specs
+    ├── topic-name.mdx
+```
+
+### Navigation (docs.json)
+
+All navigation is configured in `docs.json` at the project root. Each tab has groups, and groups contain pages. The structure:
+
+```json
+{
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Tab Name",
+        "icon": "icon-name",
+        "groups": [
+          {
+            "group": "Group Name",
+            "icon": "icon-name",
+            "pages": ["path/to/page"]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+## Keeping Docs Current
+
+### When protocol changes land
+
+1. **API changes** — Update the OpenAPI spec, then update any quickstarts or guides that reference affected endpoints
+2. **New features** — Add explanation page (what/why), tutorial (how to use), and reference (specs)
+3. **Contract deployments** — Update `snippets/core-contract-addresses.mdx` and any per-chain address tables
+
+### Cross-references
+
+The docs use extensive internal linking. When adding new pages:
+- Link from relevant existing pages
+- Add to the "Next Steps" section of related pages
+- Update the home page if it's a major new section
+- Add to the appropriate navigation group in `docs.json`
+
+### Reusable snippets
+
+Common content lives in `snippets/` and is imported via MDX:
+
+| Snippet | Content |
+|---|---|
+| `community-links.mdx` | Discord, GitHub, Forum, Snapshot cards |
+| `core-contract-addresses.mdx` | Settlement contract addresses per chain |
+| `supported-networks.mdx` | Supported blockchain networks |
+| `sdk-install.mdx` | SDK installation command |
+| `settlement-contract.mdx` | Settlement contract reference |

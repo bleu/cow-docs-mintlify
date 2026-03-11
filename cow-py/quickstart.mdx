@@ -1,0 +1,233 @@
+---
+title: "Quickstart"
+description: "Execute your first token swap with the CoW Protocol Python SDK"
+---
+
+This guide walks through creating and executing a token swap on CoW Protocol using the Python SDK, learning how to swap tokens with built-in MEV protection and gasless trading.
+
+<Note>
+  CoW Protocol employs batch auctions to protect traders from MEV and provides the best execution prices by aggregating liquidity across multiple DEXs.
+</Note>
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+- The CoW Protocol Python SDK [installed](/cow-py/installation)
+- A wallet with test tokens (Sepolia testnet)
+- Your wallet's private key
+- Approval for the CoW Protocol Vault Relayer to spend your tokens
+
+<Warning>
+  You must approve the CoW Protocol Vault Relayer contract before executing a swap.
+</Warning>
+
+## Environment Setup
+
+Create a `.env` file in your project root:
+
+```bash
+PRIVATE_KEY=0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+```
+
+<Warning>
+  Add `.env` to `.gitignore` to prevent accidentally committing your private key.
+</Warning>
+
+Install the required package:
+
+```bash
+pip install python-dotenv
+```
+
+## Complete Swap Example
+
+```python
+import os
+import asyncio
+from dotenv import load_dotenv
+from web3 import Account, Web3
+from web3.types import Wei
+from cowdao_cowpy.cow.swap import swap_tokens
+from cowdao_cowpy.common.chains import Chain
+
+BUY_TOKEN = Web3.to_checksum_address(
+    "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"
+)  # WETH
+SELL_TOKEN = Web3.to_checksum_address(
+    "0xbe72E441BF55620febc26715db68d3494213D8Cb"
+)  # USDC
+
+SELL_AMOUNT_BEFORE_FEE = Wei(5000000000000000000)
+CHAIN = Chain.SEPOLIA
+
+load_dotenv()
+PRIVATE_KEY = os.getenv("PRIVATE_KEY")
+
+if not PRIVATE_KEY:
+    raise ValueError("Missing PRIVATE_KEY in .env file")
+
+ACCOUNT = Account.from_key(PRIVATE_KEY)
+
+async def main():
+    result = await swap_tokens(
+        amount=SELL_AMOUNT_BEFORE_FEE,
+        account=ACCOUNT,
+        chain=CHAIN,
+        sell_token=SELL_TOKEN,
+        buy_token=BUY_TOKEN,
+    )
+    print(f"Order created successfully!")
+    print(f"Order UID: {result.uid}")
+    print(f"Order URL: {result.url}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+## Understanding the Code
+
+### Import Dependencies
+
+```python
+from web3 import Account, Web3
+from web3.types import Wei
+from cowdao_cowpy.cow.swap import swap_tokens
+from cowdao_cowpy.common.chains import Chain
+```
+
+The SDK uses `web3.py` for Ethereum interactions and provides a simple `swap_tokens` function.
+
+### Configure Token Addresses
+
+```python
+BUY_TOKEN = Web3.to_checksum_address(
+    "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"
+)  # WETH
+SELL_TOKEN = Web3.to_checksum_address(
+    "0xbe72E441BF55620febc26715db68d3494213D8Cb"
+)  # USDC
+```
+
+<Tip>
+  Always use checksummed addresses to avoid errors via `Web3.to_checksum_address()`.
+</Tip>
+
+### Specify Sell Amount
+
+```python
+SELL_AMOUNT_BEFORE_FEE = Wei(5000000000000000000)
+```
+
+Amounts are specified in the token's smallest unit. Use `Web3.to_wei()` for easier conversion: `Web3.to_wei(50, 'ether')` equals 50 tokens with 18 decimals.
+
+### Select Network
+
+```python
+CHAIN = Chain.SEPOLIA
+```
+
+Supported networks include: `MAINNET`, `GNOSIS`, `SEPOLIA`, `ARBITRUM_ONE`, `BASE`, `POLYGON`, `AVALANCHE`, `BNB`, and `LENS`.
+
+### Execute the Swap
+
+```python
+result = await swap_tokens(
+    amount=SELL_AMOUNT_BEFORE_FEE,
+    account=ACCOUNT,
+    chain=CHAIN,
+    sell_token=SELL_TOKEN,
+    buy_token=BUY_TOKEN,
+)
+```
+
+The function handles quote retrieval, order creation and signing, orderbook submission, and returns the order UID and explorer URL.
+
+## Advanced Options
+
+```python
+result = await swap_tokens(
+    amount=SELL_AMOUNT_BEFORE_FEE,
+    account=ACCOUNT,
+    chain=CHAIN,
+    sell_token=SELL_TOKEN,
+    buy_token=BUY_TOKEN,
+    slippage_tolerance=0.01,  # 1% slippage (default: 0.5%)
+    partially_fillable=False,  # Allow partial fills (default: False)
+    valid_to=None,  # Order expiry timestamp (default: uses quote expiry)
+    env="prod"  # Environment: "prod", "staging", or "barn" (default: "prod")
+)
+```
+
+<Note>
+  **Slippage Tolerance** protects against price changes between order creation and execution. A 1% slippage means accepting up to 1% less than the quoted amount.
+</Note>
+
+## Working with Safe Wallets
+
+To create orders from a Safe wallet:
+
+```python
+from eth_typing.evm import ChecksumAddress
+
+safe_address = Web3.to_checksum_address("0x...")
+
+result = await swap_tokens(
+    amount=SELL_AMOUNT_BEFORE_FEE,
+    account=ACCOUNT,  # Signer account
+    chain=CHAIN,
+    sell_token=SELL_TOKEN,
+    buy_token=BUY_TOKEN,
+    safe_address=safe_address,  # Safe wallet address
+)
+```
+
+<Note>
+  When using a Safe wallet, the order uses pre-signature validation. The `account` parameter should be one of the Safe owners signing the transaction.
+</Note>
+
+## Fetching Order Information
+
+After creating an order, fetch its details using the OrderBook API:
+
+```python
+from cowdao_cowpy.order_book.api import OrderBookApi
+from cowdao_cowpy.order_book.generated.model import UID
+
+order_book_api = OrderBookApi()
+
+order = await order_book_api.get_order_by_uid(
+    UID("0x...your-order-uid...")
+)
+
+print(f"Order status: {order.status}")
+print(f"Sell amount: {order.sellAmount}")
+print(f"Buy amount: {order.buyAmount}")
+```
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="Insufficient Token Balance">
+    Ensure your wallet has enough of the sell token. Account for token decimals when checking balances.
+  </Accordion>
+  <Accordion title="Missing Token Approval">
+    Before swapping, approve the CoW Protocol Vault Relayer:
+
+    ```python
+    from cowdao_cowpy.common.constants import CowContractAddress
+
+    vault_relayer = CowContractAddress.VAULT_RELAYER.value
+    ```
+  </Accordion>
+  <Accordion title="Order Not Executing">
+    Orders may take time to execute using batch auctions. Check the order status via the explorer URL returned by `swap_tokens()`. Orders expire if they don't find a match within their validity period.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+- Explore [Order Management](/cow-py/guides/managing-orders) to learn how to fetch, monitor, and cancel orders
+- Investigate [Advanced Features](/cow-py/advanced/composable-orders) for composable orders and TWAP strategies
+- Browse the [API Reference](/cow-py/api/swap) for complete documentation
+- Learn about [Contract Interaction](/cow-py/guides/contract-interaction) with CoW Protocol smart contracts
