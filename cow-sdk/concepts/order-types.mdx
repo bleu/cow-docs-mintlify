@@ -177,7 +177,7 @@ All orders share these core parameters:
 | `sellAmount` | string | Yes | Amount of sell token (in wei/smallest unit) |
 | `buyAmount` | string | Yes | Amount of buy token (in wei/smallest unit) |
 | `validTo` | number | Yes | Unix timestamp when the order expires |
-| `appData` | string | Yes | 32-byte hash of order metadata. See [App Data](/concepts/app-data) |
+| `appData` | string | Yes | 32-byte hash of order metadata. See [App Data](/cow-sdk/concepts/app-data) |
 | `feeAmount` | string | Yes | Protocol fee amount in sell token |
 | `kind` | OrderKind | Yes | Order kind: `OrderKind.SELL` or `OrderKind.BUY` |
 | `partiallyFillable` | boolean | Yes | Whether the order can be partially filled |
@@ -309,13 +309,13 @@ await sdk.postLimitOrder({
 ## Next Steps
 
 <CardGroup cols={3}>
-  <Card title="Signing Schemes" href="/concepts/signing-schemes">
+  <Card title="Signing Schemes" href="/cow-sdk/concepts/signing-schemes">
     Learn how orders are signed
   </Card>
-  <Card title="App Data" href="/concepts/app-data">
+  <Card title="App Data" href="/cow-sdk/concepts/app-data">
     Add metadata to your orders
   </Card>
-  <Card title="Trading SDK" href="/api/trading-sdk">
+  <Card title="Trading SDK" href="/cow-sdk/api/trading-sdk">
     Start building with the SDK
   </Card>
 </CardGroup>

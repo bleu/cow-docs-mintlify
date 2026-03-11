@@ -629,6 +629,64 @@
         ]
       },
       {
+        "tab": "CoW Python SDK",
+        "icon": "python",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "icon": "rocket",
+            "pages": [
+              "cow-py/introduction",
+              "cow-py/installation",
+              "cow-py/quickstart"
+            ]
+          },
+          {
+            "group": "Concepts",
+            "icon": "book-open",
+            "pages": [
+              "cow-py/concepts/chains",
+              "cow-py/concepts/orders",
+              "cow-py/concepts/trading"
+            ]
+          },
+          {
+            "group": "Guides",
+            "icon": "graduation-cap",
+            "pages": [
+              "cow-py/guides/swapping-tokens",
+              "cow-py/guides/managing-orders",
+              "cow-py/guides/app-data",
+              "cow-py/guides/contract-interaction",
+              "cow-py/guides/querying-subgraph"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "icon": "wrench",
+            "pages": [
+              "cow-py/advanced/composable-orders",
+              "cow-py/advanced/multi-chain",
+              "cow-py/advanced/signing-schemes",
+              "cow-py/advanced/twap-orders"
+            ]
+          },
+          {
+            "group": "API Reference",
+            "icon": "file-code",
+            "pages": [
+              "cow-py/api/swap",
+              "cow-py/api/order-book",
+              "cow-py/api/subgraph",
+              "cow-py/api/contracts",
+              "cow-py/api/composable",
+              "cow-py/api/app-data",
+              "cow-py/api/common"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "Solvers",
         "icon": "gears",
         "groups": [

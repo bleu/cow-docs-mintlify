@@ -1,0 +1,241 @@
+---
+title: "OrderBookApi"
+description: "Client for interacting with the CoW Protocol Order Book API"
+---
+
+The `OrderBookApi` class provides methods to interact with the CoW Protocol Order Book API, enabling operations like posting orders, obtaining quotes, retrieving trades, and managing order states.
+
+## Constructor
+
+```python
+from cowdao_cowpy.order_book.api import OrderBookApi
+from cowdao_cowpy.order_book.config import OrderBookAPIConfigFactory
+from cowdao_cowpy.common.config import SupportedChainId
+
+# Default (Mainnet production)
+api = OrderBookApi()
+
+# Custom configuration
+api = OrderBookApi(
+    OrderBookAPIConfigFactory.get_config("prod", SupportedChainId.MAINNET)
+)
+```
+
+## Initialization Examples
+
+```python
+# Mainnet production
+api = OrderBookApi(
+    OrderBookAPIConfigFactory.get_config("prod", SupportedChainId.MAINNET)
+)
+
+# Gnosis Chain
+api_gnosis = OrderBookApi(
+    OrderBookAPIConfigFactory.get_config("prod", SupportedChainId.GNOSIS_CHAIN)
+)
+
+# Staging environment
+api_staging = OrderBookApi(
+    OrderBookAPIConfigFactory.get_config("staging", SupportedChainId.MAINNET)
+)
+```
+
+## Methods
+
+### get_version
+
+Retrieves the current API version string.
+
+```python
+async def get_version(self, context_override: Context = {}) -> str
+```
+
+### post_order
+
+Submits a new order to the order book.
+
+```python
+async def post_order(
+    self, order: OrderCreation, context_override: Context = {}
+) -> UID
+```
+
+### post_quote
+
+Requests a quote for a potential order.
+
+```python
+async def post_quote(
+    self,
+    request: OrderQuoteRequest,
+    side: Union[OrderQuoteSide, OrderQuoteSide1, OrderQuoteSide2, OrderQuoteSide3],
+    validity: Union[OrderQuoteValidity, OrderQuoteValidity1, OrderQuoteValidity2] = OrderQuoteValidity1(validTo=None),
+    context_override: Context = {},
+) -> OrderQuoteResponse
+```
+
+### get_order_by_uid
+
+Retrieves complete order details by UID.
+
+```python
+async def get_order_by_uid(
+    self, order_uid: UID, context_override: Context = {}
+) -> Order
+```
+
+### get_orders_by_owner
+
+Fetches all orders for a specified owner with pagination.
+
+```python
+async def get_orders_by_owner(
+    self,
+    owner: Address,
+    limit: int = 1000,
+    offset: int = 0,
+    context_override: Context = {},
+) -> List[Order]
+```
+
+### get_trades_by_owner
+
+Retrieves all trades executed by a specific owner.
+
+```python
+async def get_trades_by_owner(
+    self, owner: Address, context_override: Context = {}
+) -> List[Trade]
+```
+
+### get_trades_by_order_uid
+
+Returns all trades associated with a particular order.
+
+```python
+async def get_trades_by_order_uid(
+    self, order_uid: UID, context_override: Context = {}
+) -> List[Trade]
+```
+
+### delete_order
+
+Cancels one or more orders.
+
+```python
+async def delete_order(
+    self, orders_cancelation: OrderCancellations, context_override: Context = {}
+) -> str
+```
+
+### get_native_price
+
+Obtains the native token price for a specified token.
+
+```python
+async def get_native_price(
+    self, token_address: Address, context_override: Context = {}
+) -> NativePriceResponse
+```
+
+### get_total_surplus
+
+Retrieves total surplus accumulated for a user.
+
+```python
+async def get_total_surplus(
+    self, user: Address, context_override: Context = {}
+) -> TotalSurplus
+```
+
+### get_tx_orders
+
+Fetches all orders included in a specific transaction.
+
+```python
+async def get_tx_orders(
+    self, tx_hash: TransactionHash, context_override: Context = {}
+) -> List[Order]
+```
+
+### get_solver_competition
+
+Obtains solver competition details.
+
+```python
+async def get_solver_competition(
+    self, action_id: Union[int, str] = "latest", context_override: Context = {}
+) -> SolverCompetitionResponse
+```
+
+### get_solver_competition_by_tx_hash
+
+Retrieves solver competition details using a transaction hash.
+
+```python
+async def get_solver_competition_by_tx_hash(
+    self, tx_hash: TransactionHash, context_override: Context = {}
+) -> SolverCompetitionResponse
+```
+
+### get_order_link
+
+Generates an API endpoint URL for a specific order.
+
+```python
+def get_order_link(self, order_uid: UID) -> str
+```
+
+### put_app_data
+
+Uploads application data to the API.
+
+```python
+async def put_app_data(
+    self,
+    app_data: AppDataObject,
+    app_data_hash: AppDataHash = None,
+    context_override: Context = {},
+) -> AppDataHash
+```
+
+### get_app_data
+
+Retrieves application data using its hash.
+
+```python
+async def get_app_data(
+    self, app_data_hash: AppDataHash, context_override: Context = {}
+) -> Dict[str, Any]
+```
+
+### get_order_multi_env
+
+Searches for an order across production and staging environments.
+
+```python
+async def get_order_multi_env(
+    self, order_uid: UID, context_override: Context = {}
+) -> Order | None
+```
+
+## Method Summary
+
+| Method | Description |
+|--------|-------------|
+| `get_version()` | Get API version |
+| `post_order(order)` | Submit a new order |
+| `post_quote(request, side)` | Request a price quote |
+| `get_order_by_uid(uid)` | Fetch order by UID |
+| `get_orders_by_owner(owner)` | Get all orders for an address |
+| `get_trades_by_owner(owner)` | Get trades for an address |
+| `get_trades_by_order_uid(uid)` | Get trades for an order |
+| `delete_order(cancellations)` | Cancel orders |
+| `get_native_price(token)` | Get token price |
+| `get_total_surplus(user)` | Get user surplus |
+| `get_tx_orders(tx_hash)` | Get orders in a transaction |
+| `get_solver_competition(id)` | Get solver competition data |
+| `get_order_link(uid)` | Get order explorer URL |
+| `put_app_data(data)` | Upload app data |
+| `get_app_data(hash)` | Retrieve app data |
+| `get_order_multi_env(uid)` | Search across environments |

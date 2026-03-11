@@ -10,11 +10,12 @@ description: "CoW Protocol offers three integration approaches — from drop-in 
 
 ## Compare approaches
 
-| Approach | Best For | Setup Time | Customization | Maintenance |
+| Approach | Best For | Language | Setup Time | Customization |
 |---|---|---|---|---|
-| **Widget** | Quick integration, MVPs | Minutes | Basic styling & config | Automatic updates |
-| **SDK** | Custom UIs, full control | Hours to days | Complete UI/UX control | SDK version updates |
-| **API** | Backend services, bots | Days to weeks | Maximum flexibility | Full ownership |
+| **Widget** | Quick integration, MVPs | JavaScript | Minutes | Basic styling & config |
+| **SDK (TypeScript)** | Custom UIs, full control | TypeScript | Hours to days | Complete UI/UX control |
+| **SDK (Python)** | Bots, data, automation | Python | Hours | Full programmatic control |
+| **API** | Backend services, any language | Any | Days to weeks | Maximum flexibility |
 
 ## Widget Integration
 
@@ -81,6 +82,38 @@ const quote = await orderBookApi.getQuote(quoteRequest)
   - Minimize maintenance burden
 </Accordion>
 
+## Python SDK (cow-py)
+
+<Card title="cow-py" icon="python" href="/cow-py/quickstart">
+  Python SDK for trading bots, data analysis, and automation
+</Card>
+
+The Python SDK provides a high-level interface for CoW Protocol using `web3.py` and `asyncio`.
+
+- **One-call swaps** — `swap_tokens()` handles quoting, signing, and submission
+- **Async/await** — native asyncio support for concurrent operations
+- **Multi-chain** — Ethereum, Gnosis, Arbitrum, Base, Polygon, Avalanche, BNB, Lens
+- **Type-safe** — full type hints and Pydantic models
+- **Subgraph access** — query trading data and analytics via GraphQL
+
+```bash
+pip install cowdao-cowpy
+```
+
+```python
+from cowdao_cowpy.cow.swap import swap_tokens
+from cowdao_cowpy.common.chains import Chain
+
+result = await swap_tokens(
+    amount=sell_amount,
+    account=account,
+    chain=Chain.MAINNET,
+    sell_token=SELL_TOKEN,
+    buy_token=BUY_TOKEN,
+)
+print(f"Order: {result.uid}")
+```
+
 ## API Integration
 
 <Card title="REST API" icon="square-terminal" href="/cow-protocol/howto/integrate/api">
@@ -101,12 +134,15 @@ Maximum flexibility for backend services, trading bots, and advanced integration
 
 ## Next steps
 
-<CardGroup cols={3}>
+<CardGroup cols={2}>
   <Card title="Widget tutorial" icon="window" href="/cow-protocol/howto/integrate/widget">
     Step-by-step widget setup
   </Card>
-  <Card title="SDK quickstart" icon="code" href="/cow-sdk/quickstart">
+  <Card title="TypeScript SDK" icon="code" href="/cow-sdk/quickstart">
     Get trading in minutes
+  </Card>
+  <Card title="Python SDK" icon="python" href="/cow-py/quickstart">
+    Swap tokens with one function call
   </Card>
   <Card title="API reference" icon="square-terminal" href="/cow-protocol/reference/apis/orderbook">
     Full Orderbook API docs

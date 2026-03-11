@@ -60,7 +60,7 @@ print(f"Amount per part: {twap_data.sell_amount / twap_data.number_of_parts}")
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `start_type` | StartType | `AT_MINING_TIME` or `AT_EPOCH` |
-| `number_of_parts` | integer | Number of parts (must be > 1 and <= 2^32) |
+| `number_of_parts` | integer | Number of parts (must be greater than 1 and at most 2^32) |
 | `time_between_parts` | integer | Seconds between each part (1 to 31,536,000) |
 | `duration_type` | DurationType | `AUTO` or `LIMIT_DURATION` |
 

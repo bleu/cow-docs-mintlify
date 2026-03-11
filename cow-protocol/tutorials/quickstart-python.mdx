@@ -3,7 +3,11 @@ title: "Quickstart: Python"
 description: "Place your first CoW Protocol order using Python — from quote to confirmed trade in under 10 minutes."
 ---
 
-This guide walks you through placing a real order on CoW Protocol using nothing but Python and the CoW Protocol REST API. By the end, you will have submitted a signed intent on the Sepolia testnet and watched it get filled.
+This guide walks you through placing a real order on CoW Protocol using Python and the REST API directly. By the end, you will have submitted a signed intent on the Sepolia testnet and watched it get filled.
+
+<Note>
+**Prefer a higher-level approach?** The [cow-py SDK](/cow-py/quickstart) wraps all of this into a single `swap_tokens()` call with built-in signing, quoting, and order management. This guide is for developers who want to understand the raw API mechanics or who can't use the SDK.
+</Note>
 
 ## Prerequisites
 
@@ -282,7 +286,8 @@ For a full list of API error codes, see the [Order Book API Reference](/cow-prot
 
 Now that you have placed your first order, explore more of CoW Protocol:
 
-- **[TypeScript SDK Quickstart](/cow-sdk/quickstart)** — Use the official SDK for a higher-level integration experience
+- **[cow-py SDK Quickstart](/cow-py/quickstart)** — Use the Python SDK for a higher-level experience (`swap_tokens()` handles everything)
+- **[TypeScript SDK Quickstart](/cow-sdk/quickstart)** — Use the official TypeScript SDK for frontend/Node.js integrations
 - **[Limit Orders](/cow-protocol/tutorials/cow-swap/limit)** — Place limit orders that execute at your target price
 - **[TWAP Orders](/cow-protocol/tutorials/cow-swap/twap)** — Split large orders over time with Time-Weighted Average Price
 - **[API Integration Guide](/cow-protocol/howto/integrate/api)** — Deep dive into the REST API, including rate limits and all endpoints

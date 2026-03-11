@@ -1,0 +1,228 @@
+---
+title: "Contracts API"
+description: "Order creation, signing, and domain utilities"
+---
+
+## Order
+
+The `Order` dataclass represents a CoW Protocol order.
+
+```python
+@dataclass
+class Order:
+    sell_token: str
+    buy_token: str
+    receiver: str
+    sell_amount: str
+    buy_amount: str
+    valid_to: int
+    app_data: str
+    fee_amount: str
+    kind: str
+    partially_fillable: bool = False
+    sell_token_balance: Optional[str] = None
+    buy_token_balance: Optional[str] = None
+```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sell_token` | `str` | Token to sell address. Alias: `sellToken` |
+| `buy_token` | `str` | Token to buy address. Alias: `buyToken` |
+| `receiver` | `str` | Address to receive bought tokens. Cannot be `address(0)` |
+| `sell_amount` | `str` | Amount of sell tokens (string for precision). Alias: `sellAmount` |
+| `buy_amount` | `str` | Amount of buy tokens (string for precision). Alias: `buyAmount` |
+| `valid_to` | `int` | Unix timestamp for expiration. Alias: `validTo` |
+| `app_data` | `str` | 32-byte application metadata hash. Alias: `appData` |
+| `fee_amount` | `str` | Protocol fee amount (usually "0"). Alias: `feeAmount` |
+| `kind` | `str` | `"sell"` or `"buy"` |
+| `partially_fillable` | `bool` | Whether partial fills are allowed. Default: `False` |
+| `sell_token_balance` | `Optional[str]` | `"erc20"`, `"external"`, or `"internal"` |
+| `buy_token_balance` | `Optional[str]` | `"erc20"` or `"internal"` |
+
+### OrderKind Enum
+
+```python
+class OrderKind(Enum):
+    SELL = "sell"
+    BUY = "buy"
+```
+
+### OrderBalance Enum
+
+```python
+class OrderBalance(Enum):
+    ERC20 = "erc20"
+    EXTERNAL = "external"
+    INTERNAL = "internal"
+```
+
+---
+
+## domain
+
+Create an EIP-712 domain for signing CoW Protocol orders.
+
+```python
+def domain(chain: Chain, verifying_contract: str) -> TypedDataDomain
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `chain` | `Chain` | The blockchain network |
+| `verifying_contract` | `str` | Settlement contract address |
+
+Returns a `TypedDataDomain` with:
+- `name`: `"Gnosis Protocol"`
+- `version`: `"v2"`
+- `chainId`: The EIP-155 chain ID
+- `verifyingContract`: The contract address
+
+```python
+from cowdao_cowpy.contracts.domain import domain
+from cowdao_cowpy.common.chains import Chain
+from cowdao_cowpy.common.constants import CowContractAddress
+
+order_domain = domain(
+    chain=Chain.MAINNET,
+    verifying_contract=CowContractAddress.SETTLEMENT_CONTRACT.value
+)
+```
+
+---
+
+## sign_order
+
+Sign an order using EIP-712 typed data signing.
+
+```python
+def sign_order(
+    domain: TypedDataDomain,
+    order: Order,
+    owner: LocalAccount,
+    scheme: SigningScheme
+) -> EcdsaSignature
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `domain` | `TypedDataDomain` | EIP-712 domain |
+| `order` | `Order` | The order to sign |
+| `owner` | `LocalAccount` | Account to sign with |
+| `scheme` | `SigningScheme` | Signing scheme (`EIP712` or `ETHSIGN`) |
+
+### SigningScheme
+
+```python
+class SigningScheme(IntEnum):
+    EIP712 = 0b00    # Recommended
+    ETHSIGN = 0b01   # Legacy
+    EIP1271 = 0b10   # Smart contract wallets
+    PRESIGN = 0b11   # Pre-signed orders
+```
+
+### EcdsaSignature
+
+```python
+@dataclass
+class EcdsaSignature:
+    scheme: SigningScheme
+    data: str
+
+    def to_string(self) -> str: ...
+```
+
+---
+
+## hash_order
+
+Compute the 32-byte signing hash for an order.
+
+```python
+def hash_order(domain: TypedDataDomain, order: Order) -> Hash32
+```
+
+---
+
+## compute_order_uid
+
+Compute the unique identifier for an order.
+
+```python
+def compute_order_uid(domain: TypedDataDomain, order: Order, owner: str) -> str
+```
+
+Returns the 56-byte order UID as a hex string.
+
+---
+
+## sign_order_cancellation
+
+Sign a cancellation for a single order.
+
+```python
+def sign_order_cancellation(
+    domain: TypedDataDomain,
+    order_uid: Union[str, bytes],
+    owner: LocalAccount,
+    scheme: SigningScheme,
+) -> EcdsaSignature
+```
+
+---
+
+## sign_order_cancellations
+
+Sign cancellations for multiple orders at once.
+
+```python
+def sign_order_cancellations(
+    domain: TypedDataDomain,
+    order_uids: List[Union[str, bytes]],
+    owner: LocalAccount,
+    scheme: SigningScheme,
+) -> EcdsaSignature
+```
+
+---
+
+## Complete Example
+
+```python
+import time
+from eth_account import Account
+from web3 import Web3
+from cowdao_cowpy.contracts.order import Order, compute_order_uid
+from cowdao_cowpy.contracts.sign import sign_order, SigningScheme
+from cowdao_cowpy.contracts.domain import domain
+from cowdao_cowpy.common.chains import Chain
+from cowdao_cowpy.common.constants import CowContractAddress
+from cowdao_cowpy.app_data.utils import DEFAULT_APP_DATA_HASH
+
+account = Account.from_key("your_private_key")
+USDC = Web3.to_checksum_address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")
+WETH = Web3.to_checksum_address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
+
+order_domain = domain(
+    chain=Chain.MAINNET,
+    verifying_contract=CowContractAddress.SETTLEMENT_CONTRACT.value
+)
+
+order = Order(
+    sell_token=USDC, buy_token=WETH, receiver=account.address,
+    sell_amount="1000000000", buy_amount="500000000000000000",
+    valid_to=int(time.time()) + 3600,
+    app_data=DEFAULT_APP_DATA_HASH, fee_amount="0",
+    kind="sell", partially_fillable=False,
+)
+
+signature = sign_order(
+    domain=order_domain, order=order,
+    owner=account, scheme=SigningScheme.EIP712
+)
+
+order_uid = compute_order_uid(order_domain, order, account.address)
+print(f"Order UID: {order_uid}")
+print(f"Signature: {signature.to_string()}")
+```

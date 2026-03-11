@@ -1,0 +1,123 @@
+---
+title: "Swap API"
+description: "Functions for swapping tokens using the CoW Protocol"
+---
+
+## swap_tokens
+
+Swap tokens using the CoW Protocol. This is the main high-level function for executing token swaps.
+
+<Note>
+  `CowContractAddress.VAULT_RELAYER` needs to be approved to spend the sell token before calling this function.
+</Note>
+
+```python
+async def swap_tokens(
+    amount: Wei,
+    account: LocalAccount,
+    chain: Chain,
+    sell_token: ChecksumAddress,
+    buy_token: ChecksumAddress,
+    safe_address: ChecksumAddress | None = None,
+    app_data: str = DEFAULT_APP_DATA_HASH,
+    valid_to: int | None = None,
+    env: Envs = "prod",
+    slippage_tolerance: float = 0.005,
+    partially_fillable: bool = False,
+) -> CompletedOrder
+```
+
+### Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `amount` | `Wei` | Yes | - | Amount of tokens to sell (in Wei) |
+| `account` | `LocalAccount` | Yes | - | Ethereum account to sign the order with |
+| `chain` | `Chain` | Yes | - | Blockchain network to execute on |
+| `sell_token` | `ChecksumAddress` | Yes | - | Address of the token to sell |
+| `buy_token` | `ChecksumAddress` | Yes | - | Address of the token to buy |
+| `safe_address` | `ChecksumAddress \| None` | No | `None` | Safe address (uses pre-signature scheme if provided) |
+| `app_data` | `str` | No | `DEFAULT_APP_DATA_HASH` | Application metadata hash |
+| `valid_to` | `int \| None` | No | `None` | Order expiration (Unix timestamp). Uses quote validity if not set |
+| `env` | `Envs` | No | `"prod"` | Environment (`"prod"`, `"staging"`) |
+| `slippage_tolerance` | `float` | No | `0.005` | Slippage tolerance (0.005 = 0.5%) |
+| `partially_fillable` | `bool` | No | `False` | Allow partial fills |
+
+### Returns
+
+Returns a `CompletedOrder` object.
+
+### Usage
+
+```python
+from web3 import Web3
+from eth_account import Account
+from cowdao_cowpy.cow.swap import swap_tokens
+from cowdao_cowpy.common.chains import Chain
+
+account = Account.from_key("your_private_key")
+
+usdc = Web3.to_checksum_address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")
+weth = Web3.to_checksum_address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
+
+result = await swap_tokens(
+    amount=Web3.to_wei(1000, "mwei"),
+    account=account,
+    chain=Chain.MAINNET,
+    sell_token=usdc,
+    buy_token=weth,
+    slippage_tolerance=0.01,
+)
+
+print(f"Order UID: {result.uid}")
+print(f"Track order: {result.url}")
+```
+
+### With Safe Multi-Sig
+
+```python
+safe_address = Web3.to_checksum_address("0x...")
+
+result = await swap_tokens(
+    amount=Web3.to_wei(1000, "mwei"),
+    account=account,
+    chain=Chain.MAINNET,
+    sell_token=usdc,
+    buy_token=weth,
+    safe_address=safe_address,
+)
+```
+
+---
+
+## CompletedOrder
+
+A Pydantic model representing a successfully created order.
+
+```python
+class CompletedOrder(BaseModel):
+    uid: UID
+    url: str
+```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `uid` | `UID` | Unique order identifier (56 bytes) |
+| `url` | `str` | CoW Explorer URL for tracking |
+
+### Explorer URLs
+
+The URL points to CoW Explorer based on the chain:
+
+- Mainnet: `https://explorer.cow.fi/ethereum/orders/{uid}`
+- Gnosis Chain: `https://explorer.cow.fi/gc/orders/{uid}`
+- Arbitrum: `https://explorer.cow.fi/arb1/orders/{uid}`
+
+```python
+result = await swap_tokens(...)
+
+order_id = result.uid
+explorer_url = result.url
+```
