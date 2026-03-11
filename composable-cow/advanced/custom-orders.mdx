@@ -62,3 +62,17 @@ Specialized revert errors guide watchtowers on retry behavior:
 - Validate external calls
 - Manage arithmetic carefully
 - Address reentrancy risks
+
+## Watch Tower Integration
+
+Custom handlers are automatically discovered and executed by the [Watch Tower](/watch-tower/introduction). When a conditional order is created via ComposableCoW, the Watch Tower:
+
+1. Detects the `ConditionalOrderCreated` event on-chain
+2. [Polls](/watch-tower/concepts/polling) your handler's `getTradeableOrder()` on every block (or per your error hints)
+3. Submits the resulting discrete order to the CoW Protocol OrderBook when conditions are met
+
+You do **not** need to register your handler in the SDK registry — the Watch Tower falls back to direct contract calls for any handler not in the built-in registry. Your handler just needs to be deployed and have an order created via `ComposableCoW.create()` or `ComposableCoW.createWithContext()`.
+
+<Note>
+Test your handler on **Sepolia** first. The Watch Tower supports Sepolia and will poll your handler the same way it does on mainnet. See [Watch Tower Configuration](/watch-tower/getting-started/configuration) for Sepolia setup.
+</Note>

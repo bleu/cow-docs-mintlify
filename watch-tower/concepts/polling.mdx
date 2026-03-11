@@ -223,8 +223,13 @@ The SDK sustains a registry of recognized order handlers:
 * **Custom handlers**: User-defined order logic
 
 <Info>
-If a handler remains unrecognized by the SDK, the Watch Tower defaults to legacy polling using direct contract calls.
+If a handler remains unrecognized by the SDK, the Watch Tower defaults to [legacy polling](#legacy-polling) using direct contract calls to `getTradeableOrderWithSignature`. This means **custom handlers work automatically** — the Watch Tower will discover and poll any handler deployed via ComposableCoW, regardless of whether it's in the SDK registry.
 </Info>
+
+To build your own custom handler, see:
+* [Custom Orders Guide](/composable-cow/advanced/custom-orders) — implementing `IConditionalOrder` and `IConditionalOrderGenerator`
+* [IConditionalOrder Interface](/composable-cow/api/interfaces/iconditional-order) — API reference for the handler interface
+* [Creating Orders](/composable-cow/guides/creating-orders) — registering orders with the ComposableCoW contract
 
 ## Legacy polling
 

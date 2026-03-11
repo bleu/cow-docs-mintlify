@@ -171,20 +171,24 @@ const limitOrder = new LimitOrder({
 
 ### DCA (Dollar Cost Averaging)
 
-Regularly buy or sell assets at predetermined intervals:
+DCA strategies are implemented using [TWAP orders](/cow-sdk/advanced/twap-orders). A TWAP order splits a total amount into equal parts executed at regular intervals — which is exactly what DCA does.
+
+For example, to DCA $3,000 USDC into ETH over 30 days ($100/day):
 
 ```typescript
-const dcaOrder = new DCAOrder({
-  handler: DCA_HANDLER,
-  sellToken: '0x...', // USDC
-  buyToken: '0x...', // ETH
-  sellAmount: '100000000', // $100 USDC
-  timeInterval: 86400, // Daily
-  numOfParts: 30, // For 30 days
+import { Twap, SupportedChainId } from '@cowprotocol/cow-sdk'
+
+const dcaOrder = new Twap(SupportedChainId.MAINNET, {
+  sellToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
+  buyToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',  // WETH
+  sellAmount: '3000000000',       // Total: 3000 USDC (6 decimals)
+  numOfParts: 30,                  // 30 parts = 30 days
+  timeInterval: 86400,             // 1 day between parts (in seconds)
+  span: 0,                         // Each part valid for full interval
 })
 ```
 
-> See the TWAP Orders page for detailed information about Time-Weighted Average Price orders.
+Each part sells 100 USDC for WETH once per day. See the [TWAP Orders guide](/cow-sdk/advanced/twap-orders) for full configuration options including price protection.
 
 ## Merkle Tree Management
 
