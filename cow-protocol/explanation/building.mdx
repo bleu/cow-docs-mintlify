@@ -1,28 +1,64 @@
 ---
 title: "Building on CoW Protocol"
-description: "So, you want to build on top of CoW Protocol? Great! We are excited to see what you will build."
+description: "Everything you need to start building on CoW Protocol — interactive tutorials, SDKs, APIs, and developer resources."
 ---
 
-The protocol is designed to be flexible and therefore built on top of by the community. Here you will find resources to get started.
+<div style={{ background: 'linear-gradient(135deg, #012F7A 0%, #3F80FF 100%)', borderRadius: '12px', padding: '2rem', marginBottom: '2rem', color: 'white' }}>
+  <h2 style={{ color: 'white', marginTop: 0 }}>Start building today</h2>
+  <p style={{ opacity: 0.9, color: 'white' }}>From interactive tutorials to production-ready SDKs — choose your path and ship.</p>
+</div>
 
-## Code examples[​](#code-examples "Direct link to Code examples")
+## Interactive tutorials
 
-You won't find any code examples here in the documentation. Wait, what? Yes, that's right. We believe that code examples are a bad way to *learn*. They are often outdated, incomplete and don't teach you how to think about the problem at hand.
+The fastest way to learn is by doing. Our [**live-coding environment at learn.cow.fi**](https://learn.cow.fi) lets you write and run code directly in your browser — no installation required.
 
-To better serve builders, we have created a [**comprehensive live-coding environment**](https://learn.cow.fi), with tutorials that teach you how to build on top of CoW Protocol. You can find the live-coding environment at [learn.cow.fi](https://learn.cow.fi). Powered by web containers, you can run your code from the comfort of your browser, without having to install anything. It comes pre-configured with the CoW Protocol SDK and get's straight to the point, showing you how to:
+<Card title="learn.cow.fi" icon="graduation-cap" href="https://learn.cow.fi">
+  Browser-based tutorials powered by web containers, pre-configured with the CoW Protocol SDK
+</Card>
 
-* All basic order steps (quoting, signing, submitting, cancelling, application data)
-* Advanced order features (Eth-Flow, Pre-signed orders, `ERC-1271` signing)
+**What you'll learn:**
+- All basic order steps — quoting, signing, submitting, cancelling, application data
+- Advanced order features — Eth-Flow, Pre-signed orders, `ERC-1271` signing
 
-## Detailed documentation[​](#detailed-documentation "Direct link to Detailed documentation")
+<Note>
+  We intentionally don't include static code snippets in the docs. Code examples go stale quickly. The live-coding environment always uses the latest SDK and teaches you *how to think* about the problem, not just copy-paste.
+</Note>
 
-You've found our new documentation already! Did you know that the documentation also includes an extensive [technical reference](/cow-protocol/reference/core/definitions) covering:
+## Choose your integration approach
 
-* JavaScript SDKs (`cow-sdk` / `app-data`)
-* Rest APIs (`orderbook`, `solver`, `driver`)
-* Smart contracts (all core and periphery contracts)
+<CardGroup cols={3}>
+  <Card title="Widget" icon="window" href="/cow-protocol/howto/integrate/widget">
+    Drop-in swap UI — ready in minutes
+  </Card>
+  <Card title="SDK" icon="code" href="/cow-sdk/quickstart">
+    Full TypeScript SDK for custom apps
+  </Card>
+  <Card title="API" icon="square-terminal" href="/cow-protocol/howto/integrate/api">
+    REST API for maximum control
+  </Card>
+</CardGroup>
 
-## Getting support[​](#getting-support "Direct link to Getting support")
+Not sure which to pick? See the [integration overview](/cow-protocol/explanation/integration-overview) for a detailed comparison.
 
-Confused? Have a question? We are here to help! Join our [Discord](https://discord.com/invite/cowprotocol) and ask your development questions in the `#tech-talk` channel!
+## Technical reference
 
+Deep-dive documentation for when you need the specifics:
+
+| Resource | What it covers |
+|---|---|
+| **[CoW SDK](/cow-sdk/quickstart)** | TypeScript SDK — order creation, signing, management |
+| **[Orderbook API](/cow-protocol/reference/apis/orderbook)** | REST API for orders, quotes, and trades |
+| **[Solver API](/cow-protocol/reference/apis/solver)** | Auction instances and solution submission |
+| **[Smart Contracts](/cow-protocol/reference/contracts/core)** | Settlement, VaultRelayer, periphery contracts |
+| **[ComposableCoW](/composable-cow/introduction)** | Conditional orders framework |
+
+## Get support
+
+<CardGroup cols={2}>
+  <Card title="Discord #tech-talk" icon="discord" href="https://discord.com/invite/cowprotocol">
+    Ask development questions and get help from the community
+  </Card>
+  <Card title="GitHub" icon="github" href="https://github.com/cowprotocol">
+    Browse source code, open issues, and contribute
+  </Card>
+</CardGroup>

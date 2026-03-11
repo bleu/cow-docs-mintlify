@@ -1,43 +1,114 @@
 ---
 title: "Integrate CoW Protocol"
-description: "CoW Protocol offers multiple integration approaches to suit different development needs and use cases. Whether you're building a DeFi application, creating a custom trading interface, or integrating CoW's functionality into your existing platform, there's an integration method that fits your requirements."
+description: "CoW Protocol offers three integration approaches — from drop-in widget to full API control. Choose the path that fits your project."
 ---
 
-## Integration Approaches[​](#integration-approaches "Direct link to Integration Approaches")
+<div style={{ background: 'linear-gradient(135deg, #012F7A 0%, #3F80FF 100%)', borderRadius: '12px', padding: '2rem', marginBottom: '2rem', color: 'white' }}>
+  <h2 style={{ color: 'white', marginTop: 0 }}>Three ways to integrate</h2>
+  <p style={{ opacity: 0.9, color: 'white' }}>Whether you need a quick drop-in solution or full control over the trading stack, there's an integration path for you.</p>
+</div>
 
-| Approach   | Best For                          | Development Effort | Customization Level             |
-| ---------- | --------------------------------- | ------------------ | ------------------------------- |
-| **Widget** | Quick integration, minimal setup  | Low                | Basic styling and configuration |
-| **SDK**    | Full control, custom UI           | Medium             | Complete control over UI/UX     |
-| **API**    | Backend integration, custom logic | High               | Maximum flexibility             |
+## Compare approaches
 
-## Choose Your Integration Method[​](#choose-your-integration-method "Direct link to Choose Your Integration Method")
+| Approach | Best For | Setup Time | Customization | Maintenance |
+|---|---|---|---|---|
+| **Widget** | Quick integration, MVPs | Minutes | Basic styling & config | Automatic updates |
+| **SDK** | Custom UIs, full control | Hours to days | Complete UI/UX control | SDK version updates |
+| **API** | Backend services, bots | Days to weeks | Maximum flexibility | Full ownership |
 
-### 🎨 Widget Integration[​](#-widget-integration "Direct link to 🎨 Widget Integration")
+## Widget Integration
 
-Perfect for getting started quickly with minimal development effort. The CoW Widget provides a pre-built trading interface that can be embedded into any web application.
+<Card title="Widget" icon="window" href="/cow-protocol/howto/integrate/widget">
+  Pre-built trading interface you can embed in any web app
+</Card>
 
-* **Setup time**: Minutes
-* **Customization**: Theme, token lists, styling
-* **Use case**: Quick integration, MVP development
+The fastest way to add CoW Protocol trading to your application. The widget provides a complete, responsive trading interface that works out of the box.
 
-### 🛠️ SDK Integration[​](#️-sdk-integration "Direct link to 🛠️ SDK Integration")
+- **Zero configuration** — works immediately with sensible defaults
+- **Responsive design** — adapts to any container size
+- **Multi-network** — supports all CoW Protocol chains
+- **Themeable** — customize colors and styling to match your brand
+- **Interactive configurator** — preview and generate code at [widget.cow.fi](https://widget.cow.fi)
 
-Ideal for developers who want to build custom trading interfaces while leveraging CoW Protocol's powerful features.
+```typescript
+import { CowSwapWidget, CowSwapWidgetParams } from '@cowprotocol/widget-react'
 
-* **Setup time**: Hours to days
-* **Customization**: Complete UI control
-* **Use case**: Custom applications, advanced features
+const params: CowSwapWidgetParams = {
+  appCode: 'My Dapp',
+  width: '450px',
+  height: '640px',
+  sell: { asset: 'WETH' },
+  buy: { asset: 'COW' },
+}
 
-### 🔧 API Integration[​](#-api-integration "Direct link to 🔧 API Integration")
+<CowSwapWidget params={params} />
+```
 
-Best for backend services, advanced integrations, and when you need maximum control over the trading logic.
+## SDK Integration
 
-* **Setup time**: Days to weeks
-* **Customization**: Full control over all aspects
-* **Use case**: Backend services, complex integrations
+<Card title="CoW SDK" icon="code" href="/cow-sdk/quickstart">
+  TypeScript SDK with multiple levels of abstraction
+</Card>
 
-***
+For developers who want full control over the trading UI while leveraging CoW Protocol's features programmatically.
 
-Choose the integration method that best fits your project's requirements and development timeline. Each approach is designed to provide progressively more control and customization options.
+- **Multiple abstraction levels** — from high-level trading functions to low-level API access
+- **Adapter support** — works with Viem, Ethers v5, and Ethers v6
+- **Order management** — create, sign, submit, and cancel orders
+- **All order types** — market, limit, TWAP, and programmatic orders
 
+```bash
+npm install @cowprotocol/cow-sdk
+```
+
+```typescript
+import { OrderBookApi, SupportedChainId } from '@cowprotocol/cow-sdk'
+
+const orderBookApi = new OrderBookApi({ chainId: SupportedChainId.MAINNET })
+const quote = await orderBookApi.getQuote(quoteRequest)
+```
+
+<Accordion title="When to use the SDK vs Widget">
+  Use the **SDK** when you need to:
+  - Build a completely custom trading UI
+  - Implement complex trading logic (programmatic orders, hooks)
+  - Integrate into a backend service or bot
+  - Support smart contract wallets with custom signing
+
+  Use the **Widget** when you need to:
+  - Ship quickly with minimal development
+  - Provide a standard swap experience
+  - Minimize maintenance burden
+</Accordion>
+
+## API Integration
+
+<Card title="REST API" icon="square-terminal" href="/cow-protocol/howto/integrate/api">
+  Direct HTTP access to the Orderbook API
+</Card>
+
+Maximum flexibility for backend services, trading bots, and advanced integrations that need full control over every aspect of the trading flow.
+
+- **Full control** — manage the entire order lifecycle via REST
+- **Language agnostic** — works with any programming language
+- **Real-time data** — access to orderbook state, auction data, and trade history
+
+<Note>
+  The API requires handling order signing, fee estimation, and settlement monitoring yourself. For most use cases, the [SDK](/cow-sdk/quickstart) provides a more ergonomic experience while still giving you full control.
+</Note>
+
+---
+
+## Next steps
+
+<CardGroup cols={3}>
+  <Card title="Widget tutorial" icon="window" href="/cow-protocol/howto/integrate/widget">
+    Step-by-step widget setup
+  </Card>
+  <Card title="SDK quickstart" icon="code" href="/cow-sdk/quickstart">
+    Get trading in minutes
+  </Card>
+  <Card title="API reference" icon="square-terminal" href="/cow-protocol/reference/apis/orderbook">
+    Full Orderbook API docs
+  </Card>
+</CardGroup>

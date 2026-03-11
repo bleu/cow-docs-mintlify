@@ -1,69 +1,321 @@
 ---
+mode: "custom"
 title: "CoW DAO Documentation"
 description: "Documentation for CoW Protocol, CoW AMM, and CoW DAO — the most user-protective trading protocol on Ethereum."
-mode: "wide"
 ---
 
-<img src="/images/og-meta-cowprotocol.png" alt="CoW Protocol" style={{ width: '100%', borderRadius: '12px', marginBottom: '2rem' }} />
+<section className="relative overflow-hidden bg-gradient-to-br from-[#012F7A] via-[#1a4fa0] to-[#3F80FF] text-white">
+  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(63,128,255,0.3),_transparent_40%),radial-gradient(circle_at_bottom_right,_rgba(1,47,122,0.4),_transparent_45%)]" />
+  <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-20">
+    <div className="flex flex-col justify-center">
+      <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+        Do what you want, build what you want
+      </h1>
+      <p className="mt-6 max-w-2xl text-base text-white/80 sm:text-lg lg:text-xl">
+        CoW Protocol is the most user-protective trading protocol on Ethereum. Sign your intent, let solvers compete, and get the best price — MEV-free.
+      </p>
+      <div className="mt-8 flex flex-wrap gap-4">
+        <a
+          href="/cow-protocol/overview"
+          className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#012F7A] no-underline transition hover:bg-white/90"
+        >
+          Start Building
+        </a>
+        <a
+          href="/cow-protocol/explanation/integration-overview"
+          className="inline-flex items-center justify-center rounded-full border border-white/40 px-6 py-3 text-sm font-semibold text-white no-underline transition hover:border-white hover:bg-white/10"
+        >
+          Explore Integrations
+        </a>
+      </div>
+    </div>
 
-Welcome to the CoW DAO documentation. Whether you're a trader, developer, solver operator, or DAO participant, you'll find everything you need to understand and build on CoW Protocol.
+    <div className="flex items-center justify-center">
+      <div className="w-full max-w-[470px]">
+        <svg
+          viewBox="0 0 458 438"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-auto w-full"
+          aria-hidden="true"
+        >
+          <rect x="346" y="328" width="26" height="38" rx="13" stroke="white" strokeWidth="16"></rect>
+          <rect x="294" y="328" width="26" height="38" rx="13" stroke="#B3D4FF" strokeWidth="16"></rect>
+          <rect x="294" y="264" width="26" height="38" rx="13" stroke="white" strokeWidth="16"></rect>
+          <rect x="78" y="130" width="16" height="50" fill="#B3D4FF"></rect>
+          <rect x="52" y="130" width="16" height="50" fill="#B3D4FF"></rect>
+          <path
+            fillRule="evenodd"
+            clipRule="evenodd"
+            d="M189.64 346C173.805 346 159.793 335.839 155.006 320.884L130.392 244H115.259C99.4244 244 85.4129 233.839 80.6253 218.884L66 173.2L120.858 173.2L91.9237 130H366.076L337.142 173.2L392 173.2L377.375 218.884C372.587 233.839 358.576 244 342.741 244H327.608L302.994 320.884C298.207 335.839 284.195 346 268.36 346H189.64ZM171.044 223C171.044 234.598 179.784 244 190.565 244C201.345 244 210.085 234.598 210.085 223C210.085 211.402 201.345 202 190.565 202C179.784 202 171.044 211.402 171.044 223ZM286.956 223C286.956 234.598 278.216 244 267.436 244C256.655 244 247.915 234.598 247.915 223C247.915 211.402 256.655 202 267.436 202C278.216 202 286.956 211.402 286.956 223Z"
+            fill="#3F80FF"
+          ></path>
+          <rect x="346" y="8" width="26" height="38" rx="13" stroke="#3F80FF" strokeWidth="16"></rect>
+          <rect x="242" y="8" width="26" height="38" rx="13" stroke="#3F80FF" strokeWidth="16"></rect>
+          <rect x="294" y="8" width="26" height="38" rx="13" stroke="#3F80FF" strokeWidth="16"></rect>
+          <rect x="8" y="136" width="26" height="38" rx="13" stroke="white" strokeWidth="16"></rect>
+          <rect x="346" y="72" width="26" height="38" rx="13" stroke="#3F80FF" strokeWidth="16"></rect>
+          <rect x="-8" y="8" width="26" height="38" rx="13" transform="matrix(-1 0 0 1 78 320)" stroke="#6BA3FF" strokeWidth="16"></rect>
+          <rect x="-8" y="8" width="26" height="38" rx="13" transform="matrix(-1 0 0 1 52 256)" stroke="#B3D4FF" strokeWidth="16"></rect>
+          <rect x="242" y="72" width="26" height="38" rx="13" stroke="#FF6B35" strokeWidth="16"></rect>
+          <rect x="-8" y="8" width="26" height="38" rx="13" transform="matrix(-1 0 0 1 156 384)" stroke="#FF6B35" strokeWidth="16"></rect>
+          <rect x="294" y="72" width="26" height="38" rx="13" stroke="#6BA3FF" strokeWidth="16"></rect>
+          <rect x="138" y="72" width="26" height="38" rx="13" stroke="#6BA3FF" strokeWidth="16"></rect>
+          <rect x="-8" y="8" width="26" height="38" rx="13" transform="matrix(-1 0 0 1 260 384)" stroke="#6BA3FF" strokeWidth="16"></rect>
+          <rect x="86" y="72" width="26" height="38" rx="13" stroke="#6BA3FF" strokeWidth="16"></rect>
+          <rect x="-8" y="8" width="26" height="38" rx="13" transform="matrix(-1 0 0 1 312 384)" stroke="white" strokeWidth="16"></rect>
+          <rect x="192" y="8" width="26" height="38" rx="13" stroke="#6BA3FF" strokeWidth="16"></rect>
+          <rect x="424" y="8" width="26" height="38" rx="13" stroke="#B3D4FF" strokeWidth="16"></rect>
+          <rect x="424" y="328" width="26" height="38" rx="13" stroke="#B3D4FF" strokeWidth="16"></rect>
+          <rect x="390" y="2" width="16" height="50" fill="#3F80FF"></rect>
+          <rect x="390" y="322" width="16" height="50" fill="#B3D4FF"></rect>
+          <rect width="16" height="50" transform="matrix(-1 0 0 1 432 66)" fill="white"></rect>
+          <rect width="16" height="50" transform="matrix(-1 0 0 1 458 66)" fill="#B3D4FF"></rect>
+          <rect x="390" y="66" width="16" height="50" fill="#3F80FF"></rect>
+          <rect width="16" height="50" transform="matrix(-1 0 0 1 16 322)" fill="white"></rect>
+          <rect width="16" height="50" transform="matrix(-1 0 0 1 16 258)" fill="white"></rect>
+          <rect x="208" y="66" width="16" height="50" fill="#3F80FF"></rect>
+          <rect width="16" height="50" transform="matrix(-1 0 0 1 198 386)" fill="#3F80FF"></rect>
+          <rect width="16" height="50" transform="matrix(-1 0 0 1 120 386)" fill="#6BA3FF"></rect>
+          <rect x="26" y="322" width="16" height="50" fill="white"></rect>
+          <rect width="16" height="50" transform="matrix(-1 0 0 1 94 386)" fill="#3F80FF"></rect>
+          <rect width="16" height="50" transform="matrix(-1 0 0 1 120 322)" fill="#3F80FF"></rect>
+          <rect x="52" y="4" width="16" height="50" fill="#B3D4FF"></rect>
+          <rect x="182" y="66" width="16" height="50" fill="#3F80FF"></rect>
+          <rect width="16" height="50" transform="matrix(-1 0 0 1 224 386)" fill="#3F80FF"></rect>
+          <rect width="16" height="50" transform="matrix(-1 0 0 1 354 386)" fill="white"></rect>
+          <mask id="mask0_hero" maskUnits="userSpaceOnUse" x="66" y="130" width="326" height="216" style={{ maskType: 'alpha' }}>
+            <path
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M189.64 346C173.805 346 159.793 335.839 155.006 320.884L130.392 244H115.259C99.4244 244 85.4129 233.839 80.6253 218.884L66 173.2L120.858 173.2L91.9237 130H366.076L337.142 173.2L392 173.2L377.375 218.884C372.587 233.839 358.576 244 342.741 244H327.608L302.994 320.884C298.207 335.839 284.195 346 268.36 346H189.64ZM171.044 223C171.044 234.598 179.784 244 190.565 244C201.345 244 210.085 234.598 210.085 223C210.085 211.402 201.345 202 190.565 202C179.784 202 171.044 211.402 171.044 223ZM286.956 223C286.956 234.598 278.216 244 267.436 244C256.655 244 247.915 234.598 247.915 223C247.915 211.402 256.655 202 267.436 202C278.216 202 286.956 211.402 286.956 223Z"
+              fill="#3F80FF"
+            ></path>
+          </mask>
+          <g mask="url(#mask0_hero)">
+            <rect x="294" y="264" width="26" height="38" rx="13" stroke="#FF6B35" strokeWidth="16"></rect>
+            <rect x="260" y="258" width="16" height="50" fill="#013a8f"></rect>
+            <rect x="234" y="258" width="16" height="50" fill="#012F7A"></rect>
+            <rect x="-8" y="8" width="26" height="38" rx="13" transform="matrix(-1 0 0 1 234 128)" stroke="#012F7A" strokeWidth="16"></rect>
+            <rect width="16" height="50" transform="matrix(-1 0 0 1 276 130)" fill="#013a8f"></rect>
+            <rect width="16" height="50" transform="matrix(-1 0 0 1 302 130)" fill="#013a8f"></rect>
+            <rect width="16" height="50" transform="matrix(-1 0 0 1 328 130)" fill="#012F7A"></rect>
+            <rect width="16" height="50" transform="matrix(-1 0 0 1 198 130)" fill="#012F7A"></rect>
+            <rect x="104" y="130" width="16" height="50" fill="#6BA3FF"></rect>
+          </g>
+          <rect x="346" y="264" width="26" height="38" rx="13" stroke="#3F80FF" strokeWidth="16"></rect>
+          <rect x="390" y="258" width="16" height="50" fill="#3F80FF"></rect>
+          <rect x="416" y="258" width="16" height="50" fill="white"></rect>
+          <rect x="442" y="258" width="16" height="50" fill="#B3D4FF"></rect>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
 
-## Get started
+<section className="mx-auto mt-16 max-w-7xl px-4 sm:px-6 lg:px-8">
+  <div>
+    <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">
+      Quick Start
+    </h2>
+    <p className="mt-3 max-w-3xl text-base text-slate-600 dark:text-slate-300">
+      Move from orientation to implementation with a short path through the docs.
+    </p>
+  </div>
 
-<CardGroup cols={3}>
+  <div className="mt-8">
+    <Steps>
+      <Step title="Understand the protocol model">
+        CoW Protocol uses **intents** and **batch auctions** to give traders MEV protection, better prices, and gasless execution. Solvers compete to fill your orders.
 
-<Card title="CoW Protocol" icon="cow" href="/cow-protocol/overview">
-  Understand the protocol — intents, batch auctions, MEV protection, and how it all works.
-</Card>
+        <CardGroup cols={3}>
+          <Card title="Intents" icon="file-signature" href="/cow-protocol/explanation/introduction/intents">
+            What you want to trade, not how
+          </Card>
+          <Card title="Batch Auctions" icon="layer-group" href="/cow-protocol/explanation/introduction/fair-combinatorial-auction">
+            Orders grouped for optimal settlement
+          </Card>
+          <Card title="Solvers" icon="gears" href="/cow-protocol/explanation/introduction/solvers">
+            Professional third parties compete for you
+          </Card>
+        </CardGroup>
+      </Step>
 
-<Card title="CoW SDK" icon="code" href="/cow-sdk/quickstart">
-  Integrate CoW into your app with the TypeScript SDK. Quickstart, guides, and full API reference.
-</Card>
+      <Step title="Pick your integration path">
+        Decide whether you want to integrate with the API, SDK, or widget depending on your product surface and level of control.
 
-<Card title="Solvers" icon="gears" href="/cow-protocol/tutorials/solvers/create">
-  Build, test, deploy, and run solvers for the batch auction mechanism.
-</Card>
+        ```bash
+        npm install @cowprotocol/cow-sdk
+        ```
 
-</CardGroup>
+        Go deeper with the [Integration overview](/cow-protocol/explanation/integration-overview), [SDK Quickstart](/cow-sdk/quickstart), and [Widget guide](/cow-protocol/howto/integrate/widget).
+      </Step>
 
-<CardGroup cols={3}>
+      <Step title="Follow a working tutorial">
+        Use a concrete walkthrough to place orders, inspect explorer data, or test solver flows end to end.
 
-<Card title="Contracts" icon="file-contract" href="/cow-protocol/reference/contracts/core">
-  Smart contract reference — core, periphery, ComposableCoW, Flash Loan Router.
-</Card>
+        <Accordion title="Suggested starting tutorials">
+          - **Traders**: [Place a swap](/cow-protocol/tutorials/cow-swap/swap) → [Set a limit order](/cow-protocol/tutorials/cow-swap/limit) → [Create a TWAP](/cow-protocol/tutorials/cow-swap/twap)
+          - **Developers**: [SDK Quickstart](/cow-sdk/quickstart) → [Create a swap order](/cow-sdk/guides/creating-swap-orders) → [Widget integration](/cow-protocol/howto/integrate/widget)
+          - **Solver operators**: [Create a solver](/cow-protocol/tutorials/solvers/create) → [Test locally](/cow-protocol/tutorials/solvers/local_test) → [Deploy](/cow-protocol/tutorials/solvers/deploy)
+          - **Live coding**: Try the [interactive tutorials at learn.cow.fi](https://learn.cow.fi) — browser-based, no install needed
+        </Accordion>
+      </Step>
 
-<Card title="BFF & Services" icon="server" href="/bff/introduction">
-  Contribute to CoW Protocol backend infrastructure — BFF, Services, and Watch Tower.
-</Card>
+      <Step title="Dive into the reference">
+        Once you know your use case, move into contracts, APIs, and SDK references to implement against stable interfaces.
 
-<Card title="Governance" icon="landmark" href="/governance/explanation/mission">
-  CoW DAO governance, voting, grants, and fee structures.
-</Card>
+        <CardGroup cols={3}>
+          <Card title="API Reference" icon="square-terminal" href="/cow-protocol/reference/apis/orderbook">
+            Orderbook, Solver, and Driver APIs
+          </Card>
+          <Card title="Contracts" icon="file-contract" href="/cow-protocol/reference/contracts/core">
+            Settlement, VaultRelayer, AllowList
+          </Card>
+          <Card title="SDK Reference" icon="code" href="/cow-sdk/api/trading-sdk">
+            Full TypeScript API docs
+          </Card>
+        </CardGroup>
+      </Step>
+    </Steps>
+  </div>
+</section>
 
-</CardGroup>
+<section className="mx-auto mt-20 max-w-7xl px-4 sm:px-6 lg:px-8">
+  <div>
+    <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">
+      Explore Order Types
+    </h2>
+    <p className="mt-3 max-w-3xl text-base text-slate-600 dark:text-slate-300">
+      Jump directly into the parts of the ecosystem that match your role, workflow, or product area.
+    </p>
+  </div>
 
----
+  <div className="mt-8">
+    <CardGroup cols={3}>
+      <Card
+        title="Limit orders"
+        img="/images/order-types/limit-orders.svg"
+        href="/cow-protocol/explanation/order-types/limit-orders"
+        cta="Set price"
+      >
+        Set a target price and let CoW Swap execute when the market reaches it — gasless and free.
+      </Card>
+      <Card
+        title="TWAP orders"
+        img="/images/order-types/twap-orders.svg"
+        href="/cow-protocol/explanation/order-types/twap-orders"
+        cta="Reduce impact"
+      >
+        Spread a trade across fixed intervals to reduce price impact and timing risk.
+      </Card>
+      <Card
+        title="Milkman orders"
+        img="/images/order-types/milkman-orders.svg"
+        href="/cow-protocol/explanation/order-types/milkman-orders"
+        cta="Schedule trade"
+      >
+        Schedule a future trade with oracle-based pricing for DAOs and smart contracts.
+      </Card>
+      <Card
+        title="Smart orders"
+        img="/images/order-types/smart-orders.svg"
+        href="/cow-protocol/reference/core/signing-schemes"
+        cta="Code logic"
+      >
+        Encode custom trading logic directly into an ERC-1271 smart contract.
+      </Card>
+      <Card
+        title="Programmatic orders"
+        img="/images/order-types/programmatic-orders.svg"
+        href="/cow-protocol/explanation/order-types/programmatic-orders"
+        cta="Add triggers"
+      >
+        Trigger orders automatically when your chosen on-chain conditions are met.
+      </Card>
+      <Card
+        title="Hooks"
+        img="/images/order-types/hooks.svg"
+        href="/cow-protocol/explanation/order-types/cow-hooks"
+        cta="Add hooks"
+      >
+        Connect trades to actions like bridging, staking, deposits, or vault flows.
+      </Card>
+    </CardGroup>
+  </div>
+</section>
 
-## Find your path
+<section className="mx-auto mt-20 max-w-7xl px-4 sm:px-6 lg:px-8">
+  <div>
+    <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">
+      Find Your Path
+    </h2>
+  </div>
+
+  <div className="mt-8">
 
 | You are a... | Start here |
 |---|---|
 | **Trader** wanting to swap tokens | [What is CoW Protocol?](/cow-protocol/overview) then [place a swap](/cow-protocol/tutorials/cow-swap/swap) |
-| **Developer** integrating CoW into your app | [SDK Quickstart](/cow-sdk/quickstart) or [Widget](/cow-protocol/howto/integrate/widget) or [API](/cow-protocol/howto/integrate/api) |
+| **Developer** integrating CoW | [Integration overview](/cow-protocol/explanation/integration-overview) or [SDK Quickstart](/cow-sdk/quickstart) |
 | **Solver operator** running a solver | [Create a solver](/cow-protocol/tutorials/solvers/create) then [test](/cow-protocol/tutorials/solvers/test) and [deploy](/cow-protocol/tutorials/solvers/deploy) |
 | **Smart contract developer** | [Contracts reference](/cow-protocol/reference/contracts/core) or [ComposableCoW](/composable-cow/introduction) |
 | **Contributor** to the codebase | [Services](/services/introduction) or [BFF](/bff/introduction) architecture and dev setup |
-| **DAO participant** or grant applicant | [Mission](/governance/explanation/mission) and [how to apply for a grant](/governance/howto/how-to-apply) |
+| **DAO participant** | [Mission](/governance/explanation/mission) and [how to apply for a grant](/governance/howto/how-to-apply) |
 
-## How these docs are organized
+  </div>
+</section>
 
-Each section follows the [Diataxis framework](https://diataxis.fr):
+<section className="mx-auto mt-20 max-w-7xl px-4 sm:px-6 lg:px-8">
+  <div>
+    <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">
+      Resources
+    </h2>
+    <p className="mt-3 max-w-3xl text-base text-slate-600 dark:text-slate-300">
+      Reach the community, source repositories, and governance channels.
+    </p>
+  </div>
 
-| | **Learning** | **Working** |
-|---|---|---|
-| **Practical** | **Tutorials** — Step-by-step lessons | **How-To** — Task-oriented guides |
-| **Theoretical** | **Explanation** — Concepts and context | **Reference** — Technical specs |
+  <div className="mt-8">
+    <CardGroup cols={2}>
+      <Card title="GitHub" icon="github" href="https://github.com/cowprotocol" cta="Browse repos">
+        Explore the public source code for docs, SDKs, contracts, services, and integration examples.
+      </Card>
+      <Card title="Discord" icon="discord" href="https://discord.com/invite/cowprotocol" cta="Join community">
+        Ask questions, discuss integrations, and connect with builders working across the CoW ecosystem.
+      </Card>
+      <Card title="Forum" icon="comments" href="https://forum.cow.fi" cta="View forum">
+        Follow governance discussions, improvement proposals, and community coordination in the DAO forum.
+      </Card>
+      <Card title="Snapshot" icon="check-to-slot" href="https://snapshot.org/#/cow.eth" cta="See voting">
+        Review live and historical voting activity for CoW DAO proposals and governance decisions.
+      </Card>
+    </CardGroup>
+  </div>
+</section>
 
-import CommunityLinks from '/snippets/community-links.mdx'
-
-<CommunityLinks />
+<section className="mx-auto my-20 max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
+  <div className="rounded-3xl border border-[#012F7A]/15 bg-white px-6 py-10 dark:border-[#3F80FF]/20 dark:bg-slate-900 sm:px-10">
+    <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">
+      Ready to build?
+    </h2>
+    <p className="mt-3 max-w-3xl text-base text-slate-600 dark:text-slate-300">
+      Go from concepts to implementation with tutorials and references that map
+      directly to CoW Protocol, CoW AMM, and governance workflows.
+    </p>
+    <div className="mt-6 flex flex-wrap gap-4">
+      <a
+        href="/cow-protocol/explanation/building"
+        className="inline-flex items-center justify-center rounded-full bg-[#012F7A] px-6 py-3 text-sm font-semibold text-white no-underline transition hover:bg-[#013a8f] dark:bg-[#3F80FF] dark:text-[#012F7A] dark:hover:bg-[#6BA3FF]"
+      >
+        Open builder guide
+      </a>
+      <a
+        href="/cow-protocol/reference/apis/orderbook"
+        className="inline-flex items-center justify-center rounded-full border border-[#012F7A]/20 px-6 py-3 text-sm font-semibold text-[#012F7A] no-underline transition hover:border-[#012F7A] hover:text-[#012F7A] dark:border-[#3F80FF]/30 dark:text-[#3F80FF] dark:hover:border-[#3F80FF] dark:hover:text-[#3F80FF]"
+      >
+        View API reference
+      </a>
+    </div>
+  </div>
+</section>

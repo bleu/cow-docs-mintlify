@@ -1,0 +1,20 @@
+<svg fill="none" viewBox="55 28 405 241" xmlns="http://www.w3.org/2000/svg">
+  <clipPath id="a">
+    <path d="m0 .9375h405v240h-405z"></path>
+  </clipPath>
+  <g clip-path="url(#a)">
+    <circle cx="258" cy="112.938" fill="#ed60e9" r="58"></circle>
+    <circle cx="152.5" cy="148" fill="#ed60e9" r="42" transform="matrix(0 -1 1 0 4.5 300.5)"></circle>
+    <path d="m157.027 152.5v13.5h-8.982v-13.5h-13.545v-9h13.545v-13.5h8.982v13.5h13.473v9z" fill="#490072"></path>
+    <circle cx="258" cy="182.938" fill="#ec4612" r="58"></circle>
+    <path d="m211.746 147.938c10.591-13.974 27.368-23 46.253-23 18.886 0 35.663 9.026 46.254 23-10.591 13.973-27.368 23-46.254 23-18.885 0-35.662-9.027-46.253-23z" fill="#fccaf2"></path>
+    <g fill="#f996ee">
+      <circle cx="175" cy="76.9375" r="17" transform="matrix(0 -1 1 0 98.0625 251.9375)"></circle>
+      <circle cx="175" cy="219" r="17" transform="matrix(0 -1 1 0 -44 394)"></circle>
+      <circle cx="340.5" cy="77" r="17" transform="matrix(0 -1 1 0 263.5 417.5)"></circle>
+      <circle cx="341" cy="219" r="17" transform="matrix(0 -1 1 0 122 560)"></circle>
+    </g>
+    <circle cx="363" cy="147.938" fill="#ed60e9" r="42" transform="matrix(0 -1 1 0 215.062 510.938)"></circle>
+    <path d="m367.027 152.5v13.5h-8.982v-13.5h-13.545v-9h13.545v-13.5h8.982v13.5h13.473v9z" fill="#490072"></path>
+  </g>
+</svg>

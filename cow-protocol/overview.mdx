@@ -3,6 +3,8 @@ title: "What is CoW Protocol?"
 description: "CoW Protocol is the most user-protective trading protocol on Ethereum, using batch auctions and solver competition to deliver MEV protection, better prices, and gasless trading."
 ---
 
+<img src="/images/what-is-cow-protocol.png" alt="What is CoW Protocol" style={{ width: '100%', borderRadius: '12px', marginBottom: '2rem' }} />
+
 CoW Protocol is an intent-based trading protocol where users sign what they want to trade, and professional **solvers** compete to find the best execution path. Instead of trading directly against a single AMM, your order enters a **batch auction** where solvers optimize across all available liquidity sources.
 
 ```mermaid
@@ -16,16 +18,16 @@ graph LR
 
 <CardGroup cols={2}>
   <Card title="MEV Protection" icon="shield-check">
-    Batch auctions with uniform clearing prices eliminate frontrunning and sandwich attacks.
+    Batch auctions with uniform clearing prices eliminate frontrunning and sandwich attacks. Your trades are safe from MEV bots.
   </Card>
   <Card title="Better Prices" icon="chart-line">
-    Solvers access on-chain DEXs, private market makers, and peer-to-peer matching (Coincidence of Wants).
+    Solvers access on-chain DEXs, private market makers, and peer-to-peer matching (Coincidence of Wants) to find the best execution.
   </Card>
   <Card title="Gasless Trading" icon="gas-pump">
-    No ETH needed for gas. Fees are taken from the sell token.
+    No ETH needed for gas. Fees are taken from the sell token. If the order can't execute, you pay nothing.
   </Card>
   <Card title="No Failed Transactions" icon="circle-check">
-    You sign a message, not a transaction. If the order can't execute, you pay nothing.
+    You sign a message, not a transaction. Failed orders cost you nothing — ever.
   </Card>
 </CardGroup>
 
@@ -33,15 +35,41 @@ graph LR
 
 <Steps>
   <Step title="Intents">
-    Users express **what** they want to trade, not **how**. You sign a message specifying tokens and amounts. [Learn more](/cow-protocol/explanation/introduction/intents)
+    Users express **what** they want to trade, not **how**. You sign a message specifying tokens and amounts — solvers handle the rest. [Learn more](/cow-protocol/explanation/introduction/intents)
   </Step>
   <Step title="Solvers">
-    Professional third parties compete in an auction to fill your order at the best price. [Learn more](/cow-protocol/explanation/introduction/solvers)
+    Professional third parties compete in an auction to fill your order at the best price. They scan all liquidity sources: AMMs, aggregators, private market makers, and other users' orders. [Learn more](/cow-protocol/explanation/introduction/solvers)
   </Step>
   <Step title="Batch Auctions">
-    Orders are grouped into batches and settled together, enabling peer-to-peer matching and uniform pricing. [Learn more](/cow-protocol/explanation/introduction/fair-combinatorial-auction)
+    Orders are grouped into batches and settled together, enabling peer-to-peer matching (Coincidence of Wants) and uniform clearing prices that eliminate MEV. [Learn more](/cow-protocol/explanation/introduction/fair-combinatorial-auction)
+  </Step>
+  <Step title="How Intents Are Formed">
+    From intention to quote to signed order — understand the fee pipeline that determines your final amounts. [Learn more](/cow-protocol/explanation/how-it-works/how-intents-are-formed)
   </Step>
 </Steps>
+
+## Order types
+
+<CardGroup cols={3}>
+  <Card title="Market Orders" icon="bolt" href="/cow-protocol/explanation/order-types/market-orders">
+    Instant execution at the best price
+  </Card>
+  <Card title="Limit Orders" icon="arrow-right-arrow-left" href="/cow-protocol/explanation/order-types/limit-orders">
+    Set your price, gasless and free
+  </Card>
+  <Card title="TWAP" icon="clock" href="/cow-protocol/explanation/order-types/twap-orders">
+    Split large trades over time
+  </Card>
+  <Card title="Programmatic" icon="robot" href="/cow-protocol/explanation/order-types/programmatic-orders">
+    Condition-triggered smart orders
+  </Card>
+  <Card title="CoW Hooks" icon="link" href="/cow-protocol/explanation/order-types/cow-hooks">
+    Pair any action with your swap
+  </Card>
+  <Card title="Milkman" icon="shield-halved" href="/cow-protocol/explanation/order-types/milkman-orders">
+    Oracle-protected DAO orders
+  </Card>
+</CardGroup>
 
 ## Start building
 

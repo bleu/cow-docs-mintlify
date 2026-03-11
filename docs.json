@@ -99,6 +99,7 @@
             "icon": "circle-info",
             "pages": [
               "cow-protocol/explanation/how-it-works/flow-of-an-order",
+              "cow-protocol/explanation/how-it-works/how-intents-are-formed",
               "cow-protocol/explanation/how-it-works/coincidence-of-wants",
               "cow-protocol/explanation/how-it-works/protocol-vs-swap"
             ]
