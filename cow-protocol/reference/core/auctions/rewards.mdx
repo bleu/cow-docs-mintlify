@@ -7,7 +7,7 @@ description: "The protocol is currently subsidizing the solver competition on al
   For the interested reader, the main source of truth for the weekly payments to solvers is this [Dune dashboard](https://dune.com/cowprotocol/cow-solver-rewards). The dashboard is populated with data aggregated by scripts within the [solver-rewards](https://github.com/cowprotocol/solver-rewards) repository.
 </Note>
 
-## Solver competition rewards (CIPs 20, 36, 38, 48, 57, 67, 74)[​](#solver-competition-rewards-cips-20-36-38-48-57-67-74 "Direct link to Solver competition rewards (CIPs 20, 36, 38, 48, 57, 67, 74)")
+## Solver competition rewards (CIPs 20, 36, 38, 48, 57, 67, 74)[](#solver-competition-rewards-cips-20-36-38-48-57-67-74 "Direct link to Solver competition rewards (CIPs 20, 36, 38, 48, 57, 67, 74)")
 
 Solver rewards are computed using a mechanism akin to a Vickrey–Clarke–Groves mechanism (a generalization of a second-price auction to combinatorial auctions). First, each solver proposes multiple solutions. Each solution contains a price vector and a list of trades to execute, which can be used to compute the solution's score. The protocol then selects the winning solutions (and winning solvers) using a fair combinatorial auction, which first filters out the solutions deemed unfair and then selects the combination of fair solutions that maximizes the total score of the auction (see [here](/cow-protocol/reference/core/auctions/competition-rules#off-chain-protocol) for more details).
 
@@ -15,17 +15,19 @@ Solver rewards are computed using a mechanism akin to a Vickrey–Clarke–Grove
   From the protocol's perspective, a solution as executed on chain must equal the solution as submitted at the bidding stage.
 </Note>
 
-The payment to the winning solver i is
+The payment to the winning solver $i$ is
 
-paymenti​=cap(totalScore−referenceScorei​−missingScorei​).
+$$
+\text{payment}_i = \text{cap}(\text{totalScore} - \text{referenceScore}_i - \text{missingScore}_i)
+$$
 
-Here totalScore is the sum of the scores of all winning solutions in the auction and missingScorei​ is the sum of the scores of solver i's winning solutions that reverted. Finally, referenceScorei​ is the total score of a counterfactual auction in which all bids from solver i are removed from the set of bids that survive the fairness filtering.
+Here $\text{totalScore}$ is the sum of the scores of all winning solutions in the auction and $\text{missingScore}_i$ is the sum of the scores of solver $i$'s winning solutions that reverted. Finally, $\text{referenceScore}_i$ is the total score of a counterfactual auction in which all bids from solver $i$ are removed from the set of bids that survive the fairness filtering.
 
 <Note>
   The payment calculation can result in a negative figure, in which case the solver is required to pay the protocol.
 </Note>
 
-The payment is capped from above and below using the function cap(x)=max(−cl​,min(cu​,x)), where cu​ is the protocol fee (excluding partner fees) that the protocol earned from the trades in all solutions supplied by the solver in that auction and cl​ is chain-specific, determined by the following values:
+The payment is capped from above and below using the function $\text{cap}(x) = \max(-c_l, \min(c_u, x))$, where $c_u$ is the protocol fee (excluding partner fees) that the protocol earned from the trades in all solutions supplied by the solver in that auction and $c_l$ is chain-specific, determined by the following values:
 
 * Ethereum mainnet, Arbitrum, and Base chain: 0.010ETH
 * Gnosis Chain: 10xDAI
@@ -36,31 +38,67 @@ The payment is capped from above and below using the function cap(x)=max(−cl�
 * Linea and Ink: 0.0015ETH
 * Plasma: 30XPL
 
-If only one solver submits solutions, referenceScorei​ is, by definition, zero.
+If only one solver submits solutions, $\text{referenceScore}_i$ is, by definition, zero.
 
 <Note>
   There is no guarantee that the per-auction rewards are greater than the costs of executing a transaction (due to, for example, gas costs). Hence, solvers cover these costs by adjusting their reported score. Of course, a solver who adjusts their score downward too aggressively is then at a disadvantage in the auction. The mechanism, therefore, incentivizes the accurate estimation of costs such as gas.
 </Note>
 
-### Buffer accounting[​](#buffer-accounting "Direct link to Buffer accounting")
+### Buffer accounting[](#buffer-accounting "Direct link to Buffer accounting")
 
 It is possible that the state of the external liquidity sources used as part of a solution changes between the bidding stage and the execution stage. We say that there is negative slippage when the solver's execution generates less than the expected amount, and positive slippage otherwise. In case of negative slippage the solver can utilize the buffers available in the settlement contract, while a solver can accumulate positive slippage in the settlement contract. Every week, the protocol computes a "net" slippage and either pays a solver (when it is positive) or requests a payment from a solver (when it is negative). For more information, see the [accounting section](/cow-protocol/reference/core/auctions/accounting).
 
 Hence, although buffers and the possibility of using them are not an explicit element of the mechanism, they are nonetheless relevant in determining the solver's optimal strategy, because they allow a solver to average out positive and negative slippage over a period of time (vs. making sure to always produce at least as much as promised at the bidding stage).
 
-### Solver's strategy[​](#solvers-strategy "Direct link to Solver's strategy")
+### Solver's strategy[](#solvers-strategy "Direct link to Solver's strategy")
 
 To determine the optimal routing, the recommended strategy for a solver is to start by dividing the available orders into groups of orders on the same directed token pairs - i.e., in each group, all orders have the same sell and buy tokens. The next step is to compute the best possible routing for each group and submit it as a solution. Note that, by construction, each of these solutions will use outside liquidity. Finally, a solver should check whether it is possible to improve these solutions by creating batched solutions containing orders on different directed token pairs. These additional efficiencies may come from, for example, exploiting liquidity already available on the protocol - using one order as liquidity for the other (in a CoW) or using CoW AMM liquidity - or from gas savings. Solvers should submit an additional solution for every combination of groups of orders for which additional efficiencies are possible. When submitting such a solution, they should pay attention to sharing the additional efficiencies among all orders in the batch; otherwise, the batched solution may be filtered out as unfair.
 
 As already discussed, solvers are responsible for paying the gas cost of a solution. Also, if a solution reverts, a solver may incur a penalty. Hence, when reporting their solution, solvers should adjust their reported score to account for the expected costs of settling a solution on the chain and the revert risk.
 
-With respect to optimal bidding, note that the protocol rewards allow a solver to participate in an auction without misreporting the score they can generate (net of expected costs). This is easy to see if the cap is not binding, and misreporting does not affect referenceScorei​. Then, by reducing the reported score of a solution, solver i does not affect its payoff if this solution is among the winners (which only shifts from protocol rewards to positive slippage), while reducing the probability that this solution is a winner. It is therefore a dominant strategy to bid truthfully.
+With respect to optimal bidding, note that the protocol rewards allow a solver to participate in an auction without misreporting the score they can generate (net of expected costs). This is easy to see if the cap is not binding, and misreporting does not affect $\text{referenceScore}_i$. Then, by reducing the reported score of a solution, solver $i$ does not affect its payoff if this solution is among the winners (which only shifts from protocol rewards to positive slippage), while reducing the probability that this solution is a winner. It is therefore a dominant strategy to bid truthfully.
 
-The presence of the cap on rewards cu​, however, makes the problem more complex as it introduces a "first-price auction" logic: if the difference between the best and second-best solution is very large, then the winning solver wins more when it underreports its score. The filtering step of the fair combinatorial auction also makes this problem more complex, because there are some edge cases in which by reducing the score of a solution, solver i can benefit by making the filtering steps less stringent for its opponents (see [here](https://forum.cow.fi/t/combinatorial-auctions-from-theory-to-practice-via-some-more-theory-about-rewards/2877) for a discussion). However, determining the optimal amount of underreporting is very complex and requires each solver to make strong assumptions regarding the performance of competing solvers.
+The presence of the cap on rewards $c_u$, however, makes the problem more complex as it introduces a "first-price auction" logic: if the difference between the best and second-best solution is very large, then the winning solver wins more when it underreports its score. The filtering step of the fair combinatorial auction also makes this problem more complex, because there are some edge cases in which by reducing the score of a solution, solver $i$ can benefit by making the filtering steps less stringent for its opponents (see [here](https://forum.cow.fi/t/combinatorial-auctions-from-theory-to-practice-via-some-more-theory-about-rewards/2877) for a discussion). However, determining the optimal amount of underreporting is very complex and requires each solver to make strong assumptions regarding the performance of competing solvers.
 
-To summarize, truthfully revealing the (cost-adjusted) score that a solver can generate for each submitted solution is optimal if the cap is not binding, and misreporting does not affect referenceScorei​. It is not necessarily optimal in uncompetitive auctions when the difference between the best and second-best solution may be large, and in some edge cases in which a solver may benefit from making the filtering step less stringent. However, in these cases, deriving the optimal strategy is a very complex problem. We conclude by noting that most CoW Protocol batches are very competitive - at the time of writing (November 2025) the cap on rewards is binding only in about 9% of auctions - and that a solver benefits by making the filtering steps less stringent for its opponents only in sporadic cases.
+To summarize, truthfully revealing the (cost-adjusted) score that a solver can generate for each submitted solution is optimal if the cap is not binding, and misreporting does not affect $\text{referenceScore}_i$. It is not necessarily optimal in uncompetitive auctions when the difference between the best and second-best solution may be large, and in some edge cases in which a solver may benefit from making the filtering step less stringent. However, in these cases, deriving the optimal strategy is a very complex problem. We conclude by noting that most CoW Protocol batches are very competitive - at the time of writing (November 2025) the cap on rewards is binding only in about 9% of auctions - and that a solver benefits by making the filtering steps less stringent for its opponents only in sporadic cases.
 
-## Price estimation competition rewards (CIPs 27, 36, 57, 72)[​](#price-estimation-competition-rewards-cips-27-36-57-72 "Direct link to Price estimation competition rewards (CIPs 27, 36, 57, 72)")
+## Practical implications of the reward mechanism
+
+The reward mechanism described above has practical consequences that solvers should understand, particularly around reward caps, revert penalties, and small order economics.
+
+### Reward caps and small orders (CIP-74)
+
+Since CIP-74, the upper reward cap $c_u$ is set to the protocol fee earned from the solver's trades in a given auction. For orders where protocol fees are small (e.g., trades under \$10k at 2 bps), the reward cap can be significantly lower than the cost of executing the settlement on-chain.
+
+This means:
+
+- **Small order economics**: For a \$1,000 trade at 2 bps protocol fee, the maximum reward is approximately \$0.20 — often insufficient to cover gas costs on Ethereum mainnet. Solvers must account for execution costs in their score adjustments.
+- **Bidding implications**: When the cap is binding, the mechanism shifts from second-price to first-price dynamics. A solver cannot benefit from truthful bidding beyond the cap, so the incentive to maximize user surplus is reduced for capped auctions.
+- **Practical strategy**: Solvers should factor the reward cap into their cost-adjusted scores. If the expected reward (after caps) does not cover expected execution costs, a rational solver will not include that order in their solution.
+
+### Penalties and reverts
+
+When a winning solution reverts on-chain, the solver incurs a penalty based on the reference score (the best alternative solution that was available). Key considerations:
+
+- **Asymmetric evaluation**: The winning solver's score is measured after actual settlement, but the reference score is treated optimistically — it assumes the second-best solver would have succeeded. In practice, when market conditions cause one solver to revert, there is a high probability (~80% based on historical data) that other solvers would also revert on the same auction.
+- **Penalty caps**: The lower cap $c_l$ limits the maximum penalty per auction (e.g., 0.01 ETH on mainnet). This bounds worst-case losses but still creates meaningful risk for solvers operating on thin margins.
+- **Optimal bidding under revert risk**: A solver with success probability $p$ and potential surplus $S$ should discount their bid to account for revert risk. The optimal bid considering penalties is approximately $\max(p \times S, \; S - \frac{1-p}{p} \times c_l)$, where $c_l$ is the penalty cap. For example, a solver generating \$100 surplus with 90% success probability and a \$20 penalty cap should bid approximately \$97.77.
+- **Protocol-induced vs. solver-induced failures**: Not all reverts are the solver's fault — market conditions can change between bid submission and settlement. The protocol is working toward faster auction cycles (targeting one auction per block) to minimize this window.
+
+### Implications for solver strategy
+
+These mechanics mean that solvers should:
+
+1. **Accurately estimate revert probability** for each solution and adjust scores accordingly
+2. **Consider order size** when deciding which orders to include — very small orders on high-gas chains may not be economically viable
+3. **Monitor the cap binding rate** — currently ~9% of auctions have binding caps, but this varies by chain and order composition
+4. **Avoid overbidding** — inflating scores to win auctions and hoping rewards cover losses is explicitly against [competition rules](/cow-protocol/reference/core/auctions/competition-rules#governance) and can lead to slashing
+
+<Note>
+For ongoing discussion of these mechanics and their evolution, see the [CoW Forum Technical category](https://forum.cow.fi/c/tech-spells/2). Key threads include discussions on [CIP-74's impact on small orders](https://forum.cow.fi/t/second-price-auction-is-broken-for-small-orders-since-cip-74/3317), [penalty mechanics](https://forum.cow.fi/t/how-penalties-affect-bidding-of-solvers/3341), and [revert scenarios](https://forum.cow.fi/t/thoughts-about-second-price-auction-in-case-of-reverts/3309).
+</Note>
+
+## Price estimation competition rewards (CIPs 27, 36, 57, 72)[](#price-estimation-competition-rewards-cips-27-36-57-72 "Direct link to Price estimation competition rewards (CIPs 27, 36, 57, 72)")
 
 The price estimation competition is a separate competition where solvers provide the best response to a quote request. Quote requests look almost identical to single-order batch auctions, where there is only one order with a trivial limit price, and solvers propose executions of this order with the goal to maximize "out amount minus gas costs" in the case of a sell request, or minimize "in amount + gas costs" in the case of a buy request.
 
@@ -73,17 +111,17 @@ As specified in [CIP-27](https://snapshot.org/#/cow.eth/proposal/0x64e061568e86e
 
 The current rewards for eligible quotes are as follows:
 
-* Ethereum mainnet: min\{0.0007 ETH,6 COW},
-* Gnosis Chain: min\{0.15 xDAI,6 COW},
-* Arbitrum: min\{0.00024 ETH,6 COW},
-* Base Chain: min\{0.00024 ETH,6 COW},
-* Avalanche-C Chain: min\{0.006 AVAX,6 COW},
-* Polygon Chain: min\{0.6 POL,6 COW}
-* Lens Chain: min\{0.15 GHO,6 COW}
-* BNB Chain: min\{0.001 BNB,6 COW}
-* Linea: min\{0.00003 ETH,6 COW}.
-* Plasma: min\{0.6 XPL,6 COW}.
-* Ink: min\{0.00003 ETH,6 COW}.
+* Ethereum mainnet: $\min\{0.0007 \text{ ETH}, 6 \text{ COW}\}$
+* Gnosis Chain: $\min\{0.15 \text{ xDAI}, 6 \text{ COW}\}$
+* Arbitrum: $\min\{0.00024 \text{ ETH}, 6 \text{ COW}\}$
+* Base Chain: $\min\{0.00024 \text{ ETH}, 6 \text{ COW}\}$
+* Avalanche-C Chain: $\min\{0.006 \text{ AVAX}, 6 \text{ COW}\}$
+* Polygon Chain: $\min\{0.6 \text{ POL}, 6 \text{ COW}\}$
+* Lens Chain: $\min\{0.15 \text{ GHO}, 6 \text{ COW}\}$
+* BNB Chain: $\min\{0.001 \text{ BNB}, 6 \text{ COW}\}$
+* Linea: $\min\{0.00003 \text{ ETH}, 6 \text{ COW}\}$
+* Plasma: $\min\{0.6 \text{ XPL}, 6 \text{ COW}\}$
+* Ink: $\min\{0.00003 \text{ ETH}, 6 \text{ COW}\}$
 
 where, again, the conversion from native token to COW is done by using an up-to-date price (specifically, the average native token/COW Dune prices of the past 24h before the payout are used to determine these exchange rates).
 
