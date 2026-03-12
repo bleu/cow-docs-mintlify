@@ -473,6 +473,67 @@ const receipt = await tx.wait()
 console.log('Gas used:', receipt.gasUsed)
 ```
 
+## Post-Hooks and CoW Shed
+
+Post-hooks that need to act on the tokens received from a swap require special handling. By default, bought tokens are sent to the user's wallet — but the post-hook executes in the context of the [HooksTrampoline](/hooks-trampoline/introduction) contract, not the user's wallet. This means a post-hook **cannot** directly access the user's received tokens.
+
+The solution is [CoW Shed](/cow-sdk/advanced/account-abstraction) — a deterministic smart account (proxy) that acts as an intermediary:
+
+1. Set the order's `receiver` to the user's CoW Shed account
+2. Tokens land in the CoW Shed proxy after the swap
+3. The post-hook calls the CoW Shed proxy to execute pre-signed operations (stake, bridge, deposit, etc.)
+
+```typescript
+import { TradingSdk } from '@cowprotocol/sdk-trading'
+import { CowShedSdk } from '@cowprotocol/sdk-cow-shed'
+
+const tradingSdk = new TradingSdk()
+const cowShedSdk = new CowShedSdk()
+
+// 1. Prepare the post-hook calls (e.g., stake received tokens)
+const hookResult = await cowShedSdk.signCalls({
+  calls: [
+    {
+      target: STAKING_CONTRACT,
+      callData: encodeFunctionData({
+        abi: STAKING_ABI,
+        functionName: 'stake',
+        args: [stakeAmount],
+      }),
+      value: 0n,
+      allowFailure: false,
+      isDelegateCall: false,
+    },
+  ],
+  signer,
+  chainId: SupportedChainId.MAINNET,
+  deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
+})
+
+// 2. Create order with receiver set to CoW Shed account
+const order = await tradingSdk.postOrder({
+  kind: OrderKind.SELL,
+  sellToken: WETH_ADDRESS,
+  buyToken: REWARD_TOKEN,
+  sellAmount: parseEther('10'),
+  receiver: hookResult.cowShedAccount, // Tokens go to CoW Shed
+  signer,
+  postHooks: [{
+    target: hookResult.signedMulticall.to,
+    callData: hookResult.signedMulticall.data,
+    gasLimit: hookResult.gasLimit,
+  }],
+})
+```
+
+<Warning>
+  If your post-hook needs to act on received tokens (staking, bridging, depositing into a protocol), you **must** use CoW Shed. Without it, the tokens will be in the user's wallet but the hook will execute without access to them.
+</Warning>
+
+For full CoW Shed documentation, see:
+- [Account Abstraction Guide](/cow-sdk/advanced/account-abstraction) — setup, signing, and execution
+- [CoW Shed SDK Reference](/cow-sdk/api/cow-shed-sdk) — complete API reference
+
 ## Limitations
 
 - Hooks must complete within their specified gas limit
@@ -484,11 +545,19 @@ console.log('Gas used:', receipt.gasUsed)
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Partner Fee" icon="coins" href="/cow-sdk/advanced/partner-fee">
-    Configure partner fee collection
+  <Card title="Account Abstraction (CoW Shed)" icon="vault" href="/cow-sdk/advanced/account-abstraction">
+    Pre-authorize post-hook operations with CoW Shed
   </Card>
 
   <Card title="Cross-Chain Bridging" icon="bridge" href="/cow-sdk/advanced/cross-chain-bridging">
-    Execute cross-chain swaps
+    Execute cross-chain swaps with post-hook bridging
+  </Card>
+
+  <Card title="Hook dApp Development" icon="code" href="/cow-protocol/reference/hook-dapp">
+    Build custom hook dApps for the CoW Swap interface
+  </Card>
+
+  <Card title="Partner Fee" icon="coins" href="/cow-sdk/advanced/partner-fee">
+    Configure partner fee collection
   </Card>
 </CardGroup>

@@ -56,14 +56,75 @@ And it expects calling following callbacks:
 
 Let's create a simple hook dApp that checks the COW token balance of the order creator.
 
-```
-<html>  <body>    <button id="actionButton">Add or edit hook</button>    <script>      import { initCoWHookDapp, HookDappContext } from '@cowprotocol/hook-dapp-lib'      // Encoded call of ERC20.balanceOf(account)      const CALL_DATA = account => `0x70a08231000000000000000000000000${account.slice(2)}`      let context: HookDappContext | null = null      const { actions, provider } = initCoWHookDapp({ onContext: (_context) => context = _context })      provider.request({ method: 'eth_chainId' }).then(chainId => {          console.log(`User is connected to a network with id=${chainId}`)      })      document.getElementById('actionButton').addEventListener('click', () => {        if (!context) {          console.log('App is not loaded yet, please wait a bit.')          return        }        // Edit a hook        if (context.hookToEdit) {            actions.editHook({                ...context.hookToEdit,                hook: {                    ...context.hookToEdit.hook,                    gasLimit: '40000'                }            })        } else {            // Create a hook            actions.addHook({                hook: {                    target: '0xdef1ca1fb7fbcdc777520aa7f396b4e015f497ab', // COW token                    callData: CALL_DATA(context.account),                    gasLimit: '32000'                }            })        }      })    </script>  </body></html>
+```html
+<html>
+  <body>
+    <button id="actionButton">Add or edit hook</button>
+    <script type="module">
+      import { initCoWHookDapp } from '@cowprotocol/hook-dapp-lib'
+
+      // Encoded call of ERC20.balanceOf(account)
+      const CALL_DATA = (account) =>
+        `0x70a08231000000000000000000000000${account.slice(2)}`
+
+      let context = null
+
+      const { actions, provider } = initCoWHookDapp({
+        onContext: (_context) => (context = _context),
+      })
+
+      provider.request({ method: 'eth_chainId' }).then((chainId) => {
+        console.log(`User is connected to a network with id=${chainId}`)
+      })
+
+      document
+        .getElementById('actionButton')
+        .addEventListener('click', () => {
+          if (!context) {
+            console.log('App is not loaded yet, please wait a bit.')
+            return
+          }
+
+          // Edit a hook
+          if (context.hookToEdit) {
+            actions.editHook({
+              ...context.hookToEdit,
+              hook: {
+                ...context.hookToEdit.hook,
+                gasLimit: '40000',
+              },
+            })
+          } else {
+            // Create a hook
+            actions.addHook({
+              hook: {
+                target: '0xdef1ca1fb7fbcdc777520aa7f396b4e015f497ab', // COW token
+                callData: CALL_DATA(context.account),
+                gasLimit: '32000',
+              },
+            })
+          }
+        })
+    </script>
+  </body>
+</html>
 ```
 
 ### Types specification[​](#types-specification "Direct link to Types specification")
 
-```
-import { initCoWHookDapp, CoWHookDappActions, HookDappContext } from '@cowprotocol/hook-dapp-lib'// context: HookDappContext// actions: CoWHookDappActions// provider: EIP-1193const { actions, provider } = initCoWHookDapp({ onContext(context: HookDappContext) {} })
+```typescript
+import {
+  initCoWHookDapp,
+  CoWHookDappActions,
+  HookDappContext,
+} from '@cowprotocol/hook-dapp-lib'
+
+// context: HookDappContext
+// actions: CoWHookDappActions
+// provider: EIP-1193
+const { actions, provider } = initCoWHookDapp({
+  onContext(context: HookDappContext) {},
+})
 ```
 
 ***
@@ -93,8 +154,23 @@ import { initCoWHookDapp, CoWHookDappActions, HookDappContext } from '@cowprotoc
 
 As stated at the beginning of this document, in the CoW Swap interface you can add your application as a custom application. To do this, the application must contain `manifest.json` file with following structure:
 
-```
-{  "cow_hook_dapp": {    "id": "06a2747d08f0026f47aebb91ac13172a318eb3f6116f742751e2d83cc61b8753",    "name": "Your Hook Dapp",    "descriptionShort": "Your Hook Dapp short description",    "description": "Your Hook Dapp full description",    "version": "0.0.1",    "website": "https://your-cow-hook.dapp",    "image": "http://your-cow-hook.dapp/logo.png",    "conditions": {      "position": "pre",      "smartContractWalletSupported": false,      "supportedNetworks": [1, 100, 42161]    }  }}
+```json
+{
+  "cow_hook_dapp": {
+    "id": "06a2747d08f0026f47aebb91ac13172a318eb3f6116f742751e2d83cc61b8753",
+    "name": "Your Hook Dapp",
+    "descriptionShort": "Your Hook Dapp short description",
+    "description": "Your Hook Dapp full description",
+    "version": "0.0.1",
+    "website": "https://your-cow-hook.dapp",
+    "image": "http://your-cow-hook.dapp/logo.png",
+    "conditions": {
+      "position": "pre",
+      "smartContractWalletSupported": false,
+      "supportedNetworks": [1, 100, 42161]
+    }
+  }
+}
 ```
 
 | Parameter                        | Type                            | Description                                                                                                                                                                                                            |
@@ -112,8 +188,10 @@ As stated at the beginning of this document, in the CoW Swap interface you can a
 
 ## Advanced Hook Dapps[​](#advanced-hook-dapps "Direct link to Advanced Hook Dapps")
 
-For more complex scenarios, such as transferring the buy amount to another smart-contract or other smart-contract related actions, you will probably need CoW Shed:
+For more complex scenarios — such as post-hooks that need to act on received tokens (staking, bridging, depositing into DeFi protocols) — you need **CoW Shed**. CoW Shed is a deterministic smart account that holds tokens on behalf of the user and executes pre-signed operations during settlement.
 
-* [CoW Shed](https://github.com/cowdao-grants/cow-shed)
-* [Permit, Swap & Bridge CoW Hook example](https://v1.docs.cow.fi/overview/cow-hooks/cow-hooks-example/permit-swap-and-bridge-cow-hook)
+* [Account Abstraction Guide](/cow-sdk/advanced/account-abstraction) — How to use CoW Shed for pre-authorized hook calls
+* [CoW Shed SDK Reference](/cow-sdk/api/cow-shed-sdk) — Complete API reference (`@cowprotocol/sdk-cow-shed`)
+* [CoW Shed Source Code](https://github.com/cowdao-grants/cow-shed) — Smart contract source
+* [Hooks SDK Guide](/cow-sdk/advanced/hooks) — Using hooks with the Trading SDK, including CoW Shed integration examples
 
