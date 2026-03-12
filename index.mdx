@@ -155,9 +155,9 @@ description: "Documentation for CoW Protocol, CoW AMM, and CoW DAO — the most 
         Use a concrete walkthrough to place orders, inspect explorer data, or test solver flows end to end.
 
         <Accordion title="Suggested starting tutorials">
-          - **Traders**: [Place a swap](/cow-swap/tutorials/swap) → [Set a limit order](/cow-swap/tutorials/limit) → [Create a TWAP](/cow-swap/tutorials/twap)
-          - **Developers**: [SDK Quickstart](/cow-sdk/quickstart) → [Create a swap order](/cow-sdk/guides/creating-swap-orders) → [Widget integration](/cow-swap/widget/overview)
-          - **Solver operators**: [Test locally](/cow-protocol/tutorials/solvers/local_test) → [Onboard](/cow-protocol/howto/solvers/onboard)
+          - **Traders**: [Place a swap](/cow-swap/tutorials/swap), then [set a limit order](/cow-swap/tutorials/limit), then [create a TWAP](/cow-swap/tutorials/twap)
+          - **Developers**: [SDK Quickstart](/cow-sdk/quickstart), then [create a swap order](/cow-sdk/guides/creating-swap-orders), then [widget integration](/cow-swap/widget/overview)
+          - **Solver operators**: [Test locally](/cow-protocol/tutorials/solvers/local_test), then [onboard](/cow-protocol/howto/solvers/onboard)
           - **Live coding**: Try the [interactive tutorials at learn.cow.fi](https://learn.cow.fi) — browser-based, no install needed
         </Accordion>
       </Step>
@@ -250,19 +250,46 @@ description: "Documentation for CoW Protocol, CoW AMM, and CoW DAO — the most 
     <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">
       Find Your Path
     </h2>
+    <p className="mt-3 max-w-3xl text-base text-slate-600 dark:text-slate-300">
+      Pick your role and follow the links that match what you're trying to do.
+    </p>
   </div>
 
-  <div className="mt-8">
-
-| You are a... | Start here |
-|---|---|
-| **Trader** wanting to swap tokens | [What is CoW Protocol?](/cow-protocol/overview) then [place a swap](/cow-swap/tutorials/swap) |
-| **Developer** integrating CoW | [Integration overview](/cow-protocol/explanation/integration-overview), [TypeScript SDK](/cow-sdk/quickstart), or [Python SDK](/cow-py/quickstart) |
-| **Solver operator** running a solver | [Test locally](/cow-protocol/tutorials/solvers/local_test) then [onboard](/cow-protocol/howto/solvers/onboard) |
-| **Smart contract developer** | [Contracts reference](/cow-protocol/reference/contracts/core) or [ComposableCoW](/composable-cow/introduction) |
-| **Contributor** to the codebase | [Services](/services/introduction) or [BFF](/bff/introduction) architecture and dev setup |
-| **DAO participant** | [Mission](/governance/explanation/mission) and [how to apply for a grant](/governance/howto/how-to-apply) |
-
+  <div className="mt-8 overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-700/50 dark:bg-slate-900/50">
+    <table className="w-full text-left text-sm">
+      <thead>
+        <tr className="border-b border-slate-200 dark:border-slate-700/50">
+          <th className="px-6 py-4 font-semibold text-slate-900 dark:text-slate-200">You are a...</th>
+          <th className="px-6 py-4 font-semibold text-slate-900 dark:text-slate-200">Start here</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-slate-100 dark:divide-slate-700/30">
+        <tr>
+          <td className="px-6 py-4 font-medium text-slate-900 dark:text-slate-100">Trader</td>
+          <td className="px-6 py-4 text-slate-600 dark:text-slate-300"><a href="/cow-protocol/overview" className="text-blue-600 dark:text-blue-400 hover:underline">What is CoW Protocol?</a> then <a href="/cow-swap/tutorials/swap" className="text-blue-600 dark:text-blue-400 hover:underline">place a swap</a></td>
+        </tr>
+        <tr>
+          <td className="px-6 py-4 font-medium text-slate-900 dark:text-slate-100">Developer</td>
+          <td className="px-6 py-4 text-slate-600 dark:text-slate-300"><a href="/cow-protocol/explanation/integration-overview" className="text-blue-600 dark:text-blue-400 hover:underline">Integration overview</a>, <a href="/cow-sdk/quickstart" className="text-blue-600 dark:text-blue-400 hover:underline">TypeScript SDK</a>, or <a href="/cow-py/quickstart" className="text-blue-600 dark:text-blue-400 hover:underline">Python SDK</a></td>
+        </tr>
+        <tr>
+          <td className="px-6 py-4 font-medium text-slate-900 dark:text-slate-100">Solver operator</td>
+          <td className="px-6 py-4 text-slate-600 dark:text-slate-300"><a href="/cow-protocol/tutorials/solvers/local_test" className="text-blue-600 dark:text-blue-400 hover:underline">Test locally</a> then <a href="/cow-protocol/howto/solvers/onboard" className="text-blue-600 dark:text-blue-400 hover:underline">onboard</a></td>
+        </tr>
+        <tr>
+          <td className="px-6 py-4 font-medium text-slate-900 dark:text-slate-100">Contract developer</td>
+          <td className="px-6 py-4 text-slate-600 dark:text-slate-300"><a href="/cow-protocol/reference/contracts/core" className="text-blue-600 dark:text-blue-400 hover:underline">Contracts reference</a> or <a href="/composable-cow/introduction" className="text-blue-600 dark:text-blue-400 hover:underline">ComposableCoW</a></td>
+        </tr>
+        <tr>
+          <td className="px-6 py-4 font-medium text-slate-900 dark:text-slate-100">Contributor</td>
+          <td className="px-6 py-4 text-slate-600 dark:text-slate-300"><a href="/services/introduction" className="text-blue-600 dark:text-blue-400 hover:underline">Services</a> or <a href="/bff/introduction" className="text-blue-600 dark:text-blue-400 hover:underline">BFF</a> architecture and dev setup</td>
+        </tr>
+        <tr>
+          <td className="px-6 py-4 font-medium text-slate-900 dark:text-slate-100">DAO participant</td>
+          <td className="px-6 py-4 text-slate-600 dark:text-slate-300"><a href="/governance/explanation/mission" className="text-blue-600 dark:text-blue-400 hover:underline">Mission</a> and <a href="/governance/howto/how-to-apply" className="text-blue-600 dark:text-blue-400 hover:underline">how to apply for a grant</a></td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </section>
 

@@ -8,6 +8,20 @@
     "light": "#3F80FF",
     "dark": "#012F7A"
   },
+  "fonts": {
+    "heading": {
+      "family": "Studio Feixen Sans",
+      "source": "/fonts/StudioFeixenSans-Bold.woff2",
+      "format": "woff2",
+      "weight": 700
+    },
+    "body": {
+      "family": "Studio Feixen Sans",
+      "source": "/fonts/StudioFeixenSans-Medium.woff2",
+      "format": "woff2",
+      "weight": 500
+    }
+  },
   "favicon": "/images/cow-dao-favicon.png",
   "logo": {
     "light": "/images/cow-logo.svg",
