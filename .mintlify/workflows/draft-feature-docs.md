@@ -1,48 +1,27 @@
 ---
-name: Draft docs for new features
+name: Draft docs — core protocol
 on:
   push:
     - repo: cowprotocol/contracts
       branch: main
     - repo: cowprotocol/services
       branch: main
-    - repo: cowprotocol/cow-sdk
-      branch: main
-    - repo: cowprotocol/cowswap
-      branch: main
-    - repo: cowprotocol/composable-cow
-      branch: main
-    - repo: cowprotocol/flash-loan-router
-      branch: main
-    - repo: cowprotocol/hooks-trampoline
-      branch: main
-    - repo: cowprotocol/watch-tower
-      branch: main
     - repo: cowprotocol/ethflowcontract
-      branch: main
-    - repo: cowdao-grants/cow-py
-      branch: main
-    - repo: cowdao-grants/cow-shed
-      branch: main
-    - repo: cowdao-grants/milkman
       branch: main
 context:
   - repo: cowprotocol/contracts
   - repo: cowprotocol/services
-  - repo: cowprotocol/cow-sdk
-  - repo: cowprotocol/cowswap
-  - repo: cowprotocol/composable-cow
-  - repo: cowprotocol/flash-loan-router
-  - repo: cowprotocol/hooks-trampoline
-  - repo: cowprotocol/watch-tower
   - repo: cowprotocol/ethflowcontract
-  - repo: cowdao-grants/cow-py
-  - repo: cowdao-grants/cow-shed
-  - repo: cowdao-grants/milkman
 automerge: false
 ---
 
 Review the diff from the last merged PR in the pushed repository. Identify any new features, API endpoints, smart contract changes, solver changes, or configuration options that require documentation.
+
+These repos cover the core protocol: settlement contracts, backend services (orderbook API, driver, solver interface), and the Eth-flow contract. Changes here typically affect:
+- `cow-protocol/reference/` — API specs, contract reference, auction mechanics
+- `cow-protocol/explanation/` — how the protocol works, order types, fee model
+- `services/` — backend service documentation
+- `snippets/` — contract addresses, supported networks
 
 For each change that affects end users or developers integrating with CoW Protocol:
 
@@ -54,11 +33,6 @@ For each change that affects end users or developers integrating with CoW Protoc
 2. Draft documentation that matches the style of existing pages in that section.
 3. Update navigation in `docs.json` if new pages are added.
 4. Update any related snippets in `snippets/` if shared content like contract addresses or supported networks changed.
-
-Follow the writing guidelines in `about-these-docs.mdx`:
-- Direct and concise — lead with the answer
-- Code-first — show examples alongside concepts
-- Use Mintlify components (`<Steps>`, `<Tabs>`, `<CodeGroup>`, `<Note>`, `<Warning>`) where appropriate
 
 Success criteria: A developer reading the new or updated documentation understands what changed, whether it affects them, and how to use it.
 
