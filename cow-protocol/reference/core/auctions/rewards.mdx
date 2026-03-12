@@ -7,7 +7,7 @@ description: "The protocol is currently subsidizing the solver competition on al
   For the interested reader, the main source of truth for the weekly payments to solvers is this [Dune dashboard](https://dune.com/cowprotocol/cow-solver-rewards). The dashboard is populated with data aggregated by scripts within the [solver-rewards](https://github.com/cowprotocol/solver-rewards) repository.
 </Note>
 
-## Solver competition rewards (CIPs 20, 36, 38, 48, 57, 67, 74)[](#solver-competition-rewards-cips-20-36-38-48-57-67-74 "Direct link to Solver competition rewards (CIPs 20, 36, 38, 48, 57, 67, 74)")
+## Solver competition rewards (CIPs 20, 36, 38, 48, 57, 67, 74)
 
 Solver rewards are computed using a mechanism akin to a Vickrey–Clarke–Groves mechanism (a generalization of a second-price auction to combinatorial auctions). First, each solver proposes multiple solutions. Each solution contains a price vector and a list of trades to execute, which can be used to compute the solution's score. The protocol then selects the winning solutions (and winning solvers) using a fair combinatorial auction, which first filters out the solutions deemed unfair and then selects the combination of fair solutions that maximizes the total score of the auction (see [here](/cow-protocol/reference/core/auctions/competition-rules#off-chain-protocol) for more details).
 
@@ -44,13 +44,13 @@ If only one solver submits solutions, $\text{referenceScore}_i$ is, by definitio
   There is no guarantee that the per-auction rewards are greater than the costs of executing a transaction (due to, for example, gas costs). Hence, solvers cover these costs by adjusting their reported score. Of course, a solver who adjusts their score downward too aggressively is then at a disadvantage in the auction. The mechanism, therefore, incentivizes the accurate estimation of costs such as gas.
 </Note>
 
-### Buffer accounting[](#buffer-accounting "Direct link to Buffer accounting")
+### Buffer accounting
 
 It is possible that the state of the external liquidity sources used as part of a solution changes between the bidding stage and the execution stage. We say that there is negative slippage when the solver's execution generates less than the expected amount, and positive slippage otherwise. In case of negative slippage the solver can utilize the buffers available in the settlement contract, while a solver can accumulate positive slippage in the settlement contract. Every week, the protocol computes a "net" slippage and either pays a solver (when it is positive) or requests a payment from a solver (when it is negative). For more information, see the [accounting section](/cow-protocol/reference/core/auctions/accounting).
 
 Hence, although buffers and the possibility of using them are not an explicit element of the mechanism, they are nonetheless relevant in determining the solver's optimal strategy, because they allow a solver to average out positive and negative slippage over a period of time (vs. making sure to always produce at least as much as promised at the bidding stage).
 
-### Solver's strategy[](#solvers-strategy "Direct link to Solver's strategy")
+### Solver's strategy
 
 To determine the optimal routing, the recommended strategy for a solver is to start by dividing the available orders into groups of orders on the same directed token pairs - i.e., in each group, all orders have the same sell and buy tokens. The next step is to compute the best possible routing for each group and submit it as a solution. Note that, by construction, each of these solutions will use outside liquidity. Finally, a solver should check whether it is possible to improve these solutions by creating batched solutions containing orders on different directed token pairs. These additional efficiencies may come from, for example, exploiting liquidity already available on the protocol - using one order as liquidity for the other (in a CoW) or using CoW AMM liquidity - or from gas savings. Solvers should submit an additional solution for every combination of groups of orders for which additional efficiencies are possible. When submitting such a solution, they should pay attention to sharing the additional efficiencies among all orders in the batch; otherwise, the batched solution may be filtered out as unfair.
 
@@ -98,7 +98,7 @@ These mechanics mean that solvers should:
 For ongoing discussion of these mechanics and their evolution, see the [CoW Forum Technical category](https://forum.cow.fi/c/tech-spells/2). Key threads include discussions on [CIP-74's impact on small orders](https://forum.cow.fi/t/second-price-auction-is-broken-for-small-orders-since-cip-74/3317), [penalty mechanics](https://forum.cow.fi/t/how-penalties-affect-bidding-of-solvers/3341), and [revert scenarios](https://forum.cow.fi/t/thoughts-about-second-price-auction-in-case-of-reverts/3309).
 </Note>
 
-## Price estimation competition rewards (CIPs 27, 36, 57, 72)[](#price-estimation-competition-rewards-cips-27-36-57-72 "Direct link to Price estimation competition rewards (CIPs 27, 36, 57, 72)")
+## Price estimation competition rewards (CIPs 27, 36, 57, 72)
 
 The price estimation competition is a separate competition where solvers provide the best response to a quote request. Quote requests look almost identical to single-order batch auctions, where there is only one order with a trivial limit price, and solvers propose executions of this order with the goal to maximize "out amount minus gas costs" in the case of a sell request, or minimize "in amount + gas costs" in the case of a buy request.
 

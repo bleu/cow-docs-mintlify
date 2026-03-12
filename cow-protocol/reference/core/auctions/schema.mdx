@@ -11,7 +11,7 @@ The api spec and schema can be found [here](https://docs.cow.fi/cow-protocol/ref
   To avoid precision loss, some numerical literals are encoded as strings, referred below as *stringified*.
 </Warning>
 
-## Instances (input)[](#instances-input "Direct link to Instances (input)")
+## Instances (input)
 
 The instance json that solver engines currently receive contains five keys:
 
@@ -23,18 +23,18 @@ The instance json that solver engines currently receive contains five keys:
 
 We now explain what each of these entries contains.
 
-### `id`[](#id "Direct link to id")
+### `id`
 
 This key is an (internal) integer identifier for the auction, that is encoded and sent as a string. In the case where the instance corresponds to a quote request, this identifier is set to `null`.
 
-### `tokens`[](#tokens "Direct link to tokens")
+### `tokens`
 
 This key lists all tokens that appear in some order or AMM in the batch auction instance. It is a dictionary, mapping the token key (which is the smart contract address of the token) to the following information:
 
 * `decimals`: an integer equal to the number of decimals of the token.
 * `symbol`: a string denoting the shorthand name of the token (e.g., "WETH", "DAI").
 * `referencePrice`: a float that corresponds to the price of the smallest denomination of the token with respect to a *reference token* (for mainnet, the reference token is WETH, and its referencePrice is 1000000000000000000). Only tokens that are traded by at least a user order will necessarily have non-null referencePrice, while the rest of the tokens are allowed to have a `null` referencePrice. These prices are used when evaluating the score of a given solution, and can be thought of as a way of converting and expressing all relevant quantities in WETH (note that, initially, the surplus of different orders can be denominated in different tokens), and aggregating them all in a single value, denominated in WETH.
-* `availableBalance`: a stringified integer that describes the amount (in the token's lowest denomination) of the token currently stored in the settlement contract ([internal buffers](/cow-protocol/reference/core/definitions#buffers)). This information is relevant when a solver attempts to [internalize an interaction](#using-internal-buffers).
+* `availableBalance`: a stringified integer that describes the amount (in the token's lowest denomination) of the token currently stored in the settlement contract ([internal buffers](/cow-protocol/reference/core/definitions#internal-buffers)). This information is relevant when a solver attempts to [internalize an interaction](#using-internal-buffers).
 * `trusted`: this is a boolean flag that specifies whether the contract is willing to store the token as part of an [internalized interaction](#using-internal-buffers).
 
 We now share two example token entries corresponding to [WETH](https://etherscan.io/address/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2) and [USDC](https://etherscan.io/token/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48):
@@ -53,7 +53,7 @@ We clarify a few things regarding the entries above. The referencePrice of a tok
   Both tokens above are accepted for internalization.
 </Note>
 
-### `orders`[](#orders "Direct link to orders")
+### `orders`
 
 This key maps to a list containing the set of orders in the batch. Each entry in the dictionary corresponds to an order, which is a dictionary containing the following:
 
@@ -111,11 +111,11 @@ An example Fill-or-Kill user limit buy order that sells 1000 [COW](https://ether
 
 The above entry should be interpreted as follows. It is a Fill-or-Kill order since the flag `partiallyFillable` is set to `false`. Moreover, it is a sell order since its `kind` is set to `sell`. Finally, this is a `limit` order, meaning that it has a zero-signed fee, which implies that the solver is free to choose an appropriate fee to cover its execution cost. This means that, if executed, the user will send a total of 1000000000000000000000 COW atoms to the settlement contract and, no matter how much fee the solver will charge, the user is guaranteed to receive at least 284138335 USDC atoms.
 
-### `deadline`[](#deadline "Direct link to deadline")
+### `deadline`
 
 This key is a single entry that is a string corresponding to a time stamp. This timestamp specifies the deadline by which a solution to the auction is required. Responses that go beyond this deadline are considered invalid.
 
-## Solutions (output)[](#solutions-output "Direct link to Solutions (output)")
+## Solutions (output)
 
 The response of a solver engine is a dictionary that contains all the information that is needed to execute the proposed solution. There is a single key, "solutions", that maps to a list of proposed solutions; this means that a solver can propose multiple solutions. The simplest possible response is the *empty solution*, which corresponds to the case where no orders are executed, and is described by the empty list as follows:
 
@@ -125,11 +125,11 @@ The response of a solver engine is a dictionary that contains all the informatio
 
 Each entry of the `solutions` list describes a solution, which is a dictionary that consists of the following.
 
-### `id`[](#id-1 "Direct link to id-1")
+### `id`
 
 This key maps to a non-negative integer that can be thought of as an index of the proposed solution and must be unique for each proposed solution. E.g., if a solver decides to propose two solutions, they can use index 0 and 1.
 
-### `prices`[](#prices "Direct link to prices")
+### `prices`
 
 This key specifies the uniform clearing price vector (UCP) that governs the proposed solution. It is a dictionary mapping each token traded by a user order to its computed price. Each price is an stringified unsigned integer, and the whole vector is scale invariant, meaning that multiplying each entry by the same constant will not change anything; thus the scaling is chosen by the solver. We also stress that a solution need only contain prices for the tokens appearing in the executed user orders, and that solvers are free to choose the unit of measure they will use.
 
@@ -145,7 +145,7 @@ The above entries should be interpreted as follows:
 * The lowest denomination of `USDC` (1st entry), i.e., $1 / 10^6$ of `USDC`, has a price of $389193245742363509576247472$ relative to the price of $10^{18}$ that wei has. This translates, for example, to 1 `WETH` having a price of $\frac{389193245742363509576247472 \cdot 10^6}{1000000000000000000 \cdot 10^{18}} \approx 2569.417$ `USDC`.
 * The lowest denomination of `COW` (2nd entry) is $1 / 10^{18}$, and it has a price of $137298311435590$. This translates, for example, to 1 `COW` having a price of $\frac{137298311435590 \cdot 10^{18}}{389193245742363509576247472 \cdot 10^6} \approx 0.35277$ USDC.
 
-### `trades`[](#trades "Direct link to trades")
+### `trades`
 
 This key maps to a list of all orders that were selected for execution. Each trade is a dictionary that contains the following entries:
 
@@ -154,7 +154,7 @@ This key maps to a list of all orders that were selected for execution. Each tra
 * `fee`: this entry exists only for "fullilment" trades, and maps to a stringified integer describing the fee of the order (either pre-signed or solver computed), denominated in the sell token.
 * `executedAmount`: this is a stringified integer corresponding to the sell amount (for sell orders) or the buy amount (for buy orders) that would get executed. Note that this is amount is "separate" from the "fee" amount that was described above; this, for example, means that for a sell "fulfillment" order, the trader will send a total of `fee + executedAmount` sell tokens to the contract. We also stress that it is the `executedAmount` where uniform clearing prices are being applied to.
 
-### `interactions`[](#interactions "Direct link to interactions")
+### `interactions`
 
 This key maps to a list of all interactions that are executed in the proposed solution, in the order they are provided in the list. Every interaction is either an AMM/liquidity order included in the input json sent to solvers, or a custom interaction the solver computed. Each interaction is a dictionary that contains the following entries:
 
@@ -162,7 +162,7 @@ This key maps to a list of all interactions that are executed in the proposed so
 * `internalize`: this is a boolean flag that specifies whether the interaction can be internalized or not. More details about internalizations can be found in the section right below.
 * Depending on the "kind", the rest of the keys are different, and the details and specifications of those can be found [here](https://docs.cow.fi/cow-protocol/reference/apis/solver).
 
-#### Using internal buffers[](#using-internal-buffers "Direct link to Using internal buffers")
+#### Using internal buffers
 
 We now discuss some additional functionality that solvers are allowed to use. Since the settlement contract holds balances of multiple tokens, solvers are in certain cases allowed to "internalize" an interaction, in order to save on gas. More precisely, if there is an AMM interaction that buys token A and sells token B, a solver can decide to internalize the interaction if and only if the following two conditions are satisfied:
 
@@ -177,7 +177,7 @@ If both conditions are satisfied, a solver can set the `internalize` flag to `tr
 
 In such a case, the default driver will remove the interaction, and so the solution will end up using less gas, get better ranking, and also be risk-free (at least the part involving the internalized AMM interaction).
 
-### `surplusCapturingJitOrderOwners`[](#surpluscapturingjitorderowners "Direct link to surpluscapturingjitorderowners")
+### `surplusCapturingJitOrderOwners`
 
 A list of all addresses that are allowed to capture surplus through JIT orders. At the moment, these are all Balancer CoW AMM's.
 

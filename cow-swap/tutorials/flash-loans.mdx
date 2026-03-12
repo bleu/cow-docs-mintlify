@@ -5,7 +5,7 @@ description: "We’ll walk through a concrete example of a debt repayment using 
 
 There is an [example order](https://explorer.cow.fi/sepolia/orders/0x86ff28a37bf70c549edfe753d899d44307b1b4c3ae943c6f5bdfe271942fd4f135ed9a9d1122a1544e031cc92fcc7ea599e28d9c67dc66ab) for this particular case on Sepolia, including the [corresponding on-chain transaction](https://sepolia.etherscan.io/tx/0x6f4fc9b450e08dab0ab2d935e7c7dcade9e44e330e484657e5b1fadb6c6e8851). The example was executed using an [automated script](https://github.com/cowprotocol/cow-flashloan-tester) that places and signs a flash loan order on the Sepolia network. The following sections of the tutorial include code snippets from this tool.
 
-## Setup[​](#setup "Direct link to Setup")
+## Setup
 
 The setup for the flash loan example is as follows:
 
@@ -43,7 +43,7 @@ The order itself intends to:
   In a production network (e.g. mainnet), these considerations generally won’t apply.
 </Info>
 
-## Aave repay pre-hook[​](#aave-repay-pre-hook "Direct link to Aave repay pre-hook")
+## Aave repay pre-hook
 
 We need to define a [pre-hook](/cow-protocol/reference/core/intents/hooks) to repay the 5,000 USDT debt on Aave, ensuring the Aave pool allows us to withdraw the associated collateral.
 
@@ -71,7 +71,7 @@ To enable this, the pre-hook defines a transaction that will be sent to the Safe
   For this example, the `nonce` should be offset by 1 from the current Safe's nonce. This is necessary to avoid reusing the same nonce, since a separate transaction will be sent to emit the pre-signature for our order, which is required to make it executable in the first place.
 </Note>
 
-## Aave withdraw pre-hook[​](#aave-withdraw-pre-hook "Direct link to Aave withdraw pre-hook")
+## Aave withdraw pre-hook
 
 We need to define another pre-hook to withdraw 400,000 USDC from the Aave deposit. This ensures that our Safe wallet holds the necessary sell tokens for the order. Otherwise, the settlement contract would be unable to pull the funds from the Safe, causing the settlement to revert.
 
@@ -97,7 +97,7 @@ Like in the previous section, the `withdraw` call will be executed during the or
   Just like the `repay` pre-hook, the `nonce` should be incremented to ensure it doesn't conflict with other transactions. Here, we increase it by 2 because there are two preceding transactions: the pre-signature and the `repay` pre-hook.
 </Note>
 
-## Building and publishing the order[​](#building-and-publishing-the-order "Direct link to Building and publishing the order")
+## Building and publishing the order
 
 With both the `repay` and `withdraw` pre-hooks in place, we can now build the metadata of our order:
 
@@ -113,7 +113,7 @@ To programmatically create and submit a CoW Swap order, we can use [cow-sdk](htt
 
 We've now placed our order on CoW Swap. You can track its progress on [CoW Explorer](https://explorer.cow.fi/). Here is an [example of a filled order](https://explorer.cow.fi/sepolia/orders/0x86ff28a37bf70c549edfe753d899d44307b1b4c3ae943c6f5bdfe271942fd4f135ed9a9d1122a1544e031cc92fcc7ea599e28d9c67dc66ab) corresponding to the particular case shown in this tutorial.
 
-## Setting the pre-signature of the order[​](#setting-the-pre-signature-of-the-order "Direct link to Setting the pre-signature of the order")
+## Setting the pre-signature of the order
 
 After placing the order, its pre-signature must be submitted by calling the [`setPresignature` function on the CoW Settlement contract](https://docs.cow.fi/cow-protocol/reference/contracts/core/settlement#setpresignature):
 
@@ -133,7 +133,7 @@ After the pre-signature transaction is confirmed, the order's status will be `Op
   This example uses a pre-signature, but a valid EIP-1271 contract signature could also be used. With an EIP-1271 signature, the `setPreSignature` transaction would not be necessary.
 </Note>
 
-## Order execution[​](#order-execution "Direct link to Order execution")
+## Order execution
 
 Once an order is placed within the CoW Protocol, it enters an auction batch. When a solution is found, the following steps occur:
 

@@ -3,7 +3,7 @@ title: "Core"
 description: "Core contracts of CoW Protocol are those that are necessary for the protocol to function."
 ---
 
-## Architecture[​](#architecture "Direct link to Architecture")
+## Architecture
 
 The goal of the protocol is to bundle multiple user orders together to minimize fees deriving from using external liquidity sources and stave off maximal extractable value.
 
@@ -17,13 +17,13 @@ To achieve this, the protocol needs to be able to:
 * Determine which addresses are solvers
 * Firewall user funds from solvers
 
-#### Guarantees and Invariants[​](#guarantees-and-invariants "Direct link to Guarantees and Invariants")
+#### Guarantees and Invariants
 
 1. User funds are **NOT** accessible *except* for settling an order authorized by the user
 2. A trade **MUST** be executed at the *limit price or better* as specified in the order
 3. Once an order is fulfilled, it **CANNOT** be traded again
 
-## Deployments[​](#deployments "Direct link to Deployments")
+## Deployments
 
 <Check>
   CoW Protocol contracts are deployed using deterministic addresses. This means that the same contract code will always be deployed to the same address. This is done by using the `CREATE2` opcode.
@@ -48,9 +48,9 @@ To achieve this, the protocol needs to be able to:
   The security considerations of upgradeability are discussed in the [GPv2AllowlistAuthentication](/cow-protocol/reference/contracts/core/allowlist#guarantees-and-invariants) section.
 </Accordion>
 
-## Security / Known Issues[​](#security--known-issues "Direct link to Security / Known Issues")
+## Security / Known Issues
 
-### Partially fillable orders with zero amounts[​](#partially-fillable-orders-with-zero-amounts "Direct link to Partially fillable orders with zero amounts")
+### Partially fillable orders with zero amounts
 
 If a user creates an order with:
 
@@ -64,13 +64,13 @@ Then this order could be executed an arbitrary amount of times instead of just a
   Never sign orders with `sellAmount = 0` and/or `buyAmount = 0`. If developing smart contracts that create orders, make sure at a contract level that such orders cannot be created.
 </Check>
 
-### `ERC-1271` Replayability[​](#erc-1271-replayability "Direct link to erc-1271-replayability")
+### `ERC-1271` Replayability
 
 The security of [`ERC-1271`](/cow-protocol/reference/core/signing-schemes#erc-1271) signatures depend on the developers' implementation of the *signing smart contract*. Different smart contract wallets sign and verify messages very differently from each other.
 
 There's a known issue in some smart-contract wallet implementations that should be known before using `ERC-1271` signatures on CoW Protocol.
 
-#### Signature Replayability[​](#signature-replayability "Direct link to Signature Replayability")
+#### Signature Replayability
 
 On some popular smart-contract wallets, the signature of an owner is replayable: this means that if an address is an owner of two smart-contract wallets then a signature for the first wallet may also be a valid signature for the second wallet.
 
@@ -82,7 +82,7 @@ As a general recommendation, you should never sign any message with `ERC-1271` o
   Signatures from a Safe wallet aren't replayable and don't require any special handling.
 </Check>
 
-#### Mitigation[​](#mitigation "Direct link to Mitigation")
+#### Mitigation
 
 You are still able to create `ERC-1271` orders from any wallet.
 
@@ -106,11 +106,11 @@ The metadata can be sent in advance to the [API](/cow-protocol/reference/apis/or
   This process only prevents the order from being created in the CoW Protocol API. A malicious solver would still be able to replay a signature when submitting a transaction on-chain. However, as long as the metadata is known, this abuse will be detected upon inclusion of the transaction in a block and the solver will be penalized by the amount of the misused order.
 </Warning>
 
-### EIP-712 cached domain separator[​](#eip-712-cached-domain-separator "Direct link to EIP-712 cached domain separator")
+### EIP-712 cached domain separator
 
 To maximise gas efficiency the [domain separator](https://eips.ethereum.org/EIPS/eip-712#definition-of-domainseparator) for the `GPv2Settlement` contract is initialized in the constructor and cached for all subsequent invocations. Therefore, any signatures for a chain on which the `GPv2Settlement` contract has been deployed are replayable *on any subsequent fork of that chain* (such as ETHPOW forking Ethereum mainnet).
 
-### Loss of surplus if `ERC-1271` order allows arbitrary app data[​](#loss-of-surplus-if-erc-1271-order-allows-arbitrary-app-data "Direct link to loss-of-surplus-if-erc-1271-order-allows-arbitrary-app-data")
+### Loss of surplus if `ERC-1271` order allows arbitrary app data
 
 An adversary can manipulate vulnerable [`ERC-1271`](/cow-protocol/reference/core/signing-schemes#erc-1271) orders, thereby transferring part of the expected surplus from the user order to an address that the adversary controls.
 

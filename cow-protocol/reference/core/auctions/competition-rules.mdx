@@ -7,12 +7,12 @@ description: "All solvers participating in the solver competition must abide by 
 2. Those enforced by the [off-chain protocol](#off-chain-protocol) infrastructure
 3. So-called social consensus rules enforced by [governance](#governance)
 
-## Smart contract[​](#smart-contract "Direct link to Smart contract")
+## Smart contract
 
 * Limit price constraint: this rule enforces that an order cannot be executed if its limit price is violated.
 * Solver submitting a transaction needs to be whitelisted (the process about how a solver can get whitelisted is described [here](/cow-protocol/reference/core/auctions/bonding-pools)).
 
-## Off-chain protocol[​](#off-chain-protocol "Direct link to Off-chain protocol")
+## Off-chain protocol
 
 * Scores: Every solution is associated with a *score*. The score is computed from executed amounts of all trades and is roughly equivalent to the amount of surplus a solution generates for users. For concrete formulas see [the section on solving](/cow-protocol/reference/core/auctions/the-problem) or [CIP-38](https://snapshot.box/#/s:cow.eth/proposal/0xfb81daea9be89f4f1c251d53fd9d1481129b97c6f38caaddc42af7f3ce5a52ec) and [CIP-65](https://snapshot.box/#/s:cow.eth/proposal/0xd172281444c48254398881c57a57a2acbf0802a385e6c94384fd358b943aa4f4).
 
@@ -73,7 +73,7 @@ description: "All solvers participating in the solver competition must abide by 
   * Plasma: 20 blocks
 </Note>
 
-## Governance[​](#governance "Direct link to Governance")
+## Governance
 
 Social consensus rules are not enforced by the smart contract or the autopilot. However, by voting on them in a CoW Improvement Proposal (CIP), CoW DAO has decided that these rules should be followed to ensure a healthy competition. For that, the core team has developed monitoring tools that check every on-chain settlement and flag suspicious ones.
 
@@ -87,7 +87,7 @@ Social consensus rules are not enforced by the smart contract or the autopilot. 
   * buy token / base token
   * sell token / buy token
 
-  ### Base protocols and tokens[​](#base-protocols-and-tokens "Direct link to Base protocols and tokens")
+  ### Base protocols and tokens
 
   The following detail sections list the protocols and base tokens that are considered for Ethereum Mainnet and Gnosis Chain:
 

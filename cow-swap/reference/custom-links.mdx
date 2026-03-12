@@ -3,7 +3,7 @@ title: "Custom Links"
 description: "CoW Swap supports URL query parameters to allow anyone to create a custom link for sharing a specific trade with a friend or on social media, or for creating a custom link to a specific trade for your own use."
 ---
 
-### Examples[​](#examples "Direct link to Examples")
+### Examples
 
 * [`https://swap.cow.fi`](https://swap.cow.fi) - CoW Swap main page (`swap` is default page)
 * [`https://swap.cow.fi/#/swap`](https://swap.cow.fi/#/swap) - `swap` page
@@ -14,29 +14,29 @@ description: "CoW Swap supports URL query parameters to allow anyone to create a
 * [`https://swap.cow.fi/#/1/swap/WETH/COW?buyAmount=10000&recipient=vitalik.eth`](https://swap.cow.fi/#/1/swap/WETH/COW?buyAmount=10000\&recipient=vitalik.eth) - Buy on `swap` sending the outcome to a custom recipient (can be either address or ens)
 * [`https://swap.cow.fi/#/100/limit/WETH/WXDAI?sellAmount=2&buyAmount=6000`](https://swap.cow.fi/#/100/limit/WETH/WXDAI?sellAmount=2\&buyAmount=6000) - Create a limit order to sell `2 WETH` for `6000 WXDAI`
 
-## Query Parameters[​](#query-parameters "Direct link to Query Parameters")
+## Query Parameters
 
 Even though the main page is `swap`, each page has it's own specific URL parameters that can be set, in addition to global parameters that are used on all pages. Parameters not applicable to a page will have no effect on UI settings.
 
 Fortunately, the `swap` and `limit` pages have the same URL query parameters!
 
-### URL links format[​](#url-links-format "Direct link to URL links format")
+### URL links format
 
-#### Swap[​](#swap "Direct link to Swap")
+#### Swap
 
 `https://swap.cow.fi/#/<chainId>/swap/<sellTokenSymbolOrAddress>/<buyTokenSymbolOrAddress>?recipient=<recipient>&sellAmount=<sellAmount>&buyAmount=<buyAmount>`
 
-#### Limit[​](#limit "Direct link to Limit")
+#### Limit
 
 `https://swap.cow.fi/#/<chainId>/limit/<sellTokenSymbolOrAddress>/<buyTokenSymbolOrAddress>?recipient=<recipient>&sellAmount=<sellAmount>&buyAmount=<buyAmount>`
 
-### Global parameters[​](#global-parameters "Direct link to Global parameters")
+### Global parameters
 
 | **Parameter** | **Type** | **Default**             | **Description**                       |
 | ------------- | -------- | ----------------------- | ------------------------------------- |
 | `theme`       | String   | (determined by browser) | Sets theme to `dark` or `light` mode. |
 
-### Swap / limit parameters[​](#swap--limit-parameters "Direct link to Swap / limit parameters")
+### Swap / limit parameters
 
 <Note>
   All parameters are optional. If a parameter is not set, the default value will be used.

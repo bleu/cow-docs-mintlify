@@ -2,7 +2,7 @@
 title: "CoW AMM Liquidity for Solvers"
 ---
 
-## I'm a solver. How do I use CoW AMM liquidity?[​](#im-a-solver-how-do-i-use-cow-amm-liquidity "Direct link to I'm a solver. How do I use CoW AMM liquidity?")
+## I'm a solver. How do I use CoW AMM liquidity?
 
 CoW AMM orders already appear in the CoW Protocol orderbook, so you're already using its liquidity. However, CoW AMMs allow solvers to specify custom buy and sell amounts, as long as the order preserves or increases the constant product invariant of the token reserves.
 
@@ -10,13 +10,13 @@ CoW AMMs can be treated as a liquidity source akin to Uniswap or Balancer weight
 
 Importantly, surplus for a CoW AMM order is measured differently when computing the solver reward payout.
 
-### Indexing Balancer CoW AMMs[​](#indexing-balancer-cow-amms "Direct link to Indexing Balancer CoW AMMs")
+### Indexing Balancer CoW AMMs
 
 CoW AMM pairs can be detected by listening to the `COWAMMPoolCreated` events emitted by the `BCowFactory` instance for the current chain (see the [official contract repository](https://github.com/balancer/cow-amm) for the current deployment addresses). All addresses of Balancer CoW AMMs are sent as part of the auction instance as `surplusCapturingJitOrderOwners`.
 
 The AMM reserves are the balance of the two tokens traded by the AMM.
 
-### Creating CoW AMM orders with the helper contract[​](#creating-cow-amm-orders-with-the-helper-contract "Direct link to Creating CoW AMM orders with the helper contract")
+### Creating CoW AMM orders with the helper contract
 
 Integrating CoW AMM orders requires adding a JitOrder with the CoW AMM. This order should be described from the CoW AMM pool's perspective. So if a user wants to sell token A to buy token B and you would like to settle (part of) this order with a CoW AMM, then you would need to add a JitOrder from the CoW AMM's perspective to match (part of) this order. In other words, you would be adding a JitOrder for the CoW AMM to sell token B to buy token A. You can do this by calling the `orderFromBuyAmount` because the user’s amount is exactly how much you would want the pool to receive, asking for the amount of tokens in exchange.
 
@@ -43,7 +43,7 @@ The helper contracts are deployed here:
 * Linea N/A
 * Plasma N/A
 
-### Settling a custom order[​](#settling-a-custom-order "Direct link to Settling a custom order")
+### Settling a custom order
 
 You need to choose a valid CoW Swap order with the following restrictions:
 
@@ -80,7 +80,7 @@ This order can be included in a batch as any other CoW Protocol orders with two 
   Solvers using the non co-located driver should add a [`JitTrade`](https://github.com/cowprotocol/services/blob/95ecc4e01b7fd06ec0b71c6486cb2cdd962e5040/crates/solvers/openapi.yml#L744C1-L774C52) and a [`preInteraction`](https://github.com/cowprotocol/services/blob/95ecc4e01b7fd06ec0b71c6486cb2cdd962e5040/crates/solvers/openapi.yml#L920C1-L925C46) to their solution.
 </Note>
 
-### Surplus[​](#surplus "Direct link to Surplus")
+### Surplus
 
 The surplus for a CoW AMM order is measured the same way as other orders, by comparing the traded amounts to limit amounts.
 

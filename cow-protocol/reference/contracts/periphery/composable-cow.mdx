@@ -11,7 +11,7 @@ The framework makes boilerplate code for programmatic orders a thing of the past
 1. Authorization (multiple owners, with multiple orders per owner)
 2. Order relaying (watch-towers)
 
-## Architecture[​](#architecture "Direct link to Architecture")
+## Architecture
 
 The following principles have been employed in the architectural design:
 
@@ -24,7 +24,7 @@ By using Merkle Trees, the gas efficiency of `O(1)` is achieved for `n` programm
 
 For simplicity, single orders are also supported, however, this is **NOT** recommended for large `n` as the gas efficiency is `O(n)`.
 
-### Execution context[​](#execution-context "Direct link to Execution context")
+### Execution context
 
 As there are many nested contracts, it's important for a callee to know some context from the caller. To achieve this, ComposableCoW passes a `bytes32` variable `ctx` to the callee, such that:
 
@@ -34,15 +34,15 @@ ctx = merkle root of orders: bytes32(0)      single order:          H(Conditiona
 
 Having this context also allows for programmatic orders / merkle roots to use this as a key in a mapping, to store programmatic order-specific data.
 
-#### Programmatic order verification flow[​](#conditional-order-verification-flow "Direct link to Programmatic order verification flow")
+#### Programmatic order verification flow
 
 The following flowchart illustrates the programmatic order verification flow (assuming `safe`):
 
-#### Settlement execution path[​](#settlement-execution-path "Direct link to Settlement execution path")
+#### Settlement execution path
 
 CoW Protocol order settlement execution path (assuming `safe`):
 
-### Signature verification[​](#signature-verification "Direct link to Signature verification")
+### Signature verification
 
 ComposableCoW implements `ISafeSignatureVerifier`, which allows for delegated `ERC-1271` signature validation with an enhanced context:
 
@@ -73,7 +73,7 @@ In order to delegate signature verification to `ComposableCoW`, the delegating c
   If using `ExtensibleFallbackHandler`, and the CoW Protocol settlement domain is delegated to `ComposableCoW`, **ALL** `ERC-1271` signatures will be processed by `ComposableCoW`.
 </Note>
 
-### Discrete order verifiers[​](#discrete-order-verifiers "Direct link to Discrete order verifiers")
+### Discrete order verifiers
 
 A programmatic order that verifies a proposed discrete order against a set of conditions shall implement the `IConditionalOrder` interface.
 
@@ -104,7 +104,7 @@ function verify(    address owner,    address sender,    bytes32 _hash,    bytes
   ComposableCoW is responsible for checking that all values **EXCLUDING** `offchainInput` belong to an order that was previously registered on-chain.
 </Note>
 
-### Discrete order generators[​](#discrete-order-generators "Direct link to Discrete order generators")
+### Discrete order generators
 
 A programmatic order that generates discrete orders shall implement the `IConditionalOrderGenerator` interface.
 
@@ -114,7 +114,7 @@ function getTradeableOrder(    address owner,    address sender,    bytes32 ctx,
 
 To simplify the developer experience, a [`BaseConditionalOrder`](https://github.com/cowprotocol/composable-cow/blob/main/src/BaseConditionalOrder.sol) contract has been provided that implements the `IConditionalOrderGenerator` interface, and necessary boilerplate.
 
-### Swap guards[​](#swap-guards "Direct link to Swap guards")
+### Swap guards
 
 A swap guard is a contract that implements the `ISwapGuard` interface, and if set by an `owner`, will be called by `ComposableCoW` prior to calling `verify` on the programmatic order.
 
@@ -136,7 +136,7 @@ function verify(    GPv2Order.Data calldata order,    bytes32 ctx,    ICondition
 | `params`        | [`ConditionalOrderParams`](#conditionalorderparams)                                                                                               |
 | `offchainInput` | Programmatic order type-specific data **NOT** known at time of creation for a **specific** discrete order (or zero-length bytes if not applicable) |
 
-### Guarantees and Invariants[​](#guarantees-and-invariants "Direct link to Guarantees and Invariants")
+### Guarantees and Invariants
 
 * CoW Protocol's settlement contract enforces single-use orders, i.e. **NO** `GPv2Order` can be filled more than once
 * For merkle trees, `H(ConditionalOrderParams)` **MUST** be a member of the merkle tree `roots[owner]`
@@ -146,9 +146,9 @@ function verify(    GPv2Order.Data calldata order,    bytes32 ctx,    ICondition
   While a discrete order can be filled only once on CoW Protocol, a single programmatic order can be used to create many different discrete orders. It is the responsibility of the implementation to limit which and when discrete orders can be executed.
 </Warning>
 
-## Data Types and Storage[​](#data-types-and-storage "Direct link to Data Types and Storage")
+## Data Types and Storage
 
-### `ConditionalOrderParams`[​](#conditionalorderparams "Direct link to conditionalorderparams")
+### `ConditionalOrderParams`
 
 A programmatic order is defined by the following data:
 
@@ -176,7 +176,7 @@ struct ConditionalOrderParams {    IConditionalOrder handler;    bytes32 salt;  
   * Single orders **MAY** leak order information on creation
 </Warning>
 
-### `PayloadStruct`[​](#payloadstruct "Direct link to payloadstruct")
+### `PayloadStruct`
 
 This is the data passed to `ComposableCoW` via the `payload` parameter of `isValidSafeSignature`:
 
@@ -192,7 +192,7 @@ struct PayloadStruct {    bytes32[] proof;    IConditionalOrder.ConditionalOrder
 
 By setting `proof` to zero-length, this indicates to `ComposableCoW` that the order is a single order, and not part of a Merkle Tree.
 
-### `Proof`[​](#proof "Direct link to proof")
+### `Proof`
 
 Some services pick up new programmatic orders automatically from on-chain events.
 
@@ -213,7 +213,7 @@ struct Proof {    uint256 location;    bytes data;}
 | `location` | An integer representing the location where to find the proofs     |
 | `data`     | `location` implementation specific data for retrieving the proofs |
 
-#### Locations[​](#locations "Direct link to Locations")
+#### Locations
 
 | **Name**  | **`location`** | **`data`**                                                                                             |
 | --------- | -------------- | ------------------------------------------------------------------------------------------------------ |
@@ -235,7 +235,7 @@ struct Proof {    uint256 location;    bytes data;}
   ```
 </Accordion>
 
-### `roots`[​](#roots "Direct link to roots")
+### `roots`
 
 Using an `owner` as a key, the `roots` mapping stores the Merkle Tree root for the programmatic orders of that `owner`.
 
@@ -243,7 +243,7 @@ Using an `owner` as a key, the `roots` mapping stores the Merkle Tree root for t
 mapping(address => bytes32) public roots;
 ```
 
-### `singleOrders`[​](#singleorders "Direct link to singleorders")
+### `singleOrders`
 
 Using `owner, ctx` as a key, the `singleOrders` mapping stores the single orders for the programmatic orders of that `owner`.
 
@@ -251,7 +251,7 @@ Using `owner, ctx` as a key, the `singleOrders` mapping stores the single orders
 mapping(address => mapping(bytes32 => bool)) public singleOrders;
 ```
 
-### `cabinet`[​](#cabinet "Direct link to cabinet")
+### `cabinet`
 
 Using `owner, ctx` as a key, the `cabinet` mapping stores the programmatic order-specific data for the programmatic orders of that `owner`.
 
@@ -259,7 +259,7 @@ Using `owner, ctx` as a key, the `cabinet` mapping stores the programmatic order
 mapping(address => mapping(bytes32 => bytes32)) public cabinet;
 ```
 
-### `swapGuards`[​](#swapguards "Direct link to swapguards")
+### `swapGuards`
 
 Using `owner` as a key, the `swapGuards` mapping stores the swap guards for the programmatic orders of that `owner`.
 
@@ -267,11 +267,11 @@ Using `owner` as a key, the `swapGuards` mapping stores the swap guards for the 
 mapping(address => ISwapGuard) public swapGuards;
 ```
 
-## Functions[​](#functions "Direct link to Functions")
+## Functions
 
-### For users[​](#for-users "Direct link to For users")
+### For users
 
-#### `setRoot` / `setRootWithContext`[​](#setroot--setrootwithcontext "Direct link to setroot--setrootwithcontext")
+#### `setRoot` / `setRootWithContext`
 
 A `safe` or `owner` calls the respective setter method to set the Merkle Tree root for their programmatic orders:
 
@@ -292,7 +292,7 @@ When a new merkle root is set, emits `MerkleRootSet(address indexed owner, bytes
   `ComposableCoW` will **NOT** verify the proof data passed in via the `proof` parameter for `setRoot`. It is the responsibility of the client and watch-tower to verify / validate this.
 </Note>
 
-#### `create` / `createWithContext`[​](#create--createwithcontext "Direct link to create--createwithcontext")
+#### `create` / `createWithContext`
 
 The `owner` calls the respective setter method to create a programmatic order:
 
@@ -307,7 +307,7 @@ function create(    IConditionalOrder.ConditionalOrderParams calldata params,   
 | `data`        | Data to be passed to the `factory` to populate the `ctx` storage slot (if applicable)   |
 | `dispatch`    | If `true`, broadcast the `ConditionalOrderCreated` event                                |
 
-#### `remove`[​](#remove "Direct link to remove")
+#### `remove`
 
 The `owner` calls the `remove(bytes32 singleOrderHash)` method to remove a programmatic order:
 
@@ -319,7 +319,7 @@ function remove(bytes32 singleOrderHash) external;
 | ----------------- | --------------------------- |
 | `singleOrderHash` | `H(ConditionalOrderParams)` |
 
-#### `setSwapGuard`[​](#setswapguard "Direct link to setswapguard")
+#### `setSwapGuard`
 
 The `owner` calls the `setSwapGuard(ISwapGuard guard)` method to set a swap guard for a programmatic order:
 
@@ -331,9 +331,9 @@ function setSwapGuard(ISwapGuard swapGuard) external;
 | ------------- | ----------------------- |
 | `swapGuard`   | The swap guard contract |
 
-### For watch-towers[​](#for-watch-towers "Direct link to For watch-towers")
+### For watch-towers
 
-#### `getTradeableOrderWithSignature`[​](#gettradeableorderwithsignature "Direct link to gettradeableorderwithsignature")
+#### `getTradeableOrderWithSignature`
 
 A watch-tower calls the `getTradeableOrderWithSignature` method to get a discrete order that is tradeable on CoW Protocol:
 
@@ -353,12 +353,12 @@ Subsequently, `ComposableCoW` will:
 3. Call `getTradeableOrder` on the handler to get the discrete order ([`GPv2Order.Data`](/cow-protocol/reference/contracts/core/settlement#gpv2orderdata-struct)).
 4. Generate the signing data as above.
 
-## Indexing[​](#indexing "Direct link to Indexing")
+## Indexing
 
 * `ConditionalOrderCreated(address indexed owner, ConditionalOrderParams params)`
 * `MerkleRootSet(address index owner, bytes32 root, Proof proof)`
 
-### Custom error codes[​](#custom-error-codes "Direct link to Custom error codes")
+### Custom error codes
 
 * `ProofNotAuthed()` - the proof is not authorized (merkle root incorrect)
 * `SingleOrderNotAuthed()` - the single order is not authorized
@@ -377,9 +377,9 @@ Subsequently, `ComposableCoW` will:
 * `PollTryAtEpoch(uint256 timestamp, string)` - signal to a watch-tower that polling should be attempted again at a specific epoch (unix timestamp)
 * `PollNever(string)` - signal to a watch-tower that the programmatic order should not be polled again (delete)
 
-## Off-chain[​](#off-chain "Direct link to Off-chain")
+## Off-chain
 
-### Watch-tower[​](#watch-tower "Direct link to Watch-tower")
+### Watch-tower
 
 As these orders are not automatically indexed by the CoW Protocol, there needs to be some method of relaying them to the Order Book API for inclusion in a batch.
 

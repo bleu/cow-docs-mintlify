@@ -3,7 +3,7 @@ title: "How to execute flashloans orders"
 description: "This short tutorial explains how orders with flashloans hints can be executed by solvers."
 ---
 
-## Where to get information about an order’s flashloan?[​](#where-to-get-information-about-an-orders-flashloan "Direct link to Where to get information about an order’s flashloan?")
+## Where to get information about an order’s flashloan?
 
 Information about an order's flashloan is added by the user inside the order’s [appdata](/cow-protocol/reference/core/intents/app-data). As a reminder, the autopilot only shares the appdata hash as part of the auction instance it shares with the [drivers](/cow-protocol/explanation/architecture/driver), and so it is the driver's responsibility to recover the full appdata.
 
@@ -25,9 +25,9 @@ We now briefly explain what each entry means:
 * `liquidityProvider`: the lending protocol’s contract (i.e. AavePool);
 * `protocolAdapter`: which address needs to be used to adapt the `liquidityProvider` to CoW Protocol’s flashloan machinery.
 
-## Adjustments needed in the solver/driver[​](#adjustments-needed-in-the-solverdriver "Direct link to Adjustments needed in the solver/driver")
+## Adjustments needed in the solver/driver
 
-### Encoding the Call to the Flashloan Router[​](#encoding-the-call-to-the-flashloan-router "Direct link to Encoding the Call to the Flashloan Router")
+### Encoding the Call to the Flashloan Router
 
 As the flashloan needs to be available over the entire duration of the settlement, all flashloan settlements will have to go through the [flashloan router](/cow-protocol/reference/contracts/periphery/flashloans#iflashloanrouter-contract) (deterministically deployed at `0x9da8b48441583a2b93e2ef8213aad0ec0b392c69`; see the [flash-loan-router repository](https://github.com/cowprotocol/flash-loan-router) and the mainnet deployment [here](https://etherscan.io/address/0x9da8b48441583a2b93e2ef8213aad0ec0b392c69#code)). So, instead of calling `settle()` on the settlement contract, the driver has to call `flashloanAndSettle()` on the flashloan router contract. This `flashloanAndSettle()` call takes 2 arguments:
 
@@ -40,7 +40,7 @@ As the flashloan needs to be available over the entire duration of the settlemen
   We stress again that this is fully handled by the reference driver.
 </Note>
 
-### Estimating the Gas Costs[​](#estimating-the-gas-costs "Direct link to Estimating the Gas Costs")
+### Estimating the Gas Costs
 
 Solvers are responsible for capturing enough network fees to cover the total gas cost of a settlement. The flashloan flow, as described in the previous section, requires a call to a wrapper contract, which first takes the loans and then calls the settlement contract. This wrapper adds an overhead compared to just calling the settlement contract, and for this reason solvers should pay extra attention when estimating the total gas needed.
 
@@ -52,7 +52,7 @@ Solvers are responsible for capturing enough network fees to cover the total gas
   If the solver does a simulation of the `eth_call` as part of its gas estimation logic, one will need to adjust it to call the flashloan router instead of the settlement contract. Alternatively, one can consider heuristically adding an overhead to estimate the additional gas needed. Some information on the gas can be found [here](https://github.com/cowprotocol/flash-loan-router/pull/19).
 </Note>
 
-### Adjusting the Order Filtering Logic[​](#adjusting-the-order-filtering-logic "Direct link to Adjusting the Order Filtering Logic")
+### Adjusting the Order Filtering Logic
 
 Many solvers implement some order filtering logic that, for example, discards orders with missing balances early so the matching engine does not have to process them. Orders may be placed if taking out a flashloan and executing the pre-hooks will lead to sufficient balance and allowance for the order. In Aave’s case, for example, the order will only pass the signature verification check if the pre-hook executed successfully. And that can only be executed if the `receiver` in the flashloan hint got enough tokens before hand.
 
@@ -62,11 +62,11 @@ There are multiple ways for a solver to handle this:
 * adjust the solver's verification logic to simulate the whole flashloan (as discussed in the section about calling the router);
 * adjust the solver's verification logic to "fake" the flashloan by using state overrides to make it appear as if the flashloan `receiver` got the tokens it needed.
 
-### Handling Bigger Auction Instances[​](#handling-bigger-auction-instances "Direct link to Handling Bigger Auction Instances")
+### Handling Bigger Auction Instances
 
 Together with the support for flashloans, we want to minimize the order filtering the autopilot does before even building the auction. This filtering was initially implemented as a performance optimization since most of the orders do not have sufficient balance, and the plan is to remove it. The order filtering is already implemented in the reference driver as well so nothing should change for solvers connected to that. For other solver/ drivers the auction in the `/solve` endpoint will contain \~3K orders or more from now on.
 
-## Details on Aave’s Integration[​](#details-on-aaves-integration "Direct link to Details on Aave’s Integration")
+## Details on Aave’s Integration
 
 Aave will cover 3 new use cases:
 

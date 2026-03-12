@@ -3,13 +3,13 @@ title: "GPv2AllowlistAuthentication"
 description: "import HistoricalFact from './_gpv2.md'"
 ---
 
-## Architecture[​](#architecture "Direct link to Architecture")
+## Architecture
 
 The allow-list authenticator contract determines which addresses are solvers. Before executing any operation which is access-restricted to a solver, the settlement contract queries this contract to determine if the caller is a solver.
 
 The smart contract allows a manager to add or remove solvers with an on-chain transaction. The manager can be replaced in a transaction by the proxy owner or itself. Any of these actions emit the corresponding event.
 
-### Guarantees and Invariants[​](#guarantees-and-invariants "Direct link to Guarantees and Invariants")
+### Guarantees and Invariants
 
 * Only the `manager` or the `owner` can change the `manager`
 * Only the `manager` can add or remove solvers
@@ -20,9 +20,9 @@ The smart contract allows a manager to add or remove solvers with an on-chain tr
   Any malicious actor with access to the `manager` may be able to introduce a malicious solver. The malicious solver may be able to steal funds from the settlement contract (i.e. CoW Protocol), however, this does **NOT** affect user funds.
 </Note>
 
-## Data Types and Storage[​](#data-types-and-storage "Direct link to Data Types and Storage")
+## Data Types and Storage
 
-### `manager`[​](#manager "Direct link to manager")
+### `manager`
 
 The manager is the address that can add or remove solvers.
 
@@ -30,7 +30,7 @@ The manager is the address that can add or remove solvers.
 address public manager;
 ```
 
-### `solvers`[​](#solvers "Direct link to solvers")
+### `solvers`
 
 The `solvers` mapping stores whether an address is a solver.
 
@@ -42,11 +42,11 @@ mapping(address => bool) private solvers;
   The `solvers` mapping is private, but it is exposed through the `isSolver` function.
 </Check>
 
-## Functions[​](#functions "Direct link to Functions")
+## Functions
 
-### For `owner` or `manager`[​](#for-owner-or-manager "Direct link to for-owner-or-manager")
+### For `owner` or `manager`
 
-#### `setManager`[​](#setmanager "Direct link to setmanager")
+#### `setManager`
 
 Allows the `owner` or the `manager` to set a new manager.
 
@@ -54,9 +54,9 @@ Allows the `owner` or the `manager` to set a new manager.
 function setManager(address manager_) external onlyManagerOrOwner;
 ```
 
-### For `manager`[​](#for-manager "Direct link to for-manager")
+### For `manager`
 
-#### `addSolver`[​](#addsolver "Direct link to addsolver")
+#### `addSolver`
 
 Allows the `manager` to add a solver.
 
@@ -64,7 +64,7 @@ Allows the `manager` to add a solver.
 function addSolver(address solver) external onlyManager;
 ```
 
-#### `removeSolver`[​](#removesolver "Direct link to removesolver")
+#### `removeSolver`
 
 Allows the `manager` to remove a solver.
 
@@ -72,9 +72,9 @@ Allows the `manager` to remove a solver.
 function removeSolver(address solver) external onlyManager;
 ```
 
-### For anyone[​](#for-anyone "Direct link to For anyone")
+### For anyone
 
-#### `isSolver`[​](#issolver "Direct link to issolver")
+#### `isSolver`
 
 A view function that returns whether an address is a solver. This method is used by the settlement contract to ensure critical functions can only be invoked by accounts passing the allow-list authentication.
 
@@ -82,13 +82,13 @@ A view function that returns whether an address is a solver. This method is used
 function isSolver(    address prospectiveSolver) external view override returns (bool);
 ```
 
-## Indexing[​](#indexing "Direct link to Indexing")
+## Indexing
 
 * `ManagerChanged` - when the manager is changed
 * `SolverAdded` - when a solver is added
 * `SolverRemoved` - when a solver is removed
 
-## Off-chain[​](#off-chain "Direct link to Off-chain")
+## Off-chain
 
 Nil
 

@@ -9,7 +9,7 @@ description: "As CoW Protocol only , this means that if a user wants to sell  on
 
 This process is time-consuming and potentially costly for the user and is why we developed Eth-flow, a contract that smooths the user experience when selling native tokens on CoW Protocol.
 
-## Architecture[​](#architecture "Direct link to Architecture")
+## Architecture
 
 An intermediary smart contract is used to wrap `ETH` into `WETH` and create an intent on behalf of the user. This contract then expresses the users' intent to trade on CoW Protocol using an [`ERC-1271`](/cow-protocol/reference/core/signing-schemes#erc-1271)-signed intent.
 
@@ -17,7 +17,7 @@ The user interacts with Eth-flow to deposit `ETH` via `createOrder`. The Eth-flo
 
 The proceeds will go to the user and not to the exchange because we specify the user as the `receiver` in the Eth-flow contract intent.
 
-### User intent / Contract intent[​](#user-intent--contract-intent "Direct link to User intent / Contract intent")
+### User intent / Contract intent
 
 Every `ETH` sell intent from a user ("*user intent*") is transformed into a `WETH` sell intent in the Eth-flow contract ("*contract intent*").
 
@@ -44,7 +44,7 @@ The user's intent is a subset of the contract intent as some parameters are impl
 | `sellTokenBalance`  | `erc20`         | `erc20`            | Only `erc20` implemented                                                                                                                                                |
 | `buyTokenBalance`   | `erc20`         | `erc20`            | Only `erc20` implemented                                                                                                                                                |
 
-### Contract order signing[​](#contract-order-signing "Direct link to Contract order signing")
+### Contract order signing
 
 The contract order uses [`ERC-1271`](/cow-protocol/reference/core/signing-schemes#erc-1271) signatures.
 
@@ -58,13 +58,13 @@ Signature verification in a settlement works as follows:
 
 If all verification steps succeed, Eth-flow affirmatively signs the digest with `ERC-1271`.
 
-### Guarantees / Invariants[​](#guarantees--invariants "Direct link to Guarantees / Invariants")
+### Guarantees / Invariants
 
 1. A user can have multiple open intents
 
-## Data Types and Storage[​](#data-types-and-storage "Direct link to Data Types and Storage")
+## Data Types and Storage
 
-### `EthFlowOrder.OnchainData`[​](#ethfloworderonchaindata "Direct link to ethfloworderonchaindata")
+### `EthFlowOrder.OnchainData`
 
 This struct contains the parts of a user intent that need to be stored on chain.
 
@@ -81,7 +81,7 @@ For asserting the validity of the intent, the Eth-flow contract applies some ass
   Modifying the `validTo` field does not change the contract intent digest.
 </Note>
 
-### `EthFlowOrder.Data`[​](#ethfloworderdata "Direct link to ethfloworderdata")
+### `EthFlowOrder.Data`
 
 This struct collects all parameters needed to describe a single user trade intent.
 
@@ -98,7 +98,7 @@ struct Data {    IERC20 buyToken;    address receiver;    uint256 sellAmount;   
   Users *should* provide a valid `quoteId` when placing an order. This is not enforced by the Eth-flow contract, however quotes may be used as a basis to determine whether the automated refunding service should refund an order that has expired or not. In all cases, the user is able to manually refund the portion of their order that has not been matched.
 </Note>
 
-### `orders`[​](#orders "Direct link to orders")
+### `orders`
 
 The Eth-flow contract stores users' intents as a `mapping`:
 
@@ -112,15 +112,15 @@ The key of the mapping is the intent digest. It is derived by computing the cont
   There is a possibility of a collision in the digest. There could be two different Eth-flow intents that end up having the same digest. In this case, only one of the two intents can be created and the contract would revert if trying to create the second one.
 </Note>
 
-## Functions[​](#functions "Direct link to Functions")
+## Functions
 
 <Note>
   All interactions with the Eth-flow contract require an Ethereum transaction by the user and incur a gas cost in *addition* to the protocol fee.
 </Note>
 
-### For users[​](#for-users "Direct link to For users")
+### For users
 
-#### `createOrder`[​](#createorder "Direct link to createorder")
+#### `createOrder`
 
 For when a user wants to sell `ETH`:
 
@@ -139,7 +139,7 @@ The intent parameters are used to compute the intent digest according to the [in
 intent digest -> (msg.sender, validTo)
 ```
 
-#### `invalidateOrder`[​](#invalidateorder "Direct link to invalidateorder")
+#### `invalidateOrder`
 
 For when a user wants to invalidate an intent and return the `ETH` to the intent creator:
 
@@ -158,18 +158,18 @@ An intent's validity and owner are recovered from the [intent mapping](#orders).
 
 Each intent can be invalidated at most once and returns all funds that have not yet been used for trading. After invalidation, the intent is marked as invalid by setting the intent mapping for the intent digest to `invalidated`.
 
-## Automatic Refund Service[​](#automatic-refund-service "Direct link to Automatic Refund Service")
+## Automatic Refund Service
 
 CoW Protocol operates an automatic refund service that monitors expired Eth-flow orders and refunds unmatched ETH back to users. However, this service has specific criteria to ensure it only refunds orders that had reasonable execution parameters.
 
-### Slippage Tolerance Requirements[​](#slippage-tolerance-requirements "Direct link to Slippage Tolerance Requirements")
+### Slippage Tolerance Requirements
 
 The automatic refund service will **only refund orders that were created with a minimum slippage tolerance of 2%**. This requirement exists because:
 
 * Orders with very low slippage tolerance have a higher probability of expiring without execution
 * The 2% threshold helps distinguish between orders that failed due to market conditions versus those with unrealistic execution parameters
 
-#### Automatic Refund Eligibility[​](#automatic-refund-eligibility "Direct link to Automatic Refund Eligibility")
+#### Automatic Refund Eligibility
 
 **Automatically refunded:**
 
@@ -183,13 +183,13 @@ The automatic refund service will **only refund orders that were created with a 
 * Eth-flow orders with less than 2% slippage tolerance
 * Users must use the manual refund tool to recover their ETH
 
-### Default Settings[​](#default-settings "Direct link to Default Settings")
+### Default Settings
 
-#### CoW Swap Interface & CoW Widget[​](#cow-swap-interface--cow-widget "Direct link to CoW Swap Interface & CoW Widget")
+#### CoW Swap Interface & CoW Widget
 
 Both the CoW Swap interface and CoW Widget set **2% slippage tolerance as the default** for Eth-flow orders. Users who don't modify this default setting will automatically qualify for the refund service if their orders expire.
 
-#### For Integrators[​](#for-integrators "Direct link to For Integrators")
+#### For Integrators
 
 If you're integrating CoW Protocol and want your users' Eth-flow orders to be eligible for automatic refunds, ensure that:
 
@@ -203,13 +203,13 @@ Integrators can also utilize the manual refund functionality by directing users 
   Do you need to manually recover funds from an Eth-flow intent? Use the [manual refund tool](https://manual-ethflow-refunder.cowdev.eth.limo/). Simply enter the TX hash of the Eth-flow intent creation transaction and the tool will generate a transaction that will invalidate the intent and return the funds to the user. For more details about automatic vs manual refunds, see the Automatic Refund Service section above.
 </Check>
 
-## Indexing[​](#indexing "Direct link to Indexing")
+## Indexing
 
 The Eth-flow contract has events that are indexed by the Protocol. These events are:
 
 * `OrderPlacement`
 
-## Off-chain[​](#off-chain "Direct link to Off-chain")
+## Off-chain
 
 There are two components in [services](https://github.com/cowprotocol/services) that are used in the off-chain infrastructure for Eth-flow:
 

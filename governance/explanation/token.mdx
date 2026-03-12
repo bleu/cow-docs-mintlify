@@ -3,9 +3,9 @@ title: "Token"
 description: "At the core of CoW Protocol lies the COW token, which serves as a governance token within the CoW Protocol ecosystem, allowing stakeholders to participate directly in the decision-making processes that guide the protocol's development and evolution. The governance framework is designed to align incentives between the protocol's users, developers, and supporters, creating a robust and community-driven governance system."
 ---
 
-### Contract Address[​](#contract-address "Direct link to Contract Address")
+### Contract Address
 
-#### `COW` - Main token[​](#cow---main-token "Direct link to cow---main-token")
+#### `COW` - Main token
 
 | **Chain**    | **COW Token Address**                                                                                                                                        |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -21,7 +21,7 @@ description: "At the core of CoW Protocol lies the COW token, which serves as a 
 | Plasma       | N/A                                                                                                                                                          |
 | Ink          | N/A                                                                                                                                                          |
 
-#### `vCOW` - Vesting token[​](#vcow---vesting-token "Direct link to vcow---vesting-token")
+#### `vCOW` - Vesting token
 
 | **Chain**    | **vCOW Token Address**                                                                                                 |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------- |
@@ -37,15 +37,15 @@ description: "At the core of CoW Protocol lies the COW token, which serves as a 
 | Plasma       | N/A                                                                                                                    |
 | Ink          | N/A                                                                                                                    |
 
-## Supply & Inflation Schedule[​](#supply--inflation-schedule "Direct link to Supply & Inflation Schedule")
+## Supply & Inflation Schedule
 
 The COW token is engineered to support the long-term sustainability and autonomy of CoW Protocol. The maximum inflation rate is capped at 3% per annum, and any inflationary measures can only be enacted with a minimum frequency of once every 365 days. This cautious approach to inflation ensures that any increase in the token supply is both measured and deliberate, guarding against the potential dilutive effects of unchecked token issuance.
 
-## How many tokens were issued?[​](#how-many-tokens-were-issued "Direct link to How many tokens were issued?")
+## How many tokens were issued?
 
 There were 1 billion tokens issued during the TGE.
 
-## How were tokens distributed?[​](#how-were-tokens-distributed "Direct link to How were tokens distributed?")
+## How were tokens distributed?
 
 The allocation of the initial 1 Billion COW token supply is as follows:
 
@@ -63,7 +63,7 @@ The allocation of the initial 1 Billion COW token supply is as follows:
 
 * Investment Round: 10%, providing necessary funding and financial support for the protocol's growth.
 
-## The difference between COW and vCOW[​](#the-difference-between-cow-and-vcow "Direct link to The difference between COW and vCOW")
+## The difference between COW and vCOW
 
 vCOW is a separate token contract with token holders that was issued during the TGE. The contract exposes a “swap” function allowing the conversion of vCOW into COW at 1:1.
 
@@ -71,13 +71,13 @@ vCOW tokens are a virtual representation of the [CoW Protocol](https://docs.cow.
 
 vCOW tokens are subject to a vesting schedule, unlocking linearly over a period of 4 years that starts at the time of deployment.
 
-## How does vCOW affect the circulating supply of COW Tokens?[​](#how-does-vcow-affect-the-circulating-supply-of-cow-tokens "Direct link to How does vCOW affect the circulating supply of COW Tokens?")
+## How does vCOW affect the circulating supply of COW Tokens?
 
 Historically, all vCOW was excluded from circulating supply, but as the amount of vested - and thus claimable - tokens is growing, we have updated our API to include how much vCOW is now swappable.
 
 The updated API now includes vested - yet unclaimed - vCOW tokens. This offers a more accurate representation of the circulating supply as vested vCOW tokens can be converted to COW any moment by their holders.
 
-## How is the circulating supply calculated?[​](#how-is-the-circulating-supply-calculated "Direct link to How is the circulating supply calculated?")
+## How is the circulating supply calculated?
 
 The current formula CoW DAO uses to calculate circulating token supply is the following:
 
@@ -105,7 +105,7 @@ The DAO treasury holds a significant portion of the token supply for long-term g
 
 Even if the DAO eventually allocates these tokens (via votes, incentive programs, etc.), until that happens, they're considered non-circulating.
 
-## Footnotes[​](#footnote-label "Direct link to Footnotes")
+## Footnotes
 
 1. These contracts were not developed nor deployed by CoW DAO, however, they are the bridged versions of the canonical token from Ethereum, using the official bridges. [Omni bridge](https://gnosisscan.io/address/0xf6A78083ca3e2a662D6dd1703c939c8aCE2e268d#code) for Gnosis Chain, [Arbitrum One bridge](https://arbiscan.io/address/0x09e9222e96e7b4ae2a407b98d48e330053351eee#code) for Arbitrum one, [Superbridge](https://basescan.org/tx/0xf76a915b7db279a4e559dbc382462e23cb63615f3d3a87ddf36bd96cedf4ca56) for Base, and [Polygon Bridge](https://portal.polygon.technology/bridge) for Polygon. [↩](#user-content-fnref-bridgedtokens) [↩2](#user-content-fnref-bridgedtokens-2) [↩3](#user-content-fnref-bridgedtokens-3) [↩4](#user-content-fnref-bridgedtokens-4)
 

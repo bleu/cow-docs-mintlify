@@ -7,7 +7,7 @@ description: "A user may want to see the details of a specific order that they h
   For brevity, the `orderUid` is referred to as "Order ID" in the explorer, and is shortened to the first 8 characters of the `orderUid`.
 </Note>
 
-## Fill-or-kill[​](#fill-or-kill "Direct link to Fill-or-kill")
+## Fill-or-kill
 
 Below is a simple example of Order ID [`56ac15a9`](https://explorer.cow.fi/orders/0x56ac15a9dd943743936e29d45e836e87de20b69ee32481338588922b5cc9ee4a04d84e1d86cfad5ffea5e9ab833276481bf965e46322d6ea) that has been filled:
 
@@ -33,7 +33,7 @@ Below is a simple example of Order ID [`56ac15a9`](https://explorer.cow.fi/order
   | **App Data**         | The AppData hash for this order. It can denote encoded metadata with info on the app, environment and more, although not all interfaces follow the same pattern. Show more will try to decode that information. |
 </Accordion>
 
-## Partially fillable[​](#partially-fillable "Direct link to Partially fillable")
+## Partially fillable
 
 A more complex example may be a user who has placed a *partially fillable* order. This means that the user has expressed a swap intent for a certain amount of tokens, but the order may be filled in multiple batches. This can only be used with [Limit orders](/cow-swap/tutorials/limit).
 
@@ -50,7 +50,7 @@ Here we can see that the order has been 100% filled, but in dozens of batches. F
 * Total surplus (in this case 0.39% / 860.894 DAI)
 * The limit price applied across all fills (in this case 0.22222222 ANT for DAI)
 
-## States[​](#states "Direct link to States")
+## States
 
 As CoW Explorer is meant to help users visualize their signed orders, a critical parameter to show is the *state* of the signed order. This parameter has the following status:
 
@@ -61,7 +61,7 @@ As CoW Explorer is meant to help users visualize their signed orders, a critical
 * **Partially-filled:** State for orders that have been partially executed. Parts of the order have been executed and the corresponding funds transferred to the target account.
 * **Pre-signing:** State for orders that are to be pre-signed. Commonly used for orders submitted from a Smart Contract wallet, such as the [Safe](https://safe.global/) wallet.
 
-## Footnotes[​](#footnote-label "Direct link to Footnotes")
+## Footnotes
 
 1. Except for pre-signed orders, where the first state is **Pre-signing**. [↩](#user-content-fnref-presign)
 

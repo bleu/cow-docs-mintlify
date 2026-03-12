@@ -2,13 +2,13 @@
 title: "CoW Hook dApp"
 ---
 
-### [What are CoW Hooks?](/cow-protocol/explanation/order-types/cow-hooks)[​](#what-are-cow-hooks "Direct link to what-are-cow-hooks")
+### [What are CoW Hooks?](/cow-protocol/explanation/order-types/cow-hooks)
 
-### [Technical specification](/cow-protocol/reference/core/intents/hooks)[​](#technical-specification "Direct link to technical-specification")
+### [Technical specification](/cow-protocol/reference/core/intents/hooks)
 
-### [Hook Store](/cow-swap/hooks/hook-store) — Browse and use pre-built hooks[​](#hook-store "Direct link to hook-store")
+### [Hook Store](/cow-swap/hooks/hook-store) — Browse and use pre-built hooks
 
-### [Hooks: Getting Started](/cow-swap/hooks/getting-started) — Create your first hook step-by-step[​](#hooks-getting-started "Direct link to hooks-getting-started")
+### [Hooks: Getting Started](/cow-swap/hooks/getting-started) — Create your first hook step-by-step
 
 | ![Demo](/images/cow-protocol/tutorials/img/tutorials/hooks-store.png) | ![Demo](/images/cow-protocol/tutorials/img/tutorials/hooks-store-list.png) |
 | --------------------------------------------------------------------- | -------------------------------------------------------------------------- |
@@ -31,11 +31,11 @@ In order to add a custom hook, you need to:
   CoW Hooks are still under development! But you can test it by switching "Enable hooks" toggle ON in the Swap settings.
 </Note>
 
-## How to develop CoW Hook dApps[​](#how-to-develop-cow-hook-dapps "Direct link to How to develop CoW Hook dApps")
+## How to develop CoW Hook dApps
 
 CoW Hook dApp is a web application that communicates with CoW Swap using [post-messages](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage). For your convenience there is a npm library [`@cowprotocol/hook-dapp-lib`](https://www.npmjs.com/package/@cowprotocol/hook-dapp-lib) which provides everything necessary to get started with your hook dApp development.
 
-### Install[​](#install "Direct link to Install")
+### Install
 
 ```
 yarn add @cowprotocol/hook-dapp-lib
@@ -56,7 +56,7 @@ And it expects calling following callbacks:
 * `editHook` when hook parameters were changed (edit mode)
 * `setSellToken / setBuyToken` if you want to change the trade assets
 
-### Quick start[​](#quick-start "Direct link to Quick start")
+### Quick start
 
 Let's create a simple hook dApp that checks the COW token balance of the order creator.
 
@@ -114,7 +114,7 @@ Let's create a simple hook dApp that checks the COW token balance of the order c
 </html>
 ```
 
-### Types specification[​](#types-specification "Direct link to Types specification")
+### Types specification
 
 ```typescript
 import {
@@ -133,7 +133,7 @@ const { actions, provider } = initCoWHookDapp({
 
 ***
 
-#### `HookDappContext`[​](#hookdappcontext "Direct link to hookdappcontext")
+#### `HookDappContext`
 
 | Parameter         | Type                          | Optional | Description                                                                                                                                                                                                                                      |
 | ----------------- | ----------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -146,7 +146,7 @@ const { actions, provider } = initCoWHookDapp({
 
 ***
 
-#### `CoWHookDappActions`[​](#cowhookdappactions "Direct link to cowhookdappactions")
+#### `CoWHookDappActions`
 
 | Parameter                    | Type                                   | Description                                                         |
 | ---------------------------- | -------------------------------------- | ------------------------------------------------------------------- |
@@ -154,7 +154,7 @@ const { actions, provider } = initCoWHookDapp({
 | `editHook`                   | `(payload: CowHookDetails) => void`    | The callback should be executed when the hook data is changed.      |
 | `setSellToken / setBuyToken` | `(token: { address: string }) => void` | Optionally you can change the asset for sell/buy.                   |
 
-### Manifest[​](#manifest "Direct link to Manifest")
+### Manifest
 
 As stated at the beginning of this document, in the CoW Swap interface you can add your application as a custom application. To do this, the application must contain `manifest.json` file with following structure:
 
@@ -190,7 +190,7 @@ As stated at the beginning of this document, in the CoW Swap interface you can a
 | `conditions.walletCompatibility` | `HookDappWalletCompatibility[]` | Indicates whether the Hook Dapp supports smart contract wallets or EOAs.                                                                                                                                               |
 | `conditions.supportedNetworks`   | `array` of `integers`           | List of supported network IDs (e.g., `1` for Ethereum mainnet, `100` for Gnosis chain, `42161` for Arbitrum, `8453` for Base). If not set, then the Hook Dapp will be available for any network supported by CoW Swap. |
 
-## Advanced Hook Dapps[​](#advanced-hook-dapps "Direct link to Advanced Hook Dapps")
+## Advanced Hook Dapps
 
 For more complex scenarios — such as post-hooks that need to act on received tokens (staking, bridging, depositing into DeFi protocols) — you need **CoW Shed**. CoW Shed is a deterministic smart account that holds tokens on behalf of the user and executes pre-signed operations during settlement.
 

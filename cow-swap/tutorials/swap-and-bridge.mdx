@@ -13,11 +13,11 @@ This guide will walk you through the process step-by-step, from setting up your 
 
 ***
 
-## 1. Setting up a Swap with Different Network Assets[​](#1-setting-up-a-swap-with-different-network-assets "Direct link to 1. Setting up a Swap with Different Network Assets")
+## 1. Setting up a Swap with Different Network Assets
 
 When using **Cross-chain swaps**, you’ll start by selecting the tokens you want to trade — just like a regular swap — but with the option to choose a different destination chain.
 
-### Source Token Selector[​](#source-token-selector "Direct link to Source Token Selector")
+### Source Token Selector
 
 Open a source token selector:
 
@@ -27,7 +27,7 @@ Select the network and token you want to sell:
 
 ![Source token selector](/images/cowswap/bridging/source-token-selector.png)
 
-### Destination Token Selector[​](#destination-token-selector "Direct link to Destination Token Selector")
+### Destination Token Selector
 
 Similarly to Source Token Selector, open the selector, choose a network and token you would like to buy
 
@@ -51,11 +51,11 @@ Similarly to Source Token Selector, open the selector, choose a network and toke
 
 ***
 
-## 2. Creating a Cross-chain swap[​](#2-creating-a-cross-chain-swap "Direct link to 2. Creating a Cross-chain swap")
+## 2. Creating a Cross-chain swap
 
 Once your tokens and networks are set, you can proceed to create the order.
 
-### Token Approval[​](#token-approval "Direct link to Token Approval")
+### Token Approval
 
 If it’s your first time selling this token through CoW Swap, you’ll need to approve it. This is the standard ERC-20 approval process that allows CoW Protocol to use your tokens for the trade.
 
@@ -66,7 +66,7 @@ Approvals can happen through:
 
 ![Sign an approval](/images/cowswap/bridging/sign-approval.png)
 
-### Signing Steps[​](#signing-steps "Direct link to Signing Steps")
+### Signing Steps
 
 1. **Sign the post-hook call** for the bridge provider.
 
@@ -90,7 +90,7 @@ Approvals can happen through:
 
 ***
 
-## 3. Using a Custom Recipient[​](#3-using-a-custom-recipient "Direct link to 3. Using a Custom Recipient")
+## 3. Using a Custom Recipient
 
 By default, your connected wallet address will be set as the recipient on the destination chain. If you want to send funds to another address:
 
@@ -102,7 +102,7 @@ By default, your connected wallet address will be set as the recipient on the de
 
 ***
 
-## 4. Previewing Your Quote[​](#4-previewing-your-quote "Direct link to 4. Previewing Your Quote")
+## 4. Previewing Your Quote
 
 In the Swap form you can see a detailed breakdown of the expected swap and bridge:
 
@@ -116,7 +116,7 @@ In the Swap form you can see a detailed breakdown of the expected swap and bridg
 
 ***
 
-## 5. Understanding the Account Proxy[​](#5-understanding-the-account-proxy "Direct link to 5. Understanding the Account Proxy")
+## 5. Understanding the Account Proxy
 
 The [**Account Proxy**](https://swap.cow.fi/#/1/account-proxy) (also known as **CoW Shed**) is a helper contract that powers advanced features like [**CoW Hooks**](/cow-protocol/reference/core/intents/hooks).
 
@@ -127,7 +127,7 @@ The [**Account Proxy**](https://swap.cow.fi/#/1/account-proxy) (also known as **
 
 ***
 
-## 6. How Bridging Execution Works[​](#6-how-bridging-execution-works "Direct link to 6. How Bridging Execution Works")
+## 6. How Bridging Execution Works
 
 1. The bridge step will only start **after** a successful swap.
 
@@ -163,7 +163,7 @@ The [**Account Proxy**](https://swap.cow.fi/#/1/account-proxy) (also known as **
 
 ***
 
-## 7. If Bridging Fails — Getting a Refund[​](#7-if-bridging-fails--getting-a-refund "Direct link to 7. If Bridging Fails — Getting a Refund")
+## 7. If Bridging Fails — Getting a Refund
 
 In rare cases, the bridging step may fail. Don’t worry — your funds are safe.
 
@@ -182,7 +182,7 @@ Once the refund arrives in your Account Proxy:
 
 ***
 
-## 8. Tracking Your Orders in the Explorer[​](#8-tracking-your-orders-in-the-explorer "Direct link to 8. Tracking Your Orders in the Explorer")
+## 8. Tracking Your Orders in the Explorer
 
 You can view all your Cross-chain swaps on [explorer.cow.fi](https://explorer.cow.fi).
 

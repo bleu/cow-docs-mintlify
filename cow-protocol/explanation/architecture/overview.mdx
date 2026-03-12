@@ -3,7 +3,7 @@ title: "Arbitrating auctions"
 description: "This section gives a high level overview of the different components that are involved for CoW protocol batch auctions to take place."
 ---
 
-## Architecture[​](#architecture "Direct link to Architecture")
+## Architecture
 
 ```mermaid
 graph LR
@@ -19,7 +19,7 @@ graph LR
 
 Three main sub-systems are required to facilitate and drive the auction
 
-### Order book[​](#order-book "Direct link to Order book")
+### Order book
 
 The [orderbook](/cow-protocol/explanation/architecture/orderbook) is the main entry point of the protocol for traders. Using the orderbook's API, UIs and other integrations allow traders to:
 
@@ -31,7 +31,7 @@ The [orderbook](/cow-protocol/explanation/architecture/orderbook) is the main en
 
 For instance, when you visit [CoW Swap](https://swap.cow.fi) and place an order, the site uses the Order book API to add the order to a database. This database with all orders is shared with the **autopilot**.
 
-### Autopilot[​](#autopilot "Direct link to Autopilot")
+### Autopilot
 
 The [autopilot](/cow-protocol/explanation/architecture/autopilot) is a service that drives the core protocol functionalities with responsibilities including:
 
@@ -42,11 +42,11 @@ The [autopilot](/cow-protocol/explanation/architecture/autopilot) is a service t
 * Serving as data consensus layer in the case of dispute or slashing by the DAO
 * Communicating auctions to all registered solvers
 
-### Solvers[​](#solvers "Direct link to Solvers")
+### Solvers
 
 For the sake of this documentation, we differentiate solvers into two sub-parts:
 
-#### Driver[​](#driver "Direct link to Driver")
+#### Driver
 
 The [Driver](/cow-protocol/explanation/architecture/driver) is the executive part of the solving process, and is responsible for:
 
@@ -56,7 +56,7 @@ The [Driver](/cow-protocol/explanation/architecture/driver) is the executive par
 
 The driver interfaces with the autopilot and reports the best solution's score to participate in the competition. If chosen as a winner of the auction, the driver is also responsible for getting the solution included in the blockchain.
 
-#### Solver Engine[​](#solver-engine "Direct link to Solver Engine")
+#### Solver Engine
 
 [Solver Engines](/cow-protocol/explanation/architecture/solver-engine) implement the pure matching logic, by employing different types of solving algorithms to optimally match traders with one another taking on-chain as well as private liquidity into account. They receive the pre-processed auction instance from the driver sub-component and return the solution together with instructions on how to achieve the fulfillment on-chain.
 

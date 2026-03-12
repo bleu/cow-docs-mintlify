@@ -3,7 +3,7 @@ title: "GPv2Settlement"
 description: "import HistoricalFact from './_gpv2.md'"
 ---
 
-## Architecture[​](#architecture "Direct link to Architecture")
+## Architecture
 
 A settlement comprises of:
 
@@ -17,7 +17,7 @@ Normally, all orders in a settlement are settled with *uniform clearing prices*,
 
 If the transaction does not revert, each order will be executed during a settlement and the user will receive the desired token after the settlement.
 
-### Guarantees and Invariants[​](#guarantees-and-invariants "Direct link to Guarantees and Invariants")
+### Guarantees and Invariants
 
 The parameters of the order are verified for validity:
 
@@ -26,18 +26,18 @@ The parameters of the order are verified for validity:
 * The order was not previously filled
 * The current prices are equal to or better than what is specified in the order
 
-### Trades[​](#trades "Direct link to Trades")
+### Trades
 
 Trades contain a description of the users' orders, a signature for verifying its validity, and the executed amount (for partially fillable orders).
 
 The contract decodes the order parameters from the trade.
 
-### Interactions[​](#interactions "Direct link to Interactions")
+### Interactions
 
 Interactions allow solvers to execute arbitrary calls to any on-chain contract. Normally, they are used to interact with other on-chain liquidity providers, for example, to make a swap call to Uniswap.
 
 <Accordion title="Protocol fee collection">
-  Interactions are also used for accounting / bookkeeping purposes as well. As trades are executed, the Protocol collects a fee from each trade and stores this in the settlement contract (known as *[internal buffers](/cow-protocol/reference/core/definitions#buffers)*). At regular intervals, the Protocol withdraws the fees from the settlement contract to the Protocol's treasury Safe.
+  Interactions are also used for accounting / bookkeeping purposes as well. As trades are executed, the Protocol collects a fee from each trade and stores this in the settlement contract (known as *[internal buffers](/cow-protocol/reference/core/definitions#internal-buffers)*). At regular intervals, the Protocol withdraws the fees from the settlement contract to the Protocol's treasury Safe.
 </Accordion>
 
 <Check>
@@ -48,9 +48,9 @@ Interactions allow solvers to execute arbitrary calls to any on-chain contract. 
   Allowing interactions by solvers, creates the possibility of malicious solvers that can steal funds from the settlement contract. This is why the Protocol only allows interactions to be executed by allow-listed solvers, and requires that the solver post a bond to the Protocol before it can be allowed.
 </Warning>
 
-## Data Types and Storage[​](#data-types-and-storage "Direct link to Data Types and Storage")
+## Data Types and Storage
 
-### `GPv2Order.Data` struct[​](#gpv2orderdata-struct "Direct link to gpv2orderdata-struct")
+### `GPv2Order.Data` struct
 
 The `GPV2Order.Data` is the one of the most important data structures in the Protocol. It:
 
@@ -88,7 +88,7 @@ struct Data {    IERC20 sellToken;    IERC20 buyToken;    address receiver;    u
   | `internal` | User's internal Balancer vault balance                                        |
 </Accordion>
 
-### `orderUid`[​](#orderuid "Direct link to orderuid")
+### `orderUid`
 
 The `orderUid` is a unique identifier for an order. It is 56 bytes and defined as:
 
@@ -103,7 +103,7 @@ Where:
 * `validTo` is the timestamp until which the order is valid (4 bytes)
 * `‖` is the concatenation operator
 
-### `filledAmounts`[​](#filledamounts "Direct link to filledamounts")
+### `filledAmounts`
 
 The `filledAmounts` mapping stores the amount of an order that has been filled. It is defined as:
 
@@ -117,13 +117,13 @@ The key is the `orderUid` and the value is the amount of the order that has been
   Do **NOT** rely on the `filledAmounts` mapping to determine if an historical order has been filled. This is because the respective slot in the mapping may be freed by a solver after the order has expired to save gas.
 </Warning>
 
-## Functions[​](#functions "Direct link to Functions")
+## Functions
 
 This section will cover the main functions that are used by users and solvers.
 
-### For users[​](#for-users "Direct link to For users")
+### For users
 
-#### `setPreSignature`[​](#setpresignature "Direct link to setpresignature")
+#### `setPreSignature`
 
 This function allows a user to pre-sign an order, which can be used if for some reason the user is unable to sign with `eth_sign`, `EIP-712`, or `ERC-1271`. This is most useful for smart contracts that have neither a private key, nor implement `ERC-1271`, but still want to use CoW Protocol.
 
@@ -131,7 +131,7 @@ This function allows a user to pre-sign an order, which can be used if for some 
 function setPreSignature(bytes calldata orderUid, bool signed) external;
 ```
 
-#### `invalidateOrder`[​](#invalidateorder "Direct link to invalidateorder")
+#### `invalidateOrder`
 
 This function allows a user to invalidate (cancel) an order:
 
@@ -139,9 +139,9 @@ This function allows a user to invalidate (cancel) an order:
 function invalidateOrder(bytes calldata orderUid) external;
 ```
 
-### For solvers[​](#for-solvers "Direct link to For solvers")
+### For solvers
 
-#### `settle`[​](#settle "Direct link to settle")
+#### `settle`
 
 This function is permissioned and can only be called by solvers passing the allow-list authentication. It executes a settlement:
 
@@ -149,7 +149,7 @@ This function is permissioned and can only be called by solvers passing the allo
 function settle(    IERC20[] calldata tokens,    uint256[] calldata clearingPrices,    GPv2Trade.Data[] calldata trades,    GPv2Interaction.Data[][3] calldata interactions) external nonReentrant onlySolver;
 ```
 
-## Indexing[​](#indexing "Direct link to Indexing")
+## Indexing
 
 Events that are indexed are:
 
@@ -159,7 +159,7 @@ Events that are indexed are:
 * `OrderInvalidated` - when an order is invalidated
 * `PreSignature` - when pre-signing or revoking a pre-signed signature
 
-## Off-chain[​](#off-chain "Direct link to Off-chain")
+## Off-chain
 
 As this is the main contract of CoW Protocol, all the off-chain infrastructure is built around it. This includes:
 

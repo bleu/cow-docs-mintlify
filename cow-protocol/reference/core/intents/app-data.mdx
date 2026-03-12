@@ -9,7 +9,7 @@ description: "There are times when attaching additional information to an order 
 
 CoW Protocol facilitates the inclusion of this additional information to any order through a special data field known as [`appData`](/cow-protocol/reference/contracts/core/settlement#gpv2orderdata-struct). This field is a `bytes32` that points to an IPFS document that is a JSON file containing this information. Utilizing only on-chain data and IPFS, the content of this document can be retrieved and parsed.
 
-## AppData Document[​](#appdata-document "Direct link to AppData Document")
+## AppData Document
 
 The AppData document is a JSON file that follows a specific JSON [schema](#schema). It is versioned and the version is specified in the document itself. Versioning follows [Semantic Versioning](https://semver.org/).
 
@@ -30,7 +30,7 @@ An example of an AppData document is:
   If not using the CoW Explorer appData utility or the app-data SDK, make sure to follow the [appData schema](#schema) and upload your file to IPFS before placing orders using the resulting digest.
 </Warning>
 
-## Schema[​](#schema "Direct link to Schema")
+## Schema
 
 The schema for the AppData document is defined in [JSON schema](https://json-schema.org/). The schema is available in the [app-data](https://github.com/cowprotocol/cow-sdk/blob/main/packages/app-data/README.md) SDK. The schema is shown below:
 

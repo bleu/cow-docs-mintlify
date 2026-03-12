@@ -3,13 +3,13 @@ title: "API Integration"
 description: "The CoW Protocol API provides direct access to the protocol's functionality through RESTful endpoints. This approach offers maximum flexibility and control for backend integrations and custom implementations."
 ---
 
-## Overview[​](#overview "Direct link to Overview")
+## Overview
 
 The API integration allows you to interact with CoW Protocol at the lowest level, giving you complete control over order management, quote fetching, and trade execution. This is ideal for advanced integrations, backend services, and custom trading logic.
 
-## Key APIs[​](#key-apis "Direct link to Key APIs")
+## Key APIs
 
-### Order Book API[​](#order-book-api "Direct link to Order Book API")
+### Order Book API
 
 The primary API for creating and managing orders on CoW Protocol.
 
@@ -17,7 +17,7 @@ The primary API for creating and managing orders on CoW Protocol.
 * **Purpose**: Quote generation, order submission, order management
 * **Authentication**: No API key required for basic operations
 
-### Key Endpoints[​](#key-endpoints "Direct link to Key Endpoints")
+### Key Endpoints
 
 * `POST /api/v1/quote` - Get trading quotes
 * `POST /api/v1/orders` - Submit signed orders
@@ -25,9 +25,9 @@ The primary API for creating and managing orders on CoW Protocol.
 * `DELETE /api/v1/orders/{uid}` - Cancel orders
 * `GET /api/v1/trades` - Get trade history
 
-## Quick Start Example[​](#quick-start-example "Direct link to Quick Start Example")
+## Quick Start Example
 
-### 1. Get a Quote[​](#1-get-a-quote "Direct link to 1. Get a Quote")
+### 1. Get a Quote
 
 ```bash
 curl -X POST "https://api.cow.fi/mainnet/api/v1/quote" \
@@ -41,7 +41,7 @@ curl -X POST "https://api.cow.fi/mainnet/api/v1/quote" \
   }'
 ```
 
-### 2. Sign and Submit Order[​](#2-sign-and-submit-order "Direct link to 2. Sign and Submit Order")
+### 2. Sign and Submit Order
 
 ```typescript
 // After getting a quote, sign the order
@@ -60,7 +60,7 @@ const response = await fetch('https://api.cow.fi/mainnet/api/v1/orders', {
 const orderId = await response.text()
 ```
 
-### 3. Monitor Order Status[​](#3-monitor-order-status "Direct link to 3. Monitor Order Status")
+### 3. Monitor Order Status
 
 ```typescript
 // Check order status
@@ -71,7 +71,7 @@ const orderDetails = await orderResponse.json()
 console.log('Order status:', orderDetails.status)
 ```
 
-## Network Endpoints[​](#network-endpoints "Direct link to Network Endpoints")
+## Network Endpoints
 
 CoW Protocol APIs are available on all [supported networks](/cow-protocol/reference/contracts/core):
 
@@ -94,7 +94,7 @@ CoW Protocol APIs are available on all [supported networks](/cow-protocol/refere
   **Staging** (barn) endpoints run the latest pre-release version and are useful for testing. Use **production** endpoints for live integrations.
 </Tip>
 
-## Order Signing[​](#order-signing "Direct link to Order Signing")
+## Order Signing
 
 Orders must be cryptographically signed before submission. The signing process involves:
 
@@ -125,7 +125,7 @@ const types = {
 const signature = await signer._signTypedData(domain, types, orderData)
 ```
 
-## Error Handling[​](#error-handling "Direct link to Error Handling")
+## Error Handling
 
 The API returns standard HTTP status codes:
 
@@ -148,7 +148,7 @@ try {
 }
 ```
 
-## When to Use the API[​](#when-to-use-the-api "Direct link to When to Use the API")
+## When to Use the API
 
 * **Backend integration**: Server-side order management
 * **Custom trading logic**: Advanced order types and strategies
@@ -156,7 +156,7 @@ try {
 * **Multi-chain applications**: Cross-chain arbitrage and liquidity
 * **Analytics platforms**: Order and trade data analysis
 
-## Rate Limits[​](#rate-limits "Direct link to Rate Limits")
+## Rate Limits
 
 * **Quote requests**: 10 requests/second
 * **Order submission**: 5 requests/second
@@ -164,7 +164,7 @@ try {
 
 For per-endpoint limits, backoff strategies, Cloudflare WAF details, and troubleshooting, see the **[Rate Limits & Quotas](/cow-protocol/reference/core/rate-limits)** reference.
 
-## Error Handling[​](#error-handling-2 "Direct link to Error Handling 2")
+## Error Handling
 
 For a comprehensive list of every API error code with root causes and fixes, see the **[Error Reference](/cow-protocol/reference/core/error-reference)**. Key errors to handle:
 
@@ -204,13 +204,13 @@ The API supports both order types. The difference is in how you construct the or
 
 Both order types are submitted to the same `POST /api/v1/orders` endpoint.
 
-## Next Steps[​](#next-steps "Direct link to Next Steps")
+## Next Steps
 
 * **[Quickstart: Raw API (cURL)](/cow-protocol/tutorials/quickstart-curl)** — End-to-end walkthrough: quote → sign → submit → monitor
 * **[Order Book API Reference](/cow-protocol/reference/apis/orderbook)** — Complete endpoint documentation with all parameters and response schemas
 * **[API Explorer](https://api.cow.fi/docs/)** — Interactive API documentation
 
-## Resources[​](#resources "Direct link to Resources")
+## Resources
 
 * **[Order Book API Reference](/cow-protocol/reference/apis/orderbook)** — Detailed API documentation
 * **[API Explorer](https://api.cow.fi/docs/)** — Interactive documentation

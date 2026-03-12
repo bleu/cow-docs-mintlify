@@ -3,15 +3,15 @@ title: "CoW SDK"
 hidden: true
 ---
 
-## 📚 [Docs website](https://docs.cow.fi/)[​](#-docs-website "Direct link to -docs-website")
+## 📚 [Docs website](https://docs.cow.fi/)
 
-## Test coverage[​](#test-coverage "Direct link to Test coverage")
+## Test coverage
 
 | Statements                                                                                 | Branches                                                                       | Functions                                                                                | Lines                                                                            |
 | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | ![Statements](/images/cow-protocol/reference/sdks/badge/statements-94.77--brightgreen.svg) | ![Branches](/images/cow-protocol/reference/sdks/badge/branches-76.78--red.svg) | ![Functions](/images/cow-protocol/reference/sdks/badge/functions-97.43--brightgreen.svg) | ![Lines](/images/cow-protocol/reference/sdks/badge/lines-97.67--brightgreen.svg) |
 
-## 🌐 **Supported Networks**[​](#-supported-networks "Direct link to -supported-networks")
+## 🌐 **Supported Networks**
 
 The SDK supports all CoW Protocol enabled networks:
 
@@ -28,7 +28,7 @@ The SDK supports all CoW Protocol enabled networks:
 * **Ink** (57073) - `SupportedChainId.INK`
 * **Sepolia** (11155111) - `SupportedChainId.SEPOLIA` (Testnet)
 
-## 🔗 **Related Resources**[​](#-related-resources "Direct link to -related-resources")
+## 🔗 **Related Resources**
 
 * **[CoW Protocol Documentation](https://docs.cow.fi/)**
 * **[API Reference](https://api.cow.fi/docs/)**
@@ -38,9 +38,9 @@ The SDK supports all CoW Protocol enabled networks:
 * **Discord**: [CoW Protocol Discord](https://discord.com/invite/cowprotocol)
 * **Documentation**: [docs.cow.fi](https://docs.cow.fi/)
 
-## Getting Started[​](#getting-started "Direct link to Getting Started")
+## Getting Started
 
-### Usage Examples[​](#usage-examples "Direct link to Usage Examples")
+### Usage Examples
 
 **React Examples:**
 
@@ -55,7 +55,7 @@ The SDK supports all CoW Protocol enabled networks:
 * [Node.js (ethers v6)](https://github.com/cowprotocol/cow-sdk/blob/main/examples/nodejs/ethers6/src/index.ts)
 * [Node.js (ethers v5)](https://github.com/cowprotocol/cow-sdk/blob/main/examples/nodejs/ethers5/src/index.ts)
 
-### Installation[​](#installation "Direct link to Installation")
+### Installation
 
 ```
 pnpm add @cowprotocol/cow-sdk
@@ -65,28 +65,28 @@ pnpm add @cowprotocol/cow-sdk
 yarn add @cowprotocol/cow-sdk
 ```
 
-## CoW SDK[​](#cow-sdk-1 "Direct link to CoW SDK")
+## CoW SDK
 
 Using CoW Protocol, you can perform swaps, limit orders, TWAP orders, and many other operations. The `@cowprotocol/cow-sdk` provides tools at different abstraction levels, allowing you to conveniently implement basic scenarios while maintaining the flexibility to control all possible cases.
 
 > In most cases, you will only need to use the **[Trading SDK](https://github.com/cowprotocol/cow-sdk/tree/main/packages/trading/README.md)**
 
-## SDK Components[​](#sdk-components "Direct link to SDK Components")
+## SDK Components
 
-### Core[​](#core "Direct link to Core")
+### Core
 
 * **[`TradingSdk`](https://github.com/cowprotocol/cow-sdk/tree/main/packages/trading/README.md)** - Main tool for swap and limit orders with built-in quote fetching, order signing, and posting
 * **[`OrderSigningUtils`](https://github.com/cowprotocol/cow-sdk/tree/main/packages/order-signing/README.md)** - Utilities for signing orders and cancellations using cryptographic algorithms
 * **[`OrderBookApi`](https://github.com/cowprotocol/cow-sdk/tree/main/packages/order-book/README.md)** - Provides the ability to retrieve orders and trades from the CoW Protocol order book, as well as add and cancel them
 * **[`MetadataApi`](https://github.com/cowprotocol/cow-sdk/tree/main/packages/app-data/README.md)** - API for accessing order metadata and additional information
 
-### Advanced[​](#advanced "Direct link to Advanced")
+### Advanced
 
 * **[`BridgingSdk`](https://github.com/cowprotocol/cow-sdk/tree/main/packages/bridging/README.md)** - Cross-chain token transfers and bridging functionality
 * **[`ConditionalOrder`](https://github.com/cowprotocol/cow-sdk/tree/main/packages/composable/README.md)** - SDK for Programmatic Orders such as TWAP ([Read more](https://docs.cow.fi/cow-protocol/explanation/order-types/programmatic-orders))
 * **[`CowShedSdk`](https://github.com/cowprotocol/cow-sdk/tree/main/packages/cow-shed/README.md)** - Account abstraction that leverages EOA with smart contract capabilities
 
-## v6 → v7 Migration Guide[​](#v6--v7-migration-guide "Direct link to v6 → v7 Migration Guide")
+## v6 → v7 Migration Guide
 
 The versions are 99% backward compatible. The only difference is that in v7 you need to set an adapter corresponding to the library you use: `Viem`, `Ethers6`, or `Ethers5`.
 
@@ -114,7 +114,7 @@ You will likely also need to bind the SDK to your app's account state. When the 
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi'import { useEffect, useState } from 'react'import { ViemAdapter, ViemAdapterOptions } from '@cowprotocol/sdk-viem-adapter'import { tradingSdk } from '../cowSdk.ts'import { setGlobalAdapter } from '@cowprotocol/cow-sdk'export function useBindCoWSdkToWagmi(): boolean {  const { chainId } = useAccount()  const { data: walletClient } = useWalletClient()  const publicClient = usePublicClient()  const [isSdkReady, setIsSdkReady] = useState(false)  /**   * Sync Trading SDK with wagmi account state (chainId and signer)   */  useEffect(() => {    if (!walletClient || !chainId) return    setGlobalAdapter(      new ViemAdapter({        provider: publicClient,        walletClient,      } as unknown as ViemAdapterOptions),    )    tradingSdk.setTraderParams({ chainId })    setIsSdkReady(true)  }, [publicClient, walletClient, chainId])  return isSdkReady}
 ```
 
-## Basic Use Case[​](#basic-use-case "Direct link to Basic Use Case")
+## Basic Use Case
 
 This example demonstrates the main use case of creating a swap and shows how to:
 
@@ -131,7 +131,7 @@ This example demonstrates the simplest way to trade on CoW Protocol.
 
 For more advanced use cases, you can use additional parameters such as `receiver`, `partiallyFillable`, `validTo`, and others. Refer to the [Trading SDK documentation](https://github.com/cowprotocol/cow-sdk/tree/main/packages/trading/README.md) for comprehensive details.
 
-## Developer Attribution (UTM Tracking)[​](#developer-attribution-utm-tracking "Direct link to Developer Attribution (UTM Tracking)")
+## Developer Attribution (UTM Tracking)
 
 The SDK automatically includes UTM tracking in all orders to attribute trading volume to developers. Default parameters:
 
@@ -149,7 +149,7 @@ The SDK automatically includes UTM tracking in all orders to attribute trading v
 
 > **Tip:** Use `utmContent` for graffiti without affecting your `appCode`. The `appCode` parameter tracks your integration on [CoW Protocol's Dune dashboards](https://dune.com/cowprotocol/cowswap), while `utmContent` is available for custom identifiers or experimentation - all while attributing your volume to SDK integrators' collective impact.
 
-## Partner API[​](#partner-api "Direct link to Partner API")
+## Partner API
 
 Partners can use authenticated API access with higher rate limits via the Partner API gateway. Pass your API key when creating an `OrderBookApi` instance:
 
@@ -161,43 +161,43 @@ By default, the SDK routes requests through `partners.cow.fi` (prod) or `partner
 
 See the [OrderBookApi documentation](https://github.com/cowprotocol/cow-sdk/tree/main/packages/order-book/README.md#partner-api-authenticated-access) for more details, including usage with the Trading SDK.
 
-## Adapters[​](#adapters "Direct link to Adapters")
+## Adapters
 
 The CoW SDK supports multiple blockchain adapters to work with different Web3 libraries. You need to install and configure one of the following adapters:
 
-### Available Adapters[​](#available-adapters "Direct link to Available Adapters")
+### Available Adapters
 
 * **EthersV6Adapter** - For ethers.js v6
 * **EthersV5Adapter** - For ethers.js v5
 * **ViemAdapter** - For viem
 
-### Installation[​](#installation-1 "Direct link to Installation")
+### Installation
 
 ```
 # For ethers v6pnpm add @cowprotocol/sdk-ethers-v6-adapter ethers# For ethers v5pnpm add @cowprotocol/sdk-ethers-v5-adapter ethers@^5.7.0# For viempnpm add @cowprotocol/sdk-viem-adapter viem
 ```
 
-### Adapter Setup Examples[​](#adapter-setup-examples "Direct link to Adapter Setup Examples")
+### Adapter Setup Examples
 
-#### EthersV6Adapter[​](#ethersv6adapter "Direct link to EthersV6Adapter")
+#### EthersV6Adapter
 
 ```
 import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter'import { JsonRpcProvider, Wallet } from 'ethers'const provider = new JsonRpcProvider('YOUR_RPC_URL')const wallet = new Wallet('YOUR_PRIVATE_KEY', provider)const adapter = new EthersV6Adapter({ provider, signer: wallet })
 ```
 
-#### EthersV5Adapter[​](#ethersv5adapter "Direct link to EthersV5Adapter")
+#### EthersV5Adapter
 
 ```
 import { EthersV5Adapter } from '@cowprotocol/sdk-ethers-v5-adapter'import { ethers } from 'ethers'const provider = new ethers.providers.JsonRpcProvider('YOUR_RPC_URL')const wallet = new ethers.Wallet('YOUR_PRIVATE_KEY', provider)const adapter = new EthersV5Adapter({ provider, signer: wallet })
 ```
 
-#### ViemAdapter[​](#viemadapter "Direct link to ViemAdapter")
+#### ViemAdapter
 
 ```
 import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'import { http, createPublicClient, privateKeyToAccount } from 'viem'import { sepolia } from 'viem/chains'const account = privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`)const transport = http('YOUR_RPC_URL')const provider = createPublicClient({ chain: sepolia, transport })// You can also set `walletClient` instead of `signer` using `useWalletClient` from wagmiconst adapter = new ViemAdapter({ provider, signer: account })
 ```
 
-## Low-Level SDK Usage Example[​](#low-level-sdk-usage-example "Direct link to Low-Level SDK Usage Example")
+## Low-Level SDK Usage Example
 
 This example demonstrates low-level API usage with a practical scenario: exchanging `0.4 GNO` for `WETH` on the Gnosis Chain network.
 

@@ -5,11 +5,11 @@ description: "The orderbook is the main API that traders, UIs and other integrat
 
 Its implementation can be found [here](https://github.com/cowprotocol/services/tree/main/crates/orderbook). The API is documented in detail [here](/cow-protocol/reference/apis/orderbook).
 
-## Overview[​](#overview "Direct link to Overview")
+## Overview
 
 By and large the orderbook is a [CRUD](https://en.wikipedia.org/wiki/Create,_read,_update_and_delete) service for the state of the protocol. It connects to the database which is shared with the [autopilot](/cow-protocol/explanation/architecture/autopilot) to insert or update orders and serves information about existing orders as well as previous trades and auctions.
 
-## Architecture[​](#architecture "Direct link to Architecture")
+## Architecture
 
 The standard trader interaction flow can be seen in the following sequence diagram:
 
@@ -21,11 +21,11 @@ Once signed, the trader will post the order for inclusion in the next batch. At 
 
 Now it's the protocol's and solvers' turn to distribute and match the order. During this time, the trader may request status updates about their order from the orderbook and finally request information about the executed trade and solver competition.
 
-## Methodology[​](#methodology "Direct link to Methodology")
+## Methodology
 
 The orderbook exposes a variety of different endpoints. The majority of them are simple [REST](https://en.wikipedia.org/wiki/REST) interfaces on top of the data model that is stored in the database. However, there are some more involved operations, which are worth explaining in more detail:
 
-### Getting quotes[​](#getting-quotes "Direct link to Getting quotes")
+### Getting quotes
 
 The quoting process piggy-backs on the solver competition. Solver are tasked in finding a matching for an auction instance including only one order (the order to be quoted). These quote auctions have a *significantly* shorter deadline to solve "quote" auctions as they are fundamentally simpler to solve.
 
@@ -36,7 +36,7 @@ Quotes can be requested using either the *fast* or *optimal* quality type.
 
 The API also exposes another price-related route, `/native_price`, which can be used to get an approximate estimate of the dollar (or ETH) value for a given amount of tokens. These price estimates use fixed amounts and are more heavily cached allowing for faster response times.
 
-### Placing orders[​](#placing-orders "Direct link to Placing orders")
+### Placing orders
 
 Before an order is accepted in the database it is validated. Validation steps include
 
@@ -47,7 +47,7 @@ Before an order is accepted in the database it is validated. Validation steps in
 
 Each order is also associated with a quote for classification as either in or out of market price. This may have an effect on the fee policy used. For this either the trader provided `quoteId` is looked up or a fresh quote is created.
 
-## Considerations[​](#considerations "Direct link to Considerations")
+## Considerations
 
 The orderbook synchronizes state with the autopilot via a shared database. It communicates with solvers to produce price estimates. It uses IPFS to update and fetch [appData](/cow-protocol/reference/core/intents/app-data) documents. It also depends on on-chain state for:
 

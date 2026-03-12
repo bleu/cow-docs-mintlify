@@ -148,7 +148,7 @@ Every quote response includes a `validTo` timestamp (Unix epoch seconds). This d
 
 ## Slippage and Quote Freshness
 
-[Slippage tolerance](/cow-protocol/explanation/how-it-works/how-intents-are-formed#4-fees--slippage) and quote freshness are closely related. Slippage defines how much worse than the quoted price a user is willing to accept:
+[Slippage tolerance](/cow-protocol/explanation/how-it-works/how-intents-are-formed#4-fees-slippage) and quote freshness are closely related. Slippage defines how much worse than the quoted price a user is willing to accept:
 
 - **Tight slippage + stale quote** = high chance the order expires without filling, because the market has already moved beyond the narrow tolerance window.
 - **Wide slippage + stale quote** = order may fill, but the user could receive a significantly worse price than expected.

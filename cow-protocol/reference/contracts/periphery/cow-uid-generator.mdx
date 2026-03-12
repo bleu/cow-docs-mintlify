@@ -3,7 +3,7 @@ title: "CoWUidGenerator"
 description: "A helper contract for calculating the same EIP-712 signature hash for a given user order that the GPv2SettlementContract expects."
 ---
 
-## Architecture[​](#architecture "Direct link to Architecture")
+## Architecture
 
 This contract is a simple helper contract that:
 
@@ -12,9 +12,9 @@ This contract is a simple helper contract that:
 * Determines whether the order is a sell or buy order based on `isSell`.
 * Computes the EIP-712 hash that matches what the CoW Protocol uses to verify user signatures off-chain.
 
-## Data Types and Storage[​](#data-types-and-storage "Direct link to Data Types and Storage")
+## Data Types and Storage
 
-### `GPv2SettlementContract`[​](#gpv2settlementcontract "Direct link to gpv2settlementcontract")
+### `GPv2SettlementContract`
 
 An interface for the [CoW Protocol settlement contract](/cow-protocol/reference/contracts/core/settlement).
 
@@ -22,9 +22,9 @@ An interface for the [CoW Protocol settlement contract](/cow-protocol/reference/
 interface GPv2SettlementContract {    function domainSeparator() external view returns (bytes32);}
 ```
 
-## Functions[​](#functions "Direct link to Functions")
+## Functions
 
-### `getUid`[​](#getuid "Direct link to getuid")
+### `getUid`
 
 Constructs an order, determines if it is a sell or buy order, then computes the same EIP-712 hash used by CoW Protocol for verifying signatures. Returns both the EIP-712 digest and the ABI-encoded order.
 
@@ -49,11 +49,11 @@ getUid(    address sellToken,    address buyToken,    address receiver,    uint2
 | `isSell`            | Indicates whether the order is a buy or sell                                                                                    |
 | `partiallyFillable` | Indicates whether the order is partially fillable or fill-or-kill                                                               |
 
-## Indexing[​](#indexing "Direct link to Indexing")
+## Indexing
 
 Nil
 
-## Off-chain[​](#off-chain "Direct link to Off-chain")
+## Off-chain
 
 Nil
 

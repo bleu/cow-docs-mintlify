@@ -7,7 +7,7 @@ Create your own widget using the configurator [https://widget.cow.fi](https://wi
 
 ![Demo](/images/cow-protocol/tutorials/assets/images/widget-bc5358690765bdbc5b2bc9d2a13a20b5.png)
 
-## Install[​](#install "Direct link to Install")
+## Install
 
 ```
 yarn add @cowprotocol/widget-lib
@@ -17,17 +17,17 @@ yarn add @cowprotocol/widget-lib
 npm install @cowprotocol/widget-lib
 ```
 
-## Quick start[​](#quick-start "Direct link to Quick start")
+## Quick start
 
 ```
 import { createCowSwapWidget, CowSwapWidgetParams } from '@cowprotocol/widget-lib'// HTML element where the widget will be renderedconst widgetContainer = document.getElementById('cowswap-widget')const params: CowSwapWidgetParams = {  appCode: 'NAME-OF-YOU-APP', // Add here the name of your app. e.g. "Pig Swap"  width: 600,  height: 640,  sell: { asset: 'DAI' },  buy: { asset: 'USDC', amount: '0.1' },}createCowSwapWidget(widgetContainer, { params })
 ```
 
-## App key[​](#app-key "Direct link to App key")
+## App key
 
 You must specify the `appCode` parameter when initializing the widget. This parameter is used to identify the source of orders. The key must be a UTF8 string of up to 50 chars. It will be a part of orders meta-data, see more in the [CoW Protocol Docs](https://docs.cow.fi/front-end/creating-app-ids/create-the-order-meta-data-file/appcode).
 
-## Partner fee[​](#partner-fee "Direct link to Partner fee")
+## Partner fee
 
 You may participate in the Partner Fee program to collect fee on [Market order](https://docs.cow.fi/cow-protocol/explanation/order-types/market-orders) trades executed by your users through the Widget by adding the following parameter to your Widget:
 
@@ -37,7 +37,7 @@ import { createCowSwapWidget, CowSwapWidgetParams } from '@cowprotocol/widget-li
 
 This configuration will apply a partner fee for all networks and trade types (swaps, limit orders, TWAPs, etc.). You can use [Flexible config](#flexible-config) for having more flexibility, or [Advanced configuration](#advanced-configuration) to have even more control over the partner fee configuration parameters.
 
-### Flexible config[​](#flexible-config "Direct link to Flexible config")
+### Flexible config
 
 Both `bps` and `recipient` can be set for different chains and different trade types (swap/limit/advanced).
 
@@ -49,7 +49,7 @@ import { PartnerFee, SupportedChainId, TradeType } from '@cowprotocol/widget-lib
 
 See [FlexibleConfig](https://github.com/cowprotocol/cowswap/blob/develop/libs/widget-lib/src/types.ts) type for more information.
 
-### Advanced configuration[​](#advanced-configuration "Direct link to Advanced configuration")
+### Advanced configuration
 
 The `partnerFee` parameter can be set in a more advanced way using events. For example, you can define different fees for different assets:
 
@@ -57,7 +57,7 @@ The `partnerFee` parameter can be set in a more advanced way using events. For e
 import { createCowSwapWidget, CowSwapWidgetParams, CowEventListeners, CowEvents } from '@cowprotocol/widget-lib'let updateParams = nullconst recipient = '0x0000000000000000000000000000000000000000'const defaultPartnerFee = { bps: 50, recipient }const params: CowSwapWidgetParams = { appCode: 'YOUR_APP_ID', partnerFee: defaultPartnerFee }const listeners: CowEventListeners = [  {    event: CowEvents.ON_CHANGE_TRADE_PARAMS,    handler: (event) => {      if (!updateParams) return      if (event.sellToken.symbol === 'DAI') {        updateParams({ partnerFee: { bps: 20, recipient } })      } else if (event.sellToken.symbol === 'USDC') {        updateParams({ partnerFee: { bps: 10, recipient } })      } else {        updateParams({ partnerFee: defaultPartnerFee })      }    },  },]const widget = createCowSwapWidget(container, { params, listeners })updateParams = widget.updateParams
 ```
 
-### Fee BPS[​](#fee-bps "Direct link to Fee BPS")
+### Fee BPS
 
 The fee in basis points (BPS). One basis point is equivalent to 0.01% (1/100th of a percent).
 
@@ -65,7 +65,7 @@ The fee in basis points (BPS). One basis point is equivalent to 0.01% (1/100th o
   The fee cannot exceed 1% (100 bps).
 </Note>
 
-### Recipient[​](#recipient "Direct link to Recipient")
+### Recipient
 
 The recipient is the address to which the fee will be sent.
 
@@ -87,11 +87,11 @@ See [here](/governance/reference/partner-fee) for detailed info about fee calcul
 
 ***
 
-## Slippage configuration[​](#slippage-configuration "Direct link to Slippage configuration")
+## Slippage configuration
 
 The widget supports declarative slippage settings. This allows you to fine‑tune the minimum, maximum and default slippage per network.
 
-### Types[​](#types "Direct link to Types")
+### Types
 
 ```
 /** Slippage expressed in basis points (1 % = 100 bps) */export interface SlippageConfig {  /** Lower bound. Values below this will be clamped */  min?: number  /** Upper bound. Values above this will be clamped */  max?: number  /** Default slippage */  defaultValue?: number}export type FlexibleSlippageConfig = FlexibleConfig<SlippageConfig>
@@ -99,7 +99,7 @@ The widget supports declarative slippage settings. This allows you to fine‑tun
 
 *All values are **basis points** (bps).*
 
-### Parameter[​](#parameter "Direct link to Parameter")
+### Parameter
 
 Add the `slippage` field to `CowSwapWidgetParams`:
 
@@ -113,7 +113,7 @@ Or configure per‑network rules using the same [FlexibleConfig](https://github.
 import { SupportedChainId } from '@cowprotocol/widget-lib'const params: CowSwapWidgetParams = {  slippage: {    [SupportedChainId.MAINNET]: { min: 1, max: 3900, defaultValue: 3000 },    [SupportedChainId.BASE]: { min: 500, max: 5000, defaultValue: 600 },  },}
 ```
 
-### Behaviour & validation[​](#behaviour--validation "Direct link to Behaviour & validation")
+### Behaviour & validation
 
 | Rule               | Description                                                                                                                                                                                     |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -122,7 +122,7 @@ import { SupportedChainId } from '@cowprotocol/widget-lib'const params: CowSwapW
 | **Auto slippage**  | If the auto-slippage is less than or equal to `defaultValue`, the swap will use `defaultValue`                                                                                                  |
 | **ETH‑Flow floor** | When `defaultValue < 200` bps (2 %) for Ethereum Mainnet or `defaultValue < 50` (0.5 %) for other networks and the trade is *ETH‑Flow*, the widget will force the slippage to **2 %**/**0.5 %** |
 
-### Example JSON (Configurator ready)[​](#example-json-configurator-ready "Direct link to Example JSON (Configurator ready)")
+### Example JSON (Configurator ready)
 
 ```
 {  "slippage": {    "1": { "min": 1, "max": 3900, "defaultValue": 3000 },    "8453": { "min": 500, "max": 5000, "defaultValue": 600 }  }}
@@ -132,7 +132,7 @@ Paste the snippet into **RAW JSON params** → open the **Swap** form → check 
 
 ***
 
-## Wallet provider[​](#wallet-provider "Direct link to Wallet provider")
+## Wallet provider
 
 You can pass the wallet provider from your application to seamlessly use the widget as part of your application. Also, you can not specify the provider, in this case the widget will work in standalone mode with the ability to connect any wallet supported in CoW Swap.
 
@@ -148,9 +148,9 @@ An example of connecting a widget to Rabby Wallet or Metamask:
 import { createCowSwapWidget, CowSwapWidgetParams } from '@cowprotocol/widget-lib'createCowSwapWidget(document.getElementById('cowswap-widget'), {  params: { appCode: 'NAME-OF-YOU-APP' }, // Add here the name of your app. e.g. "Pig Swap"  provider: window.ethereum, // <-------})
 ```
 
-## Configuration[​](#configuration "Direct link to Configuration")
+## Configuration
 
-### `CowSwapWidgetParams`[​](#cowswapwidgetparams "Direct link to cowswapwidgetparams")
+### `CowSwapWidgetParams`
 
 > All params are optional
 
@@ -186,7 +186,7 @@ import { createCowSwapWidget, CowSwapWidgetParams } from '@cowprotocol/widget-li
 | `forcedOrderDeadline`                 | `ForcedOrderDeadline`  | ---                     | Order deadline in minutes. Either a single value applied to each individual order type accordingly or an optional individual value per order type. The app will use the appropriated min/max value per order type. When set, user's won't be able to edit the deadline. Accepted values: single for all `123` OR per TradeType `{"swap": 15, "limit": 666}` OR per network `{1: 35, 100: 5}` |
 | `slippage`                            | `SlippageConfig`       | ---                     | You can set up a slippage settings for all networks in the widget. See [Slippage configuration](#slippage-configuration) section for more details.                                                                                                                                                                                                                                           |
 
-## Custom theme[​](#custom-theme "Direct link to Custom theme")
+## Custom theme
 
 By setting custom colors you can very flexibly control the appearance of the widget. To do this, you need to pass an object of type `CowSwapWidgetPalette` to the `theme` parameter.
 
@@ -202,7 +202,7 @@ Try it yourself: [https://widget.cow.fi](https://widget.cow.fi).
 
 ![Custom theme](/images/cow-protocol/tutorials/assets/images/custom-theme-1b31f7299d69d9e6a41ad5cdc422be39.png)
 
-## Custom tokens[​](#custom-tokens "Direct link to Custom tokens")
+## Custom tokens
 
 CowSwap uses the [token lists standard](https://tokenlists.org), which allows flexible and decentralized management of assets for trading. You can manage the list of tokens in CoW Swap UI:
 
@@ -213,7 +213,7 @@ In the widget you have two options to add custom tokens:
 * using `tokenLists` parameter
 * using `customTokens` parameter
 
-### `tokenLists`[​](#tokenlists "Direct link to tokenlists")
+### `tokenLists`
 
 In this parameter you can specify the URL or ENS address of the token list.
 
@@ -223,7 +223,7 @@ In this parameter you can specify the URL or ENS address of the token list.
 import { createCowSwapWidget, CowSwapWidgetParams } from '@cowprotocol/widget-lib'const container = document.getElementById('cowswap-widget')const params: CowSwapWidgetParams = { tokenLists: ['https://files.cow.fi/tokens/CowSwap.json'] }createCowSwapWidget(container, { params })
 ```
 
-### `customTokens`[​](#customtokens "Direct link to customtokens")
+### `customTokens`
 
 If you want to use tokens that are not included in the default token lists, you can add them programmatically by passing an array of ERC-20 tokens info.
 
@@ -231,7 +231,7 @@ If you want to use tokens that are not included in the default token lists, you 
 import { createCowSwapWidget, CowSwapWidgetParams, TokenInfo } from '@cowprotocol/widget-lib'const container = document.getElementById('cowswap-widget')const customTokens: TokenInfo = [  {    chainId: 1,    address: '0x69D29F1b0cC37d8d3B61583c99Ad0ab926142069',    name: 'ƎԀƎԀ',    decimals: 9,    symbol: 'ƎԀƎԀ',    logoURI: 'https://assets.coingecko.com/coins/images/31948/large/photo_2023-09-25_14-05-49.jpg?1696530754',  },  {    chainId: 1,    address: '0x9F9643209dCCe8D7399D7BF932354768069Ebc64',    name: 'Invest Club Global',    decimals: 18,    symbol: 'ICG',    logoURI: 'https://assets.coingecko.com/coins/images/34316/large/thatone_200%281%29.png?1704621005',  },]const params: CowSwapWidgetParams = { customTokens }createCowSwapWidget(container, { params })
 ```
 
-## Events handling[​](#events-handling "Direct link to Events handling")
+## Events handling
 
 The widget provides a bus of events that occur in the widget. Using it, you can receive notifications, for example, when an order has been executed or when an approval transaction has been mined.
 
@@ -239,13 +239,13 @@ Separately, it is worth noting the `ON_TOAST_MESSAGE` event; it occurs every tim
 
 > A list of all possible events can be found in the source code on [Github](https://github.com/cowprotocol/cowswap/blob/develop/libs/events/src/types/events.ts).
 
-### Events usage example[​](#events-usage-example "Direct link to Events usage example")
+### Events usage example
 
 ```
 import { createCowSwapWidget, CowSwapWidgetParams, CowEventListeners, CowEvents } from '@cowprotocol/widget-lib'const params: CowSwapWidgetParams = { appCode: 'YOUR_APP_ID' }const listeners: CowEventListeners = [  { event: CowEvents.ON_TOAST_MESSAGE, handler: (event) => console.log('[ON_TOAST_MESSAGE]', event.message) },  { event: CowEvents.ON_EXPIRED_ORDER, handler: (event) => console.log('Order was expired:', event.order) },]const { updateListeners } = createCowSwapWidget(container, { params, listeners })// If you want to change listeners at some point, you can do it like:updateListeners([  { event: CowEvents.ON_CANCELLED_ORDER, handler: (event) => console.log('Order was cancelled:', event.order) },])
 ```
 
-## Widget updating[​](#widget-updating "Direct link to Widget updating")
+## Widget updating
 
 You can change all possible widget options on the fly:
 
@@ -253,7 +253,7 @@ You can change all possible widget options on the fly:
 import { createCowSwapWidget, CowSwapWidgetParams } from '@cowprotocol/widget-lib'const container = document.getElementById('cowswap-widget')const params: CowSwapWidgetParams = {  appCode: 'NAME-OF-YOU-APP', // Add here the name of your app. e.g. "Pig Swap"  logoUrl: 'YOUR_LOGO_URL',}const updateWidget = createCowSwapWidget(container, { params })// Update the widgetupdateWidget({  ...params,  theme: 'dark', // <- Change theme to dark  hideNetworkSelector: true, // <- Hide the network selector})
 ```
 
-## Widget URL[​](#widget-url "Direct link to Widget URL")
+## Widget URL
 
 Most of the widget parameters are controlled via the URL, which means that you can create the URL yourself and embed the iframe. An example of URL:
 
@@ -261,15 +261,15 @@ Most of the widget parameters are controlled via the URL, which means that you c
 https://swap.cow.fi/#/100/swap/WXDAI/GNO?sellAmount=200&theme=dark
 ```
 
-## Customization[​](#customization "Direct link to Customization")
+## Customization
 
-### Sounds[​](#sounds "Direct link to Sounds")
+### Sounds
 
 ```
 import { createCowSwapWidget, CowSwapWidgetParams } from '@cowprotocol/widget-lib'const container = document.getElementById('cowswap-widget')const params: CowSwapWidgetParams = {  sounds: {    // The sound that will be played when the order is placed    postOrder: 'https://swap.cow.fi/audio/send-winterTheme.mp3',    // Nothing will be played when the order is executed    orderExecuted: null,    // Since `orderError` is not specified, the default sound will be played  },}createCowSwapWidget(container, { params })
 ```
 
-### Images[​](#images "Direct link to Images")
+### Images
 
 In the example below, we replace the image that is displayed when there are no orders in the limit orders table. You can replace any image in the widget in the same way.
 
@@ -279,7 +279,7 @@ import { createCowSwapWidget, CowSwapWidgetParams } from '@cowprotocol/widget-li
 
 ![Custom image](/images/cow-protocol/tutorials/assets/images/widget-custom-img-7dbd8236292401203767488f8583d4c9.png)
 
-### Banners[​](#banners "Direct link to Banners")
+### Banners
 
 In some cases, you may want to hide some banners in the CoW Swap interface. To do this, you need to specify the `banners` parameter in the widget configuration.
 
