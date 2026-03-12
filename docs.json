@@ -1243,6 +1243,18 @@
     {
       "source": "/cow-protocol/howto/integrate/sdk",
       "destination": "/cow-sdk/introduction"
+    },
+    {
+      "source": "/cow-protocol/cow-swap",
+      "destination": "/cow-protocol/howto/cow-swap"
+    },
+    {
+      "source": "/cow-protocol/explanation/how-it-works/fee-model",
+      "destination": "/cow-protocol/explanation/fee-model"
+    },
+    {
+      "source": "/cow-protocol/explanation/introduction/integrate",
+      "destination": "/cow-protocol/explanation/integration-overview"
     }
   ]
 }

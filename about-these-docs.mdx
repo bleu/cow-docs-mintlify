@@ -7,73 +7,13 @@ description: "How CoW DAO documentation is structured, organized, and maintained
 
 These docs serve multiple audiences across a complex protocol ecosystem. Here's how the entire documentation site is organized:
 
-```mermaid
-graph TB
-    subgraph Landing["Landing"]
-        HOME[Home Page]
-    end
-
-    subgraph Protocol["CoW Protocol"]
-        direction TB
-        OV[Overview] --> EXP[Explanation]
-        OV --> SWAP[CoW Swap]
-        OV --> EXPL[CoW Explorer]
-        OV --> INT[Integration]
-        OV --> REF[Reference]
-
-        EXP --> EXP_HW[How It Works]
-        EXP --> EXP_BEN[Benefits]
-        EXP --> EXP_OT[Order Types]
-        EXP --> EXP_FL[Flash Loans]
-        EXP --> EXP_AMM[CoW AMM]
-        EXP --> EXP_ARCH[Architecture]
-
-        SWAP --> SWAP_TUT[Trading Tutorials]
-        SWAP --> SWAP_WID[Widget]
-        SWAP --> SWAP_HOOK[Hook dApps]
-
-        EXPL --> EXPL_TUT[Explorer Tutorials]
-
-        INT --> INT_API[API Integration]
-        INT --> INT_QS[Quickstarts]
-        INT --> INT_TEST[Testing]
-
-        REF --> REF_API[APIs]
-        REF --> REF_CORE[Core Reference]
-        REF --> REF_AUC[Auctions]
-    end
-
-    subgraph SDKs["Developer SDKs"]
-        COWSDK[TypeScript SDK]
-        COWPY[Python SDK]
-    end
-
-    subgraph Contracts["Contracts"]
-        CORE_C[Core Contracts]
-        HOOKS[Hooks Trampoline]
-        COMP[ComposableCoW]
-        COWCON[Contracts SDK]
-        FLASH[Flash Loan Router]
-    end
-
-    subgraph Infra["Infrastructure"]
-        BFF[BFF]
-        SVC[Services]
-        WT[Watch Tower]
-    end
-
-    subgraph Gov["Governance"]
-        MISS[Mission & Token]
-        GRANTS[Grants]
-        FEES[Fees]
-    end
-
-    HOME --> Protocol
-    HOME --> SDKs
-    HOME --> Contracts
-    HOME --> Infra
-    HOME --> Gov
-```
+| Section | Contents |
+|---|---|
+| **CoW Protocol** | Overview, Explanation (How It Works, Benefits, Order Types, Flash Loans, CoW AMM, Architecture), CoW Swap (Trading Tutorials, Widget, Hook dApps), CoW Explorer, Integration (API, Quickstarts, Testing), Reference (APIs, Core, Auctions) |
+| **Developer SDKs** | TypeScript SDK, Python SDK |
+| **Contracts** | Core Contracts, Hooks Trampoline, ComposableCoW, Contracts SDK, Flash Loan Router |
+| **Infrastructure** | BFF, Services, Watch Tower |
+| **Governance** | Mission & Token, Grants, Fees |
 
 ## Framework: Diataxis
 
