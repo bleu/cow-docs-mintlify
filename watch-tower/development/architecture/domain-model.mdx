@@ -1,17 +1,17 @@
 ---
 title: "Domain Model"
-description: "Core data structures and business logic for managing conditional orders in CoW Protocol Watch Tower"
+description: "Core data structures and business logic for managing programmatic orders in CoW Protocol Watch Tower"
 ---
 
 # Domain Model
 
-The domain model establishes fundamental data structures and business logic for overseeing conditional orders.
+The domain model establishes fundamental data structures and business logic for overseeing programmatic orders.
 
 **Location**: `src/types/model.ts`
 
 ## ConditionalOrder Type
 
-This type represents a conditional order that has been registered within the system.
+This type represents a programmatic order that has been registered within the system.
 
 ```typescript
 type ConditionalOrder = {
@@ -37,11 +37,11 @@ A unique identifier derived from `keccak256(serialized_order)`. Used as the cont
 
 **tx**
 
-Hash of the transaction creating this conditional order, helpful for tracking and debugging purposes.
+Hash of the transaction creating this programmatic order, helpful for tracking and debugging purposes.
 
 **params**
 
-Conditional order parameters from the CoW Protocol SDK, including handler contract address, salt, and static input data.
+Programmatic order parameters from the CoW Protocol SDK, including handler contract address, salt, and static input data.
 
 **proof**
 
@@ -49,7 +49,7 @@ Contains merkle root and path array for orders created via merkle root; `null` f
 
 **orders**
 
-Tracks discrete orders posted for this conditional order, mapping Order UID to status (SUBMITTED or FILLED).
+Tracks discrete orders posted for this programmatic order, mapping Order UID to status (SUBMITTED or FILLED).
 
 **composableCow**
 
@@ -78,7 +78,7 @@ enum OrderStatus {
 
 ## Registry Class
 
-This class manages state across all conditional orders for every owner.
+This class manages state across all programmatic orders for every owner.
 
 ```typescript
 class Registry {
@@ -124,7 +124,7 @@ Schema version used for migrations during structural changes. Currently at versi
 
 **ownerOrders**
 
-Primary data structure mapping owner addresses to their conditional orders.
+Primary data structure mapping owner addresses to their programmatic orders.
 
 ```typescript
 Map<Owner, Set<ConditionalOrder>>

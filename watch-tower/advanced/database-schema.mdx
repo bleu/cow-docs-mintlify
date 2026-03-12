@@ -7,7 +7,7 @@ description: "LevelDB key-value structure and data models for the Watch Tower"
 
 LevelDB key-value structure and data models for the Watch Tower.
 
-The Watch Tower uses a NoSQL key-value database to store state about conditional orders and processing progress.
+The Watch Tower uses a NoSQL key-value database to store state about programmatic orders and processing progress.
 
 ## Storage keys
 
@@ -31,7 +31,7 @@ This key is critical for recovery - if the watch-tower crashes or restarts, it r
 
 ### CONDITIONAL_ORDER_REGISTRY
 
-Contains the registry of all active conditional orders grouped by owner (safe address).
+Contains the registry of all active programmatic orders grouped by owner (safe address).
 
 **Structure:**
 
@@ -41,9 +41,9 @@ Map<Owner, Set<ConditionalOrder>>
 
 Where each `ConditionalOrder` contains:
 
-* `id` - keccak256 hash of the serialized conditional order
+* `id` - keccak256 hash of the serialized programmatic order
 * `tx` - transaction hash that created the order
-* `params` - the conditional order parameters
+* `params` - the programmatic order parameters
 * `proof` - merkle proof if part of a merkle root, or null for single orders
 * `orders` - map of discrete order UIDs to their status (SUBMITTED or FILLED)
 * `composableCow` - address to poll for orders
@@ -53,11 +53,11 @@ As orders expire or are cancelled, they are automatically removed from the regis
 
 ### CONDITIONAL_ORDER_REGISTRY_VERSION
 
-Stores the schema version number of the conditional order registry.
+Stores the schema version number of the programmatic order registry.
 
 **Current version:** `2`
 
-This key is used to migrate the registry when the schema changes. Version 2 added the `id` field to conditional orders.
+This key is used to migrate the registry when the schema changes. Version 2 added the `id` field to programmatic orders.
 
 ### LAST_NOTIFIED_ERROR
 
@@ -93,4 +93,4 @@ The registry implements forward-compatible schema migrations:
 2. If the version is older than current, data is migrated in-memory
 3. The updated version is written back on the next save
 
-Example: Version 1 to 2 migration adds the missing `id` field to all conditional orders by computing it from the order parameters.
+Example: Version 1 to 2 migration adds the missing `id` field to all programmatic orders by computing it from the order parameters.

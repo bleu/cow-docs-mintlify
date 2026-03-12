@@ -1,15 +1,15 @@
 ---
 title: "Order Polling"
-description: "Learn how the Watch Tower polls conditional orders and submits them to the CoW Protocol OrderBook"
+description: "Learn how the Watch Tower polls programmatic orders and submits them to the CoW Protocol OrderBook"
 ---
 
 # Order Polling
 
-Order polling serves as the fundamental mechanism enabling the Watch Tower to assess conditional orders and determine their readiness for CoW Protocol OrderBook submission. This continuous process evaluates every active conditional order with each new blockchain block.
+Order polling serves as the fundamental mechanism enabling the Watch Tower to assess programmatic orders and determine their readiness for CoW Protocol OrderBook submission. This continuous process evaluates every active programmatic order with each new blockchain block.
 
 ## Polling overview
 
-The Watch Tower evaluates conditional orders by invoking their handler contracts to verify whether order conditions have been satisfied. Upon successful condition validation, the handler delivers a discrete order suitable for OrderBook posting.
+The Watch Tower evaluates programmatic orders by invoking their handler contracts to verify whether order conditions have been satisfied. Upon successful condition validation, the handler delivers a discrete order suitable for OrderBook posting.
 
 <Info>
 Polling executes on every block for active orders, unless prior poll results indicate the order should be evaluated at a designated future timestamp or block.
@@ -21,12 +21,12 @@ The polling mechanism consists of four primary steps:
 
 ### 1. Order iteration
 
-For each block, the Watch Tower processes all registered owners and their associated conditional orders:
+For each block, the Watch Tower processes all registered owners and their associated programmatic orders:
 
 ```typescript
 for (const [owner, conditionalOrders] of ownerOrders.entries()) {
   for (const conditionalOrder of conditionalOrders) {
-    // Poll each conditional order
+    // Poll each programmatic order
   }
 }
 ```
@@ -61,7 +61,7 @@ if (
 
 ### 3. Handler invocation
 
-The Watch Tower engages the conditional order handler to assess condition satisfaction:
+The Watch Tower engages the programmatic order handler to assess condition satisfaction:
 
 ```typescript
 export async function pollConditionalOrder(
@@ -301,9 +301,26 @@ return handleOnChainCustomError({
 
 Prevalent hints encompass:
 
-* `PollTryAtEpoch(uint256 epoch)`: Try again at specific time
+* `PollTryAtEpoch(uint256 epoch, uint256 blockTimestamp)`: Try again at specific time
 * `PollTryAtBlock(uint256 blockNumber)`: Try again at specific block
+* `PollTryNextBlock`: Try again on the next block
+* `OrderNotValid(string reason)`: Order is not currently valid
 * `PollNever(string reason)`: Stop trying
+
+<Warning>
+**Unknown reverts permanently stop polling (Issue #325)**
+
+If `getTradeableOrderWithSignature` reverts with bytes that do not decode to one of the known custom errors listed above, the Watch Tower classifies the result as `UNEXPECTED_ERROR` and **permanently stops polling that order**. This applies to any revert that produces unrecognized error data, including:
+
+- Arithmetic overflows or underflows (Solidity 0.8+ panic codes)
+- Out-of-gas in sub-calls
+- Generic `revert()` or `require()` without a matching custom error
+- Reverts from external contract calls that propagate unknown error selectors
+
+The order creator receives **no notification** when this happens. The order silently disappears from the polling cycle.
+
+**All revert paths in your handler must use one of the recognized custom errors.** If your handler logic can fail for any reason, wrap it in a try/catch and revert with `OrderNotValid(reason)` as a fallback. See [Custom Orders — Error Communication](/composable-cow/advanced/custom-orders#error-communication) for the full list of recognized errors.
+</Warning>
 
 ## Performance optimization
 

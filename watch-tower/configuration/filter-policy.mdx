@@ -1,13 +1,13 @@
 ---
 title: "Filter Policy Configuration"
-description: "Control which conditional orders are processed by the Watch Tower"
+description: "Control which programmatic orders are processed by the Watch Tower"
 ---
 
 # Filter Policy Configuration
 
-Control which conditional orders are processed by the Watch Tower.
+Control which programmatic orders are processed by the Watch Tower.
 
-The filter policy allows you to manage which conditional orders are processed, ignored, or dropped by the Watch Tower. Each network has its own filter policy configuration.
+The filter policy allows you to manage which programmatic orders are processed, ignored, or dropped by the Watch Tower. Each network has its own filter policy configuration.
 
 ## Filter policy structure
 
@@ -36,8 +36,8 @@ The filter policy is configured within each network's configuration:
 
 Three actions are available for filtering:
 
-* **ACCEPT** - Process the conditional order normally
-* **DROP** - Ignore the conditional order completely
+* **ACCEPT** - Process the programmatic order normally
+* **DROP** - Ignore the programmatic order completely
 * **SKIP** - Skip processing this time, but may process in the future
 
 ## Default action
@@ -60,9 +60,9 @@ The `defaultAction` field defines the behavior when no specific filter rules mat
 Most configurations should use `"defaultAction": "ACCEPT"` and explicitly drop unwanted orders.
 </Info>
 
-## Filtering by conditional order IDs
+## Filtering by programmatic order IDs
 
-Filter specific conditional orders by their ID (hash):
+Filter specific programmatic orders by their ID (hash):
 
 ```json
 "filterPolicy": {
@@ -73,11 +73,11 @@ Filter specific conditional orders by their ID (hash):
 }
 ```
 
-This drops the specific conditional order with the given ID while accepting all others.
+This drops the specific programmatic order with the given ID while accepting all others.
 
 ## Filtering by transactions
 
-Filter conditional orders created in specific transactions:
+Filter programmatic orders created in specific transactions:
 
 ```json
 "filterPolicy": {
@@ -88,11 +88,11 @@ Filter conditional orders created in specific transactions:
 }
 ```
 
-All conditional orders created in the specified transaction will be dropped.
+All programmatic orders created in the specified transaction will be dropped.
 
 ## Filtering by handlers
 
-Filter conditional orders by their handler contract address:
+Filter programmatic orders by their handler contract address:
 
 ```json
 "filterPolicy": {
@@ -107,7 +107,7 @@ Handler filtering is useful for disabling specific order types or problematic im
 
 ## Filtering by owners
 
-Filter conditional orders by the owner (Safe) address:
+Filter programmatic orders by the owner (Safe) address:
 
 ```json
 "filterPolicy": {
@@ -118,13 +118,13 @@ Filter conditional orders by the owner (Safe) address:
 }
 ```
 
-All conditional orders from the specified owner address will be dropped.
+All programmatic orders from the specified owner address will be dropped.
 
 ## Filter evaluation order
 
-When a conditional order is evaluated, the watch-tower checks filters in this order:
+When a programmatic order is evaluated, the watch-tower checks filters in this order:
 
-1. **Conditional order ID** - Most specific
+1. **Programmatic order ID** - Most specific
 2. **Transaction hash**
 3. **Owner address**
 4. **Handler address**

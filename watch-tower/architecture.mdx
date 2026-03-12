@@ -11,16 +11,16 @@ Technical architecture and implementation details of the CoW Protocol Watch Towe
 
 The Watch Tower follows an event-driven architecture with three main components:
 
-1. **Event Monitor** - Listens for blockchain events and indexes new conditional orders
-2. **Registry/Storage** - Maintains state of all active conditional orders using LevelDB
-3. **Order Poller** - Continuously evaluates conditional orders and submits to OrderBook API
+1. **Event Monitor** - Listens for blockchain events and indexes new programmatic orders
+2. **Registry/Storage** - Maintains state of all active programmatic orders using LevelDB
+3. **Order Poller** - Continuously evaluates programmatic orders and submits to OrderBook API
 
 ```mermaid
 graph TB
     A[Blockchain RPC] -->|Events| B[Event Monitor]
     B -->|New Orders| C[Registry/LevelDB]
     C -->|Active Orders| D[Order Poller]
-    D -->|Check Conditions| E[Conditional Order SDK]
+    D -->|Check Conditions| E[Programmatic order SDK]
     E -->|Discrete Orders| F[OrderBook API]
     D -->|Update State| C
 ```
@@ -31,7 +31,7 @@ The watch tower monitors the ComposableCoW contract for two critical events:
 
 ### ConditionalOrderCreated event
 
-Emitted when a single conditional order is created by a user:
+Emitted when a single programmatic order is created by a user:
 
 ```solidity
 event ConditionalOrderCreated(
@@ -54,7 +54,7 @@ The watch tower uses the event topic hash to efficiently filter logs: `keccak256
 
 ### MerkleRootSet event
 
-Emitted when a batch of conditional orders (merkle tree) is set for a safe:
+Emitted when a batch of programmatic orders (merkle tree) is set for a safe:
 
 ```solidity
 event MerkleRootSet(
@@ -103,7 +103,7 @@ for (const order of proofData) {
 ```
 
 <Info>
-Merkle roots allow users to efficiently set multiple conditional orders in a single transaction, reducing gas costs. The watch tower reconstructs each individual order from the merkle proof.
+Merkle roots allow users to efficiently set multiple programmatic orders in a single transaction, reducing gas costs. The watch tower reconstructs each individual order from the merkle proof.
 </Info>
 
 ## Registry and storage architecture
@@ -142,7 +142,7 @@ The watch tower maintains the following keys in LevelDB:
 | Key | Description | Data Structure |
 |-----|-------------|-----------------|
 | `LAST_PROCESSED_BLOCK_{chainId}` | Last block processed by the watch tower | `{number, timestamp, hash}` |
-| `CONDITIONAL_ORDER_REGISTRY_{chainId}` | Map of all active conditional orders by owner | `Map<Owner, Set<ConditionalOrder>>` |
+| `CONDITIONAL_ORDER_REGISTRY_{chainId}` | Map of all active programmatic orders by owner | `Map<Owner, Set<ConditionalOrder>>` |
 | `CONDITIONAL_ORDER_REGISTRY_VERSION_{chainId}` | Schema version for migrations | `number` |
 | `LAST_NOTIFIED_ERROR_{chainId}` | Timestamp of last error notification | `Date (ISO string)` |
 
@@ -214,13 +214,13 @@ If a write fails, the watch tower throws an error and exits. On restart, it re-p
 
 ## Order polling and submission
 
-After indexing conditional orders, the watch tower continuously polls them to check if execution conditions are met.
+After indexing programmatic orders, the watch tower continuously polls them to check if execution conditions are met.
 
 ### Polling process
 
 For each block processed, the watch tower:
 
-1. Iterates through all registered owners and their conditional orders
+1. Iterates through all registered owners and their programmatic orders
 2. Calls the order's `poll` method from the Composable SDK
 3. Evaluates the returned `PollResult`
 4. Submits discrete orders to the OrderBook API if conditions are satisfied
@@ -255,7 +255,7 @@ By default, the watch tower polls using the current processing block (not latest
 
 ### Posting to OrderBook API
 
-When a conditional order's conditions are met, the watch tower:
+When a programmatic order's conditions are met, the watch tower:
 
 1. Extracts the discrete order parameters from the `PollResult`
 2. Signs the order (if required by the order type)
@@ -355,7 +355,7 @@ The watch tower detects blockchain reorganizations by comparing block hashes. Wh
 
 For each block, the watch tower executes:
 
-1. **Process new order events** - Index any new conditional orders
+1. **Process new order events** - Index any new programmatic orders
 2. **Poll existing orders** - Check all registered orders for execution conditions
 3. **Submit discrete orders** - Post eligible orders to OrderBook API
 4. **Persist state** - Atomically write registry and last processed block
@@ -551,7 +551,7 @@ if (filterPolicy) {
   });
 
   if (filterResult === policy.FilterAction.DROP) {
-    log.info("Not adding the conditional order. Reason: AcceptPolicy: DROP");
+    log.info("Not adding the programmatic order. Reason: AcceptPolicy: DROP");
     return false;
   }
 }

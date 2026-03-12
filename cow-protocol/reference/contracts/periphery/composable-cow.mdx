@@ -1,12 +1,12 @@
 ---
 title: "ComposableCoW"
-description: "ComposableCoW is a framework for smoothing the developer experience when building conditional orders on CoW Protocol. Conditional orders are a subset of  smart contract orders. It allows one to create conditional orders that:"
+description: "ComposableCoW is the contract that implements programmatic orders on CoW Protocol. Programmatic orders are a subset of smart contract orders. It allows one to create programmatic orders that:"
 ---
 
 1. Can be used to generate multiple discrete order (self-expressing)
 2. Assess a proposed order against a set of conditions (self-validating)
 
-The framework makes boilerplate code for conditional orders a thing of the past, and allows developers to focus on the business logic of their order. ComposableCoW handles:
+The framework makes boilerplate code for programmatic orders a thing of the past, and allows developers to focus on the business logic of their order. `ComposableCoW` handles:
 
 1. Authorization (multiple owners, with multiple orders per owner)
 2. Order relaying (watch-towers)
@@ -15,12 +15,12 @@ The framework makes boilerplate code for conditional orders a thing of the past,
 
 The following principles have been employed in the architectural design:
 
-1. `O(1)` gas-efficiency for `n` conditional order creation / replacement / deletion
-2. Conditional orders **SHOULD** behave the same as a discrete order for EOAs (self-custody of assets, i.e. "wrapper" contracts not required)
-3. Conditional orders **SHOULD** be optimized towards *statelessness* - pass required data via `calldata`
+1. `O(1)` gas-efficiency for `n` programmatic order creation / replacement / deletion
+2. Programmatic orders **SHOULD** behave the same as a discrete order for EOAs (self-custody of assets, i.e. "wrapper" contracts not required)
+3. Programmatic orders **SHOULD** be optimized towards *statelessness* - pass required data via `calldata`
 4. **MAY** enhance the [Safe](https://safe.global) user experience when paired with [`ExtensibleFallbackHandler`](https://hackmd.io/-nLuF3JIRyuS5w864_mbrg) 🐮🔒
 
-By using Merkle Trees, the gas efficiency of `O(1)` is achieved for `n` conditional orders. This is achieved by storing the Merkle Tree root on-chain, and passing the Merkle Tree proof to the `ComposableCoW` contract. This allows for `O(1)` gas efficiency for adding / removing conditional orders.
+By using Merkle Trees, the gas efficiency of `O(1)` is achieved for `n` programmatic orders. This is achieved by storing the Merkle Tree root on-chain, and passing the Merkle Tree proof to the `ComposableCoW` contract. This allows for `O(1)` gas efficiency for adding / removing programmatic orders.
 
 For simplicity, single orders are also supported, however, this is **NOT** recommended for large `n` as the gas efficiency is `O(n)`.
 
@@ -32,11 +32,11 @@ As there are many nested contracts, it's important for a callee to know some con
 ctx = merkle root of orders: bytes32(0)      single order:          H(ConditionalOrderParams)
 ```
 
-Having this context also allows for conditional orders / merkle roots to use this as a key in a mapping, to store conditional order-specific data.
+Having this context also allows for programmatic orders / merkle roots to use this as a key in a mapping, to store programmatic order-specific data.
 
-#### Conditional order verification flow[​](#conditional-order-verification-flow "Direct link to Conditional order verification flow")
+#### Programmatic order verification flow[​](#conditional-order-verification-flow "Direct link to Programmatic order verification flow")
 
-The following flowchart illustrates the conditional order verification flow (assuming `safe`):
+The following flowchart illustrates the programmatic order verification flow (assuming `safe`):
 
 #### Settlement execution path[​](#settlement-execution-path "Direct link to Settlement execution path")
 
@@ -75,7 +75,7 @@ In order to delegate signature verification to `ComposableCoW`, the delegating c
 
 ### Discrete order verifiers[​](#discrete-order-verifiers "Direct link to Discrete order verifiers")
 
-A conditional order that verifies a proposed discrete order against a set of conditions shall implement the `IConditionalOrder` interface.
+A programmatic order that verifies a proposed discrete order against a set of conditions shall implement the `IConditionalOrder` interface.
 
 ```
 function verify(    address owner,    address sender,    bytes32 _hash,    bytes32 domainSeparator,    bytes32 ctx,    bytes calldata staticInput,    bytes calldata offchainInput    GPv2Order.Data calldata order,) external view;
@@ -83,13 +83,13 @@ function verify(    address owner,    address sender,    bytes32 _hash,    bytes
 
 | **Parameter**     | **Description**                                                                                                                                   |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `owner`           | The owner of the conditional order                                                                                                                |
+| `owner`           | The owner of the programmatic order                                                                                                                |
 | `sender`          | `msg.sender` context calling `isValidSignature`                                                                                                   |
 | `_hash`           | `EIP-712` order digest                                                                                                                            |
 | `domainSeparator` | `EIP-712` domain separator                                                                                                                        |
 | `ctx`             | [Execution context](#execution-context)                                                                                                           |
-| `staticInput`     | Conditional order type-specific data known at time of creation for **all** discrete orders                                                        |
-| `offchainInput`   | Conditional order type-specific data **NOT** known at time of creation for a **specific** discrete order (or zero-length bytes if not applicable) |
+| `staticInput`     | Programmatic order type-specific data known at time of creation for **all** discrete orders                                                        |
+| `offchainInput`   | Programmatic order type-specific data **NOT** known at time of creation for a **specific** discrete order (or zero-length bytes if not applicable) |
 | `order`           | The proposed discrete order's [`GPv2Order.Data`](/cow-protocol/reference/contracts/core/settlement#gpv2orderdata-struct) struct                   |
 
 <Warning>
@@ -106,7 +106,7 @@ function verify(    address owner,    address sender,    bytes32 _hash,    bytes
 
 ### Discrete order generators[​](#discrete-order-generators "Direct link to Discrete order generators")
 
-A conditional order that generates discrete orders shall implement the `IConditionalOrderGenerator` interface.
+A programmatic order that generates discrete orders shall implement the `IConditionalOrderGenerator` interface.
 
 ```
 function getTradeableOrder(    address owner,    address sender,    bytes32 ctx,    bytes calldata staticInput,    bytes calldata offchainInput) external view returns (GPv2Order.Data memory);
@@ -116,9 +116,9 @@ To simplify the developer experience, a [`BaseConditionalOrder`](https://github.
 
 ### Swap guards[​](#swap-guards "Direct link to Swap guards")
 
-A swap guard is a contract that implements the `ISwapGuard` interface, and if set by an `owner`, will be called by `ComposableCoW` prior to calling `verify` on the conditional order.
+A swap guard is a contract that implements the `ISwapGuard` interface, and if set by an `owner`, will be called by `ComposableCoW` prior to calling `verify` on the programmatic order.
 
-This allows for `owner`-wide restrictions on the conditional order, such as:
+This allows for `owner`-wide restrictions on the programmatic order, such as:
 
 * [`receiver` lock](https://github.com/cowprotocol/composable-cow/blob/main/src/guards/ReceiverLock.sol) (i.e. `receiver` **MUST** be `owner`)
 * Token whitelist
@@ -134,7 +134,7 @@ function verify(    GPv2Order.Data calldata order,    bytes32 ctx,    ICondition
 | `order`         | Proposed discrete order                                                                                                                           |
 | `ctx`           | [Execution context](#execution-context)                                                                                                           |
 | `params`        | [`ConditionalOrderParams`](#conditionalorderparams)                                                                                               |
-| `offchainInput` | Conditional order type-specific data **NOT** known at time of creation for a **specific** discrete order (or zero-length bytes if not applicable) |
+| `offchainInput` | Programmatic order type-specific data **NOT** known at time of creation for a **specific** discrete order (or zero-length bytes if not applicable) |
 
 ### Guarantees and Invariants[​](#guarantees-and-invariants "Direct link to Guarantees and Invariants")
 
@@ -143,14 +143,14 @@ function verify(    GPv2Order.Data calldata order,    bytes32 ctx,    ICondition
 * For single orders, `singleOrders[owner][H(ConditionalOrderParams)] == true`
 
 <Warning>
-  While a discrete order can be filled only once on CoW Protocol, a single conditional order can be used to create many different discrete orders. It is the responsibility of the implementation to limit which and when discrete orders can be executed.
+  While a discrete order can be filled only once on CoW Protocol, a single programmatic order can be used to create many different discrete orders. It is the responsibility of the implementation to limit which and when discrete orders can be executed.
 </Warning>
 
 ## Data Types and Storage[​](#data-types-and-storage "Direct link to Data Types and Storage")
 
 ### `ConditionalOrderParams`[​](#conditionalorderparams "Direct link to conditionalorderparams")
 
-A conditional order is defined by the following data:
+A programmatic order is defined by the following data:
 
 ```
 struct ConditionalOrderParams {    IConditionalOrder handler;    bytes32 salt;    bytes staticData;}
@@ -158,16 +158,16 @@ struct ConditionalOrderParams {    IConditionalOrder handler;    bytes32 salt;  
 
 | **Field**    | **Description**                                                              |
 | ------------ | ---------------------------------------------------------------------------- |
-| `handler`    | The contract implementing the conditional order logic                        |
-| `salt`       | Allows for multiple conditional orders of the same type and data             |
-| `staticData` | Data available to **ALL** *discrete* orders created by the conditional order |
+| `handler`    | The contract implementing the programmatic order logic                        |
+| `salt`       | Allows for multiple programmatic orders of the same type and data             |
+| `staticData` | Data available to **ALL** *discrete* orders created by the programmatic order |
 
 <Note>
   All of the above fields are verified by `ComposableCoW` to be valid, prior to calling the `verify` method on the handler (`IConditionalOrder`).
 </Note>
 
 <Check>
-  When used with Merkle Trees and a cryptographically-secure random `salt`, the conditional order is effectively private (until a discrete order cut from this conditional order is broadcast to the CoW Protocol API).
+  When used with Merkle Trees and a cryptographically-secure random `salt`, the programmatic order is effectively private (until a discrete order cut from this programmatic order is broadcast to the CoW Protocol API).
 </Check>
 
 <Warning>
@@ -194,7 +194,7 @@ By setting `proof` to zero-length, this indicates to `ComposableCoW` that the or
 
 ### `Proof`[​](#proof "Direct link to proof")
 
-Some services pick up new conditional orders automatically from on-chain events.
+Some services pick up new programmatic orders automatically from on-chain events.
 
 The proof data can be emitted on-chain, but it can also be retrieved from other supported on-chain services.
 
@@ -237,7 +237,7 @@ struct Proof {    uint256 location;    bytes data;}
 
 ### `roots`[​](#roots "Direct link to roots")
 
-Using an `owner` as a key, the `roots` mapping stores the Merkle Tree root for the conditional orders of that `owner`.
+Using an `owner` as a key, the `roots` mapping stores the Merkle Tree root for the programmatic orders of that `owner`.
 
 ```
 mapping(address => bytes32) public roots;
@@ -245,7 +245,7 @@ mapping(address => bytes32) public roots;
 
 ### `singleOrders`[​](#singleorders "Direct link to singleorders")
 
-Using `owner, ctx` as a key, the `singleOrders` mapping stores the single orders for the conditional orders of that `owner`.
+Using `owner, ctx` as a key, the `singleOrders` mapping stores the single orders for the programmatic orders of that `owner`.
 
 ```
 mapping(address => mapping(bytes32 => bool)) public singleOrders;
@@ -253,7 +253,7 @@ mapping(address => mapping(bytes32 => bool)) public singleOrders;
 
 ### `cabinet`[​](#cabinet "Direct link to cabinet")
 
-Using `owner, ctx` as a key, the `cabinet` mapping stores the conditional order-specific data for the conditional orders of that `owner`.
+Using `owner, ctx` as a key, the `cabinet` mapping stores the programmatic order-specific data for the programmatic orders of that `owner`.
 
 ```
 mapping(address => mapping(bytes32 => bytes32)) public cabinet;
@@ -261,7 +261,7 @@ mapping(address => mapping(bytes32 => bytes32)) public cabinet;
 
 ### `swapGuards`[​](#swapguards "Direct link to swapguards")
 
-Using `owner` as a key, the `swapGuards` mapping stores the swap guards for the conditional orders of that `owner`.
+Using `owner` as a key, the `swapGuards` mapping stores the swap guards for the programmatic orders of that `owner`.
 
 ```
 mapping(address => ISwapGuard) public swapGuards;
@@ -273,7 +273,7 @@ mapping(address => ISwapGuard) public swapGuards;
 
 #### `setRoot` / `setRootWithContext`[​](#setroot--setrootwithcontext "Direct link to setroot--setrootwithcontext")
 
-A `safe` or `owner` calls the respective setter method to set the Merkle Tree root for their conditional orders:
+A `safe` or `owner` calls the respective setter method to set the Merkle Tree root for their programmatic orders:
 
 ```
 function setRoot(bytes32 root, Proof calldata proof) public;function setRootWithContext(    bytes32 root,    Proof calldata proof,    IValueFactory factory,    bytes calldata data) external;
@@ -281,7 +281,7 @@ function setRoot(bytes32 root, Proof calldata proof) public;function setRootWith
 
 | **Parameter** | **Description**                                                                         |
 | ------------- | --------------------------------------------------------------------------------------- |
-| `root`        | Merkle Tree root of conditional orders                                                  |
+| `root`        | Merkle Tree root of programmatic orders                                                  |
 | `proof`       | [`Proof`](#proof)                                                                       |
 | `factory`     | An `IValueFactory` that will be used to populate the `ctx` storage slot (if applicable) |
 | `data`        | Data to be passed to the `factory` to populate the `ctx` storage slot (if applicable)   |
@@ -294,7 +294,7 @@ When a new merkle root is set, emits `MerkleRootSet(address indexed owner, bytes
 
 #### `create` / `createWithContext`[​](#create--createwithcontext "Direct link to create--createwithcontext")
 
-The `owner` calls the respective setter method to create a conditional order:
+The `owner` calls the respective setter method to create a programmatic order:
 
 ```
 function create(    IConditionalOrder.ConditionalOrderParams calldata params,    bool dispatch) public;function createWithContext(    IConditionalOrder.ConditionalOrderParams calldata params,    IValueFactory factory,    bytes calldata data,    bool dispatch) external;
@@ -309,7 +309,7 @@ function create(    IConditionalOrder.ConditionalOrderParams calldata params,   
 
 #### `remove`[​](#remove "Direct link to remove")
 
-The `owner` calls the `remove(bytes32 singleOrderHash)` method to remove a conditional order:
+The `owner` calls the `remove(bytes32 singleOrderHash)` method to remove a programmatic order:
 
 ```
 function remove(bytes32 singleOrderHash) external;
@@ -321,7 +321,7 @@ function remove(bytes32 singleOrderHash) external;
 
 #### `setSwapGuard`[​](#setswapguard "Direct link to setswapguard")
 
-The `owner` calls the `setSwapGuard(ISwapGuard guard)` method to set a swap guard for a conditional order:
+The `owner` calls the `setSwapGuard(ISwapGuard guard)` method to set a swap guard for a programmatic order:
 
 ```
 function setSwapGuard(ISwapGuard swapGuard) external;
@@ -349,7 +349,7 @@ This function will:
 Subsequently, `ComposableCoW` will:
 
 1. Check that the order is authorized.
-2. Check that the order type supports discrete order generation (i.e. `IConditionalOrderGenerator`) by using `IERC165` (and `revert` if not, allowing the watch-tower to prune invalid monitored conditional orders).
+2. Check that the order type supports discrete order generation (i.e. `IConditionalOrderGenerator`) by using `IERC165` (and `revert` if not, allowing the watch-tower to prune invalid monitored programmatic orders).
 3. Call `getTradeableOrder` on the handler to get the discrete order ([`GPv2Order.Data`](/cow-protocol/reference/contracts/core/settlement#gpv2orderdata-struct)).
 4. Generate the signing data as above.
 
@@ -363,19 +363,19 @@ Subsequently, `ComposableCoW` will:
 * `ProofNotAuthed()` - the proof is not authorized (merkle root incorrect)
 * `SingleOrderNotAuthed()` - the single order is not authorized
 * `SwapGuardRestricted()` - the swap guard did not pass verification
-* `InvalidHandler()` - the handler is not a valid conditional order
-* `InvalidFallbackHandler()` - the fallback handler is not a valid conditional order
+* `InvalidHandler()` - the handler is not a valid programmatic order
+* `InvalidFallbackHandler()` - the fallback handler is not a valid programmatic order
 * `InterfaceNotSupported()` - the handler does not support the `IConditionalOrder` interface
 
 <Check>
-  A conditional order developer **SHOULD** use these error codes to ensure that the conditional order is well-formed and not garbage collected / rate limited by a watch-tower.
+  A programmatic order developer **SHOULD** use these error codes to ensure that the programmatic order is well-formed and not garbage collected / rate limited by a watch-tower.
 </Check>
 
-* `OrderNotValid(string)` - the `staticInput` parameters are not valid for the conditional order
+* `OrderNotValid(string)` - the `staticInput` parameters are not valid for the programmatic order
 * `PollTryNextBlock(string)` - signal to a watch-tower that polling should be attempted again
 * `PollTryAtBlock(uint256 blockNumber, string)` - signal to a watch-tower that polling should be attempted again at a specific block number
 * `PollTryAtEpoch(uint256 timestamp, string)` - signal to a watch-tower that polling should be attempted again at a specific epoch (unix timestamp)
-* `PollNever(string)` - signal to a watch-tower that the conditional order should not be polled again (delete)
+* `PollNever(string)` - signal to a watch-tower that the programmatic order should not be polled again (delete)
 
 ## Off-chain[​](#off-chain "Direct link to Off-chain")
 

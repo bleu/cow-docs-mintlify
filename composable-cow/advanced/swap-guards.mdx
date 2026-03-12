@@ -1,11 +1,11 @@
 ---
 title: "Swap Guards"
-description: "Implement the ISwapGuard interface to restrict which conditional orders can settle via CoW Protocol."
+description: "Implement the ISwapGuard interface to restrict which programmatic orders can settle via CoW Protocol."
 ---
 
 # Swap Guards
 
-Swap Guards implement the `ISwapGuard` interface to restrict which conditional orders can settle via CoW Protocol. They provide an additional layer of security and control over conditional orders by validating orders during settlement verification.
+Swap Guards implement the `ISwapGuard` interface to restrict which programmatic orders can settle via CoW Protocol. They provide an additional layer of security and control over programmatic orders by validating orders during settlement verification.
 
 ## How Verification Works
 
@@ -15,7 +15,7 @@ During order processing, ComposableCoW checks if an owner has configured a guard
 |-----------|-------------|
 | `order` | Complete `GPv2Order.Data` struct with all settlement details |
 | `ctx` | Context identifier (`bytes32(0)` for merkle trees or `H(params)` for single orders) |
-| `params` | Conditional order configuration data |
+| `params` | Programmatic order configuration data |
 | `offchainInput` | Dynamic off-chain data for order generation |
 
 If verification fails, settlement triggers a `SwapGuardRestricted` error.

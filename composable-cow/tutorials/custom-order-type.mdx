@@ -1,13 +1,13 @@
 ---
 title: "Building a Custom Order Type"
-description: "Tutorial for implementing, deploying, and registering a custom conditional order with ComposableCoW"
+description: "Tutorial for implementing, deploying, and registering a custom programmatic order with ComposableCoW"
 ---
 
-This tutorial walks through building a custom conditional order type — a smart contract that generates CoW Protocol orders based on on-chain conditions. By the end, you'll have a working `TradeAboveThreshold` handler that automatically sells tokens when a wallet's balance exceeds a threshold.
+This tutorial walks through building a custom programmatic order type — a smart contract that generates CoW Protocol orders based on on-chain conditions. By the end, you'll have a working `TradeAboveThreshold` handler that automatically sells tokens when a wallet's balance exceeds a threshold.
 
 ## What You'll Build
 
-A `TradeAboveThreshold` conditional order that:
+A `TradeAboveThreshold` programmatic order that:
 - Monitors a token balance in a Safe wallet
 - When the balance exceeds a threshold, generates a sell order for the excess
 - Automatically repeats until cancelled
@@ -252,7 +252,7 @@ Note the deployed address — you'll need it to create orders.
 
 ## Step 6: Create an Order
 
-Use the ComposableCoW contract to register your conditional order:
+Use the `ComposableCoW` contract to register your programmatic order:
 
 ```typescript
 import { encodeFunctionData, encodeAbiParameters } from 'viem'
@@ -278,7 +278,7 @@ const staticInput = encodeAbiParameters(
   ],
 )
 
-// Create the conditional order via ComposableCoW
+// Create the programmatic order via ComposableCoW
 const createCalldata = encodeFunctionData({
   abi: [{
     name: 'create',
@@ -329,7 +329,7 @@ Check the Watch Tower API:
 curl https://barn.api.cow.fi/mainnet/api/v1/account/$SAFE_ADDRESS/orders
 ```
 
-If the order doesn't appear, see [Debugging Conditional Orders](/composable-cow/guides/debugging) for troubleshooting.
+If the order doesn't appear, see [Debugging Programmatic Orders](/composable-cow/guides/debugging) for troubleshooting.
 
 ## Error Handling Best Practices
 
@@ -362,5 +362,5 @@ Safe Wallet
 
 - [Custom Orders Reference](/composable-cow/advanced/custom-orders) — interface details and advanced patterns
 - [ComposableCoW Troubleshooting](/composable-cow/guides/troubleshooting) — setup issues
-- [Debugging Conditional Orders](/composable-cow/guides/debugging) — when orders don't execute
+- [Debugging Programmatic Orders](/composable-cow/guides/debugging) — when orders don't execute
 - [Watch Tower](/watch-tower/introduction) — how the Watch Tower monitors and submits orders

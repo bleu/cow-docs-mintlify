@@ -1,11 +1,11 @@
 ---
 title: "Blockchain Events"
-description: "Learn how the Watch Tower monitors blockchain events to track conditional orders"
+description: "Learn how the Watch Tower monitors blockchain events to track programmatic orders"
 ---
 
 # Blockchain Events
 
-The Watch Tower monitors specific blockchain events emitted by the ComposableCoW contract to discover and track conditional orders. These events signal when new orders are created or when existing orders are modified.
+The Watch Tower monitors specific blockchain events emitted by the `ComposableCoW` contract to discover and track programmatic orders. These events signal when new orders are created or when existing orders are modified.
 
 ## Monitored Events
 
@@ -13,7 +13,7 @@ The Watch Tower listens for two primary events from the ComposableCoW contract:
 
 ### ConditionalOrderCreated Event
 
-Emitted when a single new conditional order is created.
+Emitted when a single new programmatic order is created.
 
 **Event Structure:**
 
@@ -26,7 +26,7 @@ event ConditionalOrderCreated(
 
 **Purpose:**
 
-- Signals the creation of an individual conditional order
+- Signals the creation of an individual programmatic order
 - Provides the order's parameters and owner information
 - Triggers the Watch Tower to add the order to its registry
 
@@ -36,7 +36,7 @@ Single orders are more common for testing or simple use cases where gas costs fo
 
 ### MerkleRootSet Event
 
-Emitted when a new merkle root containing multiple conditional orders is set for a Safe.
+Emitted when a new merkle root containing multiple programmatic orders is set for a Safe.
 
 **Event Structure:**
 
@@ -50,7 +50,7 @@ event MerkleRootSet(
 
 **Purpose:**
 
-- Enables batch creation of multiple conditional orders efficiently
+- Enables batch creation of multiple programmatic orders efficiently
 - Reduces gas costs by creating many orders in a single transaction
 - Includes merkle proof data for order verification
 

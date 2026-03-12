@@ -5,7 +5,7 @@ description: "How the Watch Tower persists state using LevelDB"
 
 # Storage Architecture
 
-The Watch Tower uses a key-value database to maintain state about conditional orders and block processing progress.
+The Watch Tower uses a key-value database to maintain state about programmatic orders and block processing progress.
 
 ## Why LevelDB?
 
@@ -26,7 +26,7 @@ These guarantees are critical for maintaining consistency between the blockchain
 
 LevelDB offers a straightforward key-value API that maps well to the watch-tower's storage needs:
 
-* Store conditional orders by owner
+* Store programmatic orders by owner
 * Track last processed block
 * Manage notification state
 
@@ -67,7 +67,7 @@ When the watch-tower restarts:
 3. Events may be reprocessed, but the system becomes eventually consistent
 
 <Warning>
-The watch-tower may reprocess blocks after a crash. Your conditional order handlers should be idempotent to handle duplicate submissions gracefully.
+The watch-tower may reprocess blocks after a crash. Your programmatic order handlers should be idempotent to handle duplicate submissions gracefully.
 </Warning>
 
 ## Database location

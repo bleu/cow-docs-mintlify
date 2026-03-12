@@ -1,6 +1,6 @@
 ---
 title: "Troubleshooting"
-description: "Common issues when setting up ComposableCoW conditional orders and how to diagnose and fix them."
+description: "Common issues when setting up ComposableCoW programmatic orders and how to diagnose and fix them."
 ---
 
 # Troubleshooting
@@ -30,7 +30,7 @@ The setup must happen in this exact order:
 
 1. **Set the fallback handler** on the Safe to ExtensibleFallbackHandler (`0x2f55e8b20D0B9FEFA187AA7d00B6Cbe563605bF5`)
 2. **Register ComposableCoW as domain verifier** by calling `setDomainVerifier` from the Safe to itself
-3. **Create conditional orders** via `ComposableCoW.create()`
+3. **Create programmatic orders** via `ComposableCoW.create()`
 
 If step 1 is not done before step 2, the `setDomainVerifier` call will silently fail (no fallback handler to intercept it).
 
@@ -81,7 +81,7 @@ Bundle via Safe's MultiSend contract.
 
 ## Order not appearing in explorer
 
-After creating a conditional order, it should appear in [CoW Explorer](https://explorer.cow.fi). If it doesn't:
+After creating a programmatic order, it should appear in [CoW Explorer](https://explorer.cow.fi). If it doesn't:
 
 ### 1. Check if the watch-tower picked it up
 
@@ -144,9 +144,84 @@ cd lib/composable-cow
 forge install safe-global/safe-contracts --no-commit
 ```
 
+## Order stopped being polled unexpectedly
+
+If your programmatic order was being polled by the Watch Tower but silently stopped without being cancelled or fulfilled, the most likely cause is an **unrecognized revert error** from your handler contract.
+
+### Root cause
+
+When the Watch Tower calls `getTradeableOrderWithSignature` on your handler and the call reverts, it attempts to decode the revert data against a set of known custom errors:
+
+- `OrderNotValid(string)`
+- `PollTryNextBlock`
+- `PollTryAtBlock(uint256)`
+- `PollTryAtEpoch(uint256, uint256)`
+- `PollNever(string)`
+
+If the revert bytes do not match any of these, the Watch Tower classifies the result as `UNEXPECTED_ERROR` and **permanently stops polling the order**. There is no notification to the order creator.
+
+### Common triggers
+
+- **Arithmetic overflow/underflow** — Solidity 0.8+ reverts with a `Panic(uint256)` error code, which the Watch Tower does not recognize as a polling hint
+- **Failed external calls** — If your handler calls another contract that reverts with its own custom error, those bytes propagate up and won't match the known set
+- **Generic `revert()` or `require(false)`** — These produce empty or non-standard revert data
+- **Out-of-gas in sub-calls** — Can produce unexpected revert behavior
+
+### Debugging steps
+
+1. **Reproduce the revert locally.** Call `getTradeableOrderWithSignature` with the same parameters the Watch Tower uses (owner, params, offchainInput, proof) using `cast call` or a Foundry test:
+   ```bash
+   cast call <COMPOSABLE_COW> \
+     "getTradeableOrderWithSignature(address,(address,bytes32,bytes),bytes,bytes32[])" \
+     <OWNER> "(handler,salt,staticInput)" "0x" "[]" \
+     --rpc-url <RPC_URL>
+   ```
+
+2. **Inspect the revert data.** If the call fails, check the raw revert bytes. Compare the first 4 bytes (the error selector) against the known selectors:
+   - `OrderNotValid`: `0x16f2d3f3`
+   - `PollTryNextBlock`: `0x44882c68`
+   - `PollTryAtBlock`: `0x2d6e06d5`
+   - `PollTryAtEpoch`: `0x4184e129`
+
+3. **Check for arithmetic edge cases.** Review your handler for divisions that could hit zero denominators, multiplications that could overflow, or timestamp arithmetic that could underflow.
+
+4. **Run a local Watch Tower** with `--one-shot --only-owner <YOUR_SAFE>` and `LOG_LEVEL=DEBUG` to see the exact error classification.
+
+### Best practice: defensive error handling
+
+Wrap your handler's core logic in a try/catch so that any unexpected failure maps to a recognized error:
+
+```solidity
+function getTradeableOrder(
+    address owner,
+    address sender,
+    bytes32 ctx,
+    bytes calldata staticInput,
+    bytes calldata offchainInput
+) external view override returns (GPv2Order.Data memory order) {
+    try this._getTradeableOrder(owner, sender, ctx, staticInput, offchainInput)
+        returns (GPv2Order.Data memory result)
+    {
+        return result;
+    } catch Error(string memory reason) {
+        // Solidity require() / revert(string) — surface as OrderNotValid
+        revert IConditionalOrder.OrderNotValid(reason);
+    } catch (bytes memory) {
+        // Panic, custom error from sub-call, or any other revert
+        revert IConditionalOrder.OrderNotValid("unexpected internal error");
+    }
+}
+```
+
+This ensures the Watch Tower always receives a recognized error and continues polling the order on subsequent blocks.
+
+<Warning>
+This is a critical pattern for any custom handler. Without it, a single unexpected revert permanently removes your order from the Watch Tower's polling cycle with no notification. See [Watch Tower Polling — On-chain errors](/watch-tower/concepts/polling#on-chain-errors) for full details.
+</Warning>
+
 ## Salt and replay protection
 
-Each conditional order needs a unique salt. If you reuse a salt for the same handler + parameters + Safe, the order will be a duplicate.
+Each programmatic order needs a unique salt. If you reuse a salt for the same handler + parameters + Safe, the order will be a duplicate.
 
 - Use `keccak256(abi.encodePacked(block.timestamp, nonce))` or similar for unique salts
 - The salt is used to compute the order's storage key in ComposableCoW
@@ -166,5 +241,5 @@ These addresses are the same on Ethereum, Gnosis Chain, Arbitrum One, Base, Poly
 
 - **[Setup Guide](/composable-cow/guides/setup)** — Initial configuration walkthrough
 - **[Architecture](/composable-cow/architecture)** — How the system works
-- **[Watch Tower](/watch-tower/introduction)** — The service that monitors and posts conditional orders
-- **[Debugging Conditional Orders](/composable-cow/guides/debugging)** — Decision tree for "why didn't my order execute?"
+- **[Watch Tower](/watch-tower/introduction)** — The service that monitors and posts programmatic orders
+- **[Debugging Programmatic Orders](/composable-cow/guides/debugging)** — Decision tree for "why didn't my order execute?"

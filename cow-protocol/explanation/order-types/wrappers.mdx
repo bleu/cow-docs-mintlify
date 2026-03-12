@@ -1,0 +1,29 @@
+---
+title: "Wrappers"
+description: "How generalized wrappers enable trading non-standard tokens on CoW Protocol"
+---
+
+CoW Protocol requires all traded assets to be [ERC-20](/cow-protocol/reference/core/tokens) compliant. However, many valuable assets — such as native ETH or other non-standard tokens — do not conform to this interface. Wrappers solve this by converting non-ERC-20 assets into ERC-20 tokens before a trade and, if needed, converting them back afterward.
+
+## How wrappers work
+
+A wrapper consists of two operations executed atomically within a single settlement transaction:
+
+1. **Pre-hook (wrap):** Before the trade, the non-standard asset is wrapped into an ERC-20 token that CoW Protocol can settle.
+2. **Post-hook (unwrap):** After the trade, the resulting ERC-20 token is unwrapped back into the desired non-standard asset.
+
+Because these operations are embedded as [CoW Hooks](/cow-protocol/explanation/order-types/cow-hooks) within the settlement transaction, the entire wrap-trade-unwrap flow is executed atomically — either everything succeeds or nothing does.
+
+## Native ETH and WETH
+
+The most common wrapper is [WETH](https://etherscan.io/token/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2), which wraps native ETH into an ERC-20 token. CoW Protocol handles this natively through the [Eth-flow](/cow-protocol/reference/core/eth-flow) contract, so users can trade ETH directly without manual wrapping.
+
+## Generalized wrappers
+
+Generalized wrappers extend the WETH pattern to other non-standard assets. Any token that can be programmatically wrapped into an ERC-20 — and unwrapped afterward — can be traded on CoW Protocol using pre- and post-hooks.
+
+This enables trading a broader set of assets while preserving all of CoW Protocol's benefits, including [MEV protection](/cow-protocol/explanation/benefits/mev-protection) and [surplus optimization](/cow-protocol/explanation/benefits/price-improvement).
+
+<Note>
+  This is an advanced feature. Most users interact with wrappers transparently through [CoW Swap](https://swap.cow.fi), which handles wrapping and unwrapping automatically when needed.
+</Note>

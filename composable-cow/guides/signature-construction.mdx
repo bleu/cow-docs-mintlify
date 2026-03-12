@@ -1,0 +1,295 @@
+---
+title: "Signature Construction"
+sidebarTitle: "Signature Construction"
+description: "Learn how to construct valid EIP-1271 signatures for ComposableCoW orders to submit them programmatically to the CoW Protocol API."
+---
+
+# Signature Construction
+
+ComposableCoW orders use [EIP-1271](https://eips.ethereum.org/EIPS/eip-1271) (smart contract) signatures rather than EOA signatures. This guide explains how to construct the signature bytes that the settlement contract needs to verify your programmatic order.
+
+<Note>
+This guide assumes you have already [set up your Safe](/composable-cow/guides/setup) with the ExtensibleFallbackHandler and ComposableCoW as domain verifier, and [created a programmatic order](/composable-cow/guides/creating-orders) via `create()` or `createWithContext()`.
+</Note>
+
+## How signature verification works
+
+When the CoW Protocol settlement contract executes a trade for a ComposableCoW order, the following verification chain runs:
+
+```
+GPv2Settlement
+  │
+  ├─ calls isValidSignature(orderDigest, signature) on the Safe
+  │
+  ▼
+Safe (owner)
+  │
+  ├─ delegates to ExtensibleFallbackHandler (fallback handler)
+  │
+  ▼
+ExtensibleFallbackHandler
+  │
+  ├─ extracts the domain separator from the signature
+  ├─ routes to the registered domain verifier (ComposableCoW)
+  │
+  ▼
+ComposableCoW
+  │
+  ├─ decodes ConditionalOrderParams and offchainInput from signature
+  ├─ verifies the order was authorized (via create() or merkle proof)
+  ├─ calls getTradeableOrderWithSignature() on the handler
+  ├─ compares the resulting order's digest to the provided orderDigest
+  └─ returns EIP-1271 magic value (0x1626ba7e) if valid
+```
+
+The signature you construct is what gets passed through this entire chain. ComposableCoW decodes it to recover the `ConditionalOrderParams` and any offchain input, then uses these to regenerate the expected order and verify it matches.
+
+## Signature encoding
+
+The signature for a ComposableCoW order is an ABI-encoded byte string containing two values:
+
+| Component | Type | Description |
+|-----------|------|-------------|
+| `params` | `ConditionalOrderParams` | The handler address, salt, and staticInput used when creating the order |
+| `offchainInput` | `bytes` | Any additional off-chain data the handler needs (empty bytes if none) |
+
+The `ConditionalOrderParams` struct consists of:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `handler` | `address` | The programmatic order handler contract (e.g., TWAP at `0x6cF1e9cA41f7611dEf408122793c358a3d11E5a5`) |
+| `salt` | `bytes32` | Unique identifier for this order |
+| `staticInput` | `bytes` | ABI-encoded parameters specific to the handler |
+
+The encoding format is:
+
+```solidity
+abi.encode(ConditionalOrderParams params, bytes offchainInput)
+```
+
+## Step-by-step construction
+
+<Steps>
+
+### Retrieve your ConditionalOrderParams
+
+Use the exact same `handler`, `salt`, and `staticInput` values that you passed to `ComposableCoW.create()` or `createWithContext()` when you created the order.
+
+<Warning>
+The params must match exactly. Even a single byte difference in `staticInput` produces a different order hash, and ComposableCoW will reject the signature because the order was never authorized.
+</Warning>
+
+### Prepare offchain input
+
+Determine whether your handler requires offchain input. Most standard handlers (TWAP, StopLoss) use empty bytes (`0x`). Custom handlers may require additional data that is not stored on-chain but is needed to generate the tradeable order.
+
+If your handler's `getTradeableOrder()` function uses the `offchainInput` parameter, you must provide the expected value. Otherwise, pass empty bytes.
+
+### ABI-encode the signature
+
+Encode the `ConditionalOrderParams` struct and offchain input together:
+
+<CodeGroup>
+
+```typescript ethers.js v6
+import { AbiCoder } from 'ethers';
+
+const encoder = new AbiCoder();
+
+// Your order parameters (must match what was passed to create())
+const params = {
+  handler: '0x6cF1e9cA41f7611dEf408122793c358a3d11E5a5', // e.g. TWAP handler
+  salt: '0x...', // your unique salt
+  staticInput: '0x...' // ABI-encoded handler-specific params
+};
+
+// Empty bytes if handler needs no offchain input
+const offchainInput = '0x';
+
+const signature = encoder.encode(
+  ['tuple(address handler, bytes32 salt, bytes staticInput)', 'bytes'],
+  [params, offchainInput]
+);
+```
+
+```typescript viem
+import { encodeAbiParameters } from 'viem';
+
+const params = {
+  handler: '0x6cF1e9cA41f7611dEf408122793c358a3d11E5a5' as `0x${string}`,
+  salt: '0x...' as `0x${string}`,
+  staticInput: '0x...' as `0x${string}`
+};
+
+const offchainInput = '0x' as `0x${string}`;
+
+const signature = encodeAbiParameters(
+  [
+    {
+      type: 'tuple',
+      components: [
+        { name: 'handler', type: 'address' },
+        { name: 'salt', type: 'bytes32' },
+        { name: 'staticInput', type: 'bytes' }
+      ]
+    },
+    { type: 'bytes' }
+  ],
+  [params, offchainInput]
+);
+```
+
+```python web3.py
+from eth_abi import encode
+
+params = (
+    '0x6cF1e9cA41f7611dEf408122793c358a3d11E5a5',  # handler
+    bytes.fromhex('...'),  # salt (32 bytes)
+    bytes.fromhex('...')   # staticInput
+)
+
+offchain_input = b''  # empty bytes if handler needs no offchain input
+
+signature = encode(
+    ['(address,bytes32,bytes)', 'bytes'],
+    [params, offchain_input]
+)
+```
+
+</CodeGroup>
+
+### Set the signing scheme to EIP-1271
+
+When submitting the order to the [CoW Protocol Order Book API](/cow-protocol/reference/apis/orderbook), set the `signingScheme` field to `eip1271`:
+
+```json
+{
+  "signingScheme": "eip1271"
+}
+```
+
+### Set the `from` field to the Safe address
+
+The `from` field must be the address of the Safe that owns the programmatic order, not any EOA signer of the Safe.
+
+```json
+{
+  "from": "0x...SafeAddress",
+  "signingScheme": "eip1271",
+  "signature": "0x...encodedSignature"
+}
+```
+
+<Warning>
+The `from` field is required for EIP-1271 orders because the signature cannot be used to recover the signer's address (unlike ECDSA signatures). The settlement contract uses this address to know which contract to call `isValidSignature` on.
+</Warning>
+
+</Steps>
+
+## Full example
+
+Putting it all together, here is a complete example of constructing and submitting a ComposableCoW order signature:
+
+<CodeGroup>
+
+```typescript ethers.js v6
+import { AbiCoder } from 'ethers';
+
+// The Safe address that owns the programmatic order
+const safeAddress = '0xYourSafeAddress';
+
+// Must match exactly what was passed to ComposableCoW.create()
+const params = {
+  handler: '0x6cF1e9cA41f7611dEf408122793c358a3d11E5a5',
+  salt: '0xabc123...', // your unique salt
+  staticInput: '0xdef456...' // your encoded handler params
+};
+
+const offchainInput = '0x';
+
+// Step 1: Encode the signature
+const encoder = new AbiCoder();
+const signature = encoder.encode(
+  ['tuple(address handler, bytes32 salt, bytes staticInput)', 'bytes'],
+  [params, offchainInput]
+);
+
+// Step 2: Submit to the CoW Protocol API
+const orderPayload = {
+  // ... your order fields (sellToken, buyToken, etc.)
+  from: safeAddress,
+  signingScheme: 'eip1271',
+  signature: signature,
+};
+
+const response = await fetch(
+  'https://api.cow.fi/mainnet/api/v1/orders',
+  {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(orderPayload),
+  }
+);
+```
+
+</CodeGroup>
+
+## Common pitfalls
+
+| Pitfall | Symptom | Fix |
+|---------|---------|-----|
+| Wrong `signingScheme` | API rejects the order or signature verification fails | Set `signingScheme` to `eip1271`, not `eip712` or `ethsign` |
+| Wrong `from` address | `isValidSignature` is called on the wrong contract | Use the Safe address, not an EOA signer address |
+| Mismatched `ConditionalOrderParams` | ComposableCoW cannot find the order in `singleOrders` mapping | Ensure `handler`, `salt`, and `staticInput` exactly match what was passed to `create()` |
+| Handler returns unexpected order | Order digest mismatch during verification | Verify the handler's `getTradeableOrder()` output matches the order you are submitting |
+| Missing offchain input | Handler reverts when generating the tradeable order | Provide the offchain data your handler expects, or empty bytes if none |
+| Safe not configured | `isValidSignature` reverts or returns wrong value | Ensure ExtensibleFallbackHandler is set and ComposableCoW is registered as domain verifier ([Setup guide](/composable-cow/guides/setup)) |
+
+## Verifying locally
+
+Before submitting to the API, you can verify your signature will pass validation by calling the `isValidSignature` function directly on the Safe:
+
+<CodeGroup>
+
+```typescript ethers.js v6
+import { Contract, AbiCoder } from 'ethers';
+
+// Compute the order digest using @cowprotocol/contracts
+import { domain, hashOrder } from '@cowprotocol/contracts';
+
+const orderDigest = hashOrder(
+  domain(1, '0x9008D19f58AAbD9eD0D60971565AA8510560ab41'),
+  order
+);
+
+// Call isValidSignature on the Safe
+const safe = new Contract(safeAddress, [
+  'function isValidSignature(bytes32, bytes) view returns (bytes4)'
+], provider);
+
+const MAGIC_VALUE = '0x1626ba7e';
+
+try {
+  const result = await safe.isValidSignature(orderDigest, signature);
+  if (result === MAGIC_VALUE) {
+    console.log('Signature is valid');
+  } else {
+    console.log('Signature is invalid, returned:', result);
+  }
+} catch (error) {
+  console.error('Verification reverted:', error.message);
+}
+```
+
+</CodeGroup>
+
+<Note>
+This call simulates the exact check the settlement contract performs during order execution. If it returns the magic value (`0x1626ba7e`), your signature will be accepted.
+</Note>
+
+## Next steps
+
+- [Creating orders](/composable-cow/guides/creating-orders) -- learn how to create the programmatic order on-chain
+- [Managing orders](/composable-cow/guides/managing-orders) -- revoke or update existing orders
+- [Signing schemes](/cow-protocol/reference/core/signing-schemes) -- understand all CoW Protocol signing methods
+- [Troubleshooting](/composable-cow/guides/troubleshooting) -- debug common issues

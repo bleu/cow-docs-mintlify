@@ -1,13 +1,13 @@
 ---
 title: "Composable Orders API"
-description: "API reference for composable conditional orders in the CoW Protocol Python SDK"
+description: "API reference for composable programmatic orders in the CoW Protocol Python SDK"
 ---
 
-The `composable` module provides functionality for creating and managing conditional orders that execute based on specific conditions.
+The `composable` module provides functionality for creating and managing programmatic orders that execute based on specific conditions.
 
 ## ConditionalOrder
 
-Abstract base class for all conditional orders.
+Abstract base class for all programmatic orders.
 
 ### Constructor
 
@@ -65,7 +65,7 @@ class MyOrder(ConditionalOrder[DataType, StructType]):
 async def poll(self, params: PollParams) -> PollResult
 ```
 
-Poll the conditional order to check if it's tradeable.
+Poll the programmatic order to check if it's tradeable.
 
 #### is_authorized
 
@@ -73,7 +73,7 @@ Poll the conditional order to check if it's tradeable.
 async def is_authorized(self, params: OwnerParams) -> bool
 ```
 
-Check if the owner has authorized this conditional order.
+Check if the owner has authorized this programmatic order.
 
 #### cabinet
 
@@ -87,7 +87,7 @@ Get the cabinet value for this order and owner.
 
 ## Multiplexer
 
-Manages multiple conditional orders using Merkle trees.
+Manages multiple programmatic orders using Merkle trees.
 
 ### Constructor
 
@@ -226,7 +226,7 @@ class ConditionalOrderParams:
 
 | Function | Description |
 |----------|-------------|
-| `encode_params(params)` | Encode conditional order parameters to ABI format |
+| `encode_params(params)` | Encode programmatic order parameters to ABI format |
 | `decode_params(encoded)` | Decode ABI-encoded parameters |
 | `hash_order(domain, order)` | Compute EIP-712 hash of an order |
 | `hash_order_cancellation(domain, order_uid)` | Compute hash for cancelling a single order |

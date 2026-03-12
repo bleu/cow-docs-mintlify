@@ -1,0 +1,87 @@
+---
+title: "Hooks: Getting Started"
+description: "A step-by-step walkthrough of creating and testing your first CoW Hook using the CoW Swap UI"
+---
+
+This tutorial walks you through creating your first CoW Hook using the CoW Swap interface. You'll need to encode your contract call beforehand, but the rest happens entirely through the UI. By the end, you'll have placed an order with a pre-hook or post-hook that executes an arbitrary on-chain call alongside your swap.
+
+## Prerequisites
+
+- A wallet with some tokens on a [supported network](/cow-protocol/reference/sdks/cow-sdk/enums/SupportedChainId) (Ethereum, Gnosis Chain, Arbitrum, or Base)
+- Access to [CoW Swap](https://swap.cow.fi)
+
+## Step 1: Decide what call to make
+
+A hook is defined by three fields that model an Ethereum call:
+
+| Field | Description |
+|---|---|
+| `target` | The contract address to call |
+| `callData` | The encoded function call data |
+| `gasLimit` | Gas needed to execute the call (paid in sell token as part of solver fees) |
+
+For example, if you want to claim GNO from Gnosis Chain validators before a swap, you'd encode the claim function call for the validator deposit contract.
+
+<Tip>
+  If you're not sure how to encode callData, you can use tools like [Foundry's `cast`](https://book.getfoundry.sh/reference/cast/cast-calldata), [ethers.js](https://docs.ethers.org/v6/), or [viem](https://viem.sh/docs/contract/encodeFunctionData.html) to generate it from an ABI and function parameters.
+</Tip>
+
+## Step 2: Add the hook in CoW Swap
+
+1. Navigate to [CoW Swap](https://swap.cow.fi) and connect your wallet
+2. Open the **Hook section** — look for the pre/post hook controls near your order form
+3. Decide whether you want the call to run **before** (pre-hook) or **after** (post-hook) your swap
+4. Open the **hook builder** (the "Build your own hooks" dApp)
+5. Enter the three fields from Step 1: `target`, `callData`, and `gasLimit`
+6. Click **"Add Pre-Hook"** or **"Add Post-Hook"**
+
+CoW Swap will simulate the call on-chain so you can verify it does what you expect before placing the order.
+
+<Note>
+  The call executes in the context of the [HooksTrampoline](/hooks-trampoline/introduction) contract. If your hook needs to act on tokens the user holds (e.g., staking received tokens), you'll need [CoW Shed](/cow-sdk/advanced/account-abstraction) — see [Post-Hook Examples](/cow-protocol/tutorials/post-hook-examples) for patterns.
+</Note>
+
+## Step 3: Place the order
+
+Once you're happy with the simulation:
+
+1. Select your sell token, buy token, and amount as you normally would
+2. Review the order — the execution fee will include the gas cost of your hook
+3. Place the order
+
+Your order will appear in [CoW Explorer](https://explorer.cow.fi). In the order details, scroll to the **appData** field and click "Show more" to see the hook data attached to your order.
+
+## Step 4: Verify the settlement
+
+When your order is filled (usually within a few seconds to minutes):
+
+1. Find the **transaction hash** in the order details on CoW Explorer
+2. Open the transaction in [Etherscan](https://etherscan.io) or [Tenderly](https://tenderly.co) to inspect the internal calls
+3. Verify that your hook executed as expected — you should see the HooksTrampoline contract making the call you specified
+
+For example, a pre-hook that claims GNO would show the trampoline contract calling the claim function before the swap executes, giving your order additional GNO balance to trade with.
+
+## How solvers handle hooks
+
+Solvers execute your hooks as part of the settlement transaction. When a solver posts a batch solution, it includes all pre- and post-hooks for the orders in that batch. This means:
+
+- **Gas-less for users** — hook gas costs are rolled into the solver fees, paid from your sell token
+- **Atomic execution** — if a hook fails, the entire settlement reverts (your swap doesn't execute either)
+- **Batch-level** — hooks execute within the same transaction as the swap
+
+## What's next?
+
+<CardGroup cols={2}>
+  <Card title="Hook Store" icon="store" href="/cow-protocol/reference/hook-store">
+    Browse and use pre-built hooks from the Hook Store
+  </Card>
+  <Card title="Build a Hook dApp" icon="code" href="/cow-protocol/reference/hook-dapp">
+    Create your own hook dApp with a custom UI
+  </Card>
+  <Card title="Post-Hook Examples" icon="arrow-right" href="/cow-protocol/tutorials/post-hook-examples">
+    Swap → stake, swap → bridge, and swap → vault patterns
+  </Card>
+  <Card title="Hooks SDK Guide" icon="book" href="/cow-sdk/advanced/hooks">
+    Programmatic hooks with the Trading SDK
+  </Card>
+</CardGroup>

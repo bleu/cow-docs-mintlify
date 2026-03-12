@@ -1,11 +1,11 @@
 ---
 title: "Setup"
-description: "Configure your Safe wallet to use ComposableCoW for conditional orders on CoW Protocol."
+description: "Configure your Safe wallet to use ComposableCoW for programmatic orders on CoW Protocol."
 ---
 
 # Setup
 
-This guide covers configuring Safe wallets to use ComposableCoW for conditional orders on CoW Protocol.
+This guide covers configuring Safe wallets to use `ComposableCoW` for programmatic orders on CoW Protocol.
 
 ## Key Requirements
 
@@ -15,7 +15,7 @@ Your Safe needs two essential configurations:
 2. **ComposableCoW** registered as the domain verifier at `0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74`
 
 <Note>
-ComposableCoW requires the ExtensibleFallbackHandler to enable EIP-1271 signature verification for conditional orders.
+`ComposableCoW` requires the ExtensibleFallbackHandler to enable EIP-1271 signature verification for programmatic orders.
 </Note>
 
 ## Deployment Consistency
@@ -38,12 +38,12 @@ After configuration, verify both:
 1. The fallback handler assignment
 2. The domain verifier registration
 
-Confirm through contract storage queries before creating conditional orders.
+Confirm through contract storage queries before creating programmatic orders.
 
 ## Next Steps
 
 Once configured, you can proceed to:
 
-- [Create conditional orders](/composable-cow/guides/creating-orders)
+- [Create programmatic orders](/composable-cow/guides/creating-orders)
 - [Manage order lifecycle](/composable-cow/guides/managing-orders)
 - [Explore merkle root batching](/composable-cow/guides/merkle-root-orders) for gas optimization

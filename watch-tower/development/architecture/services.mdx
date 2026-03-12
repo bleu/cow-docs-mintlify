@@ -132,7 +132,7 @@ The warm-up phase synchronizes historical blocks:
 1. Loads last processed block from database
 2. Fetches events from `deploymentBlock` to current block
 3. Processes events in pages (configurable size)
-4. Updates registry with new conditional orders
+4. Updates registry with new programmatic orders
 5. Transitions to `IN_SYNC` state
 
 ### Block Watching
@@ -147,7 +147,7 @@ await context.warmUp();
 For each new block:
 
 1. Fetches `ConditionalOrderCreated` events
-2. Processes new conditional orders
+2. Processes new programmatic orders
 3. Polls existing orders for discrete order creation
 4. Updates database atomically
 

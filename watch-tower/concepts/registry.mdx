@@ -1,11 +1,11 @@
 ---
 title: "Registry and State Management"
-description: "Learn how the Watch Tower stores and manages conditional order state"
+description: "Learn how the Watch Tower stores and manages programmatic order state"
 ---
 
 # Registry and State Management
 
-The Registry serves as the core state management system for the Watch Tower, maintaining a persistent record of all active conditional orders, their owners, and associated metadata across restarts.
+The Registry serves as the core state management system for the Watch Tower, maintaining a persistent record of all active programmatic orders, their owners, and associated metadata across restarts.
 
 ## What the Registry Stores
 
@@ -13,7 +13,7 @@ The Registry maintains several critical pieces of information:
 
 ### Owner and Order Mapping
 
-The primary data structure maps owners to their conditional orders:
+The primary data structure maps owners to their programmatic orders:
 
 ```typescript
 type OrdersPerOwner = Map<Owner, Set<ConditionalOrder>>;
@@ -53,7 +53,7 @@ This prevents spamming notification channels (like Slack) with repeated errors.
 
 ### Poll Results
 
-Each conditional order stores its most recent poll result:
+Each programmatic order stores its most recent poll result:
 
 ```typescript
 pollResult?: {
@@ -114,7 +114,7 @@ The following keys are stored in the database:
 
 **CONDITIONAL_ORDER_REGISTRY**
 
-Stores the serialized registry of all conditional orders:
+Stores the serialized registry of all programmatic orders:
 
 ```typescript
 const key = `CONDITIONAL_ORDER_REGISTRY_${network}`;
@@ -209,7 +209,7 @@ Batch writes ensure that all registry data is updated atomically. If any part fa
 
 ### Adding Orders
 
-When a new conditional order is detected:
+When a new programmatic order is detected:
 
 1. Check if the owner already exists in the registry
 2. If the owner exists, add the order to their set (if not duplicate)
@@ -322,6 +322,6 @@ function reviver(_key: any, value: any) {
 The registry exposes metrics for monitoring:
 
 * `activeOwnersTotal`: Current number of owners with active orders
-* `activeOrdersTotal`: Current number of active conditional orders
+* `activeOrdersTotal`: Current number of active programmatic orders
 
 These metrics are updated whenever the registry is loaded or modified.

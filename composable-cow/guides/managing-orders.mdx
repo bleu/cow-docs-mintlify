@@ -1,6 +1,6 @@
 ---
 title: "Managing Orders"
-description: "Query, monitor, and remove conditional orders through the ComposableCoW protocol."
+description: "Query, monitor, and remove programmatic orders through the ComposableCoW protocol."
 ---
 
 # Managing Orders
@@ -13,7 +13,7 @@ You can verify order existence by examining the `singleOrders` mapping for autho
 
 ### Retrieving Orders
 
-The `getTradeableOrderWithSignature()` function converts conditional orders into discrete GPv2 orders ready for submission to CoW Protocol API. Single orders use empty proofs, while merkle-based orders require proof arrays.
+The `getTradeableOrderWithSignature()` function converts programmatic orders into discrete GPv2 orders ready for submission to CoW Protocol API. Single orders use empty proofs, while merkle-based orders require proof arrays.
 
 ### Order Removal
 

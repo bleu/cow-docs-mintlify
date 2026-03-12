@@ -1,11 +1,11 @@
 ---
 title: "ComposableCoW"
-description: "API reference for the ComposableCoW contract - the central coordinator for conditional orders on CoW Protocol."
+description: "API reference for the ComposableCoW contract - the central coordinator for programmatic orders on CoW Protocol."
 ---
 
 # ComposableCoW Contract
 
-The `ComposableCoW` contract enables creation and management of conditional orders on CoW Protocol, supporting both single orders and merkle tree-based authorization for automated trading strategies.
+The `ComposableCoW` contract enables creation and management of programmatic orders on CoW Protocol, supporting both single orders and merkle tree-based authorization for automated trading strategies.
 
 ## Deployment
 
@@ -20,7 +20,7 @@ Deployed identically across six networks (Ethereum Mainnet, Gnosis Chain, Arbitr
 | Variable | Description |
 |----------|-------------|
 | `domainSeparator` | EIP-712 signature domain from GPv2Settlement |
-| `roots` | Mapping storing merkle roots for conditional orders |
+| `roots` | Mapping storing merkle roots for programmatic orders |
 | `singleOrders` | Tracking individual authorized orders |
 | `swapGuards` | Additional order restriction mechanisms |
 | `cabinet` | On-chain storage for context-specific data |
@@ -29,7 +29,7 @@ Deployed identically across six networks (Ethereum Mainnet, Gnosis Chain, Arbitr
 
 ### Order Creation
 
-- `create()` - Authorize a single conditional order
+- `create()` - Authorize a single programmatic order
 - `createWithContext()` - Authorize with value factory context storage
 
 ### Merkle Tree Management
@@ -54,4 +54,4 @@ Deployed identically across six networks (Ethereum Mainnet, Gnosis Chain, Arbitr
 
 ## Authorization Models
 
-Orders may be authorized individually via `create()` or in batches using merkle proofs, enabling efficient management of multiple conditional orders.
+Orders may be authorized individually via `create()` or in batches using merkle proofs, enabling efficient management of multiple programmatic orders.

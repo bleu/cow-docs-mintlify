@@ -1,0 +1,555 @@
+---
+title: "AI Agent Orders"
+description: "Place orders on CoW Protocol programmatically from an autonomous AI agent — covering quoting, signing, submission, monitoring, and error recovery."
+sidebarTitle: "AI Agent Orders"
+---
+
+This tutorial shows how an autonomous AI agent (running in a loop, triggered by events, or driven by an LLM) can create and manage orders on CoW Protocol through the REST API.
+
+By the end you will have a working Python script that:
+
+1. Fetches a quote
+2. Applies slippage protection
+3. Signs the order (EIP-712)
+4. Submits it to the order book
+5. Monitors execution with proper error recovery
+
+<Note>
+This guide builds on the same API flow as the [Raw API (cURL)](/cow-protocol/tutorials/quickstart-curl) and [Python](/cow-protocol/tutorials/quickstart-python) quickstarts. If you have not placed an order before, start there.
+</Note>
+
+## Prerequisites
+
+Before starting, make sure your agent has access to:
+
+- **A private key** for an EOA wallet (stored securely — environment variable or secrets manager)
+- **ETH on the target chain** — only needed for token approval transactions, not for order submission
+- **Tokens to trade** — the sell token must already be in the wallet
+- **Token approval** for the GPv2VaultRelayer (`0xC92E8bdf79f0507f65a392b0ab4667716BFE0110`) to spend the sell token
+- **Python 3.8+** with `requests`, `web3`, and `eth-account` installed
+
+API base URLs by network:
+
+| Network | Base URL |
+|---|---|
+| Ethereum Mainnet | `https://api.cow.fi/mainnet/api/v1` |
+| Gnosis Chain | `https://api.cow.fi/xdai/api/v1` |
+| Arbitrum One | `https://api.cow.fi/arbitrum_one/api/v1` |
+| Base | `https://api.cow.fi/base/api/v1` |
+| Sepolia (testnet) | `https://api.cow.fi/sepolia/api/v1` |
+
+<Warning>
+Never hardcode private keys. Use environment variables (`os.environ["PRIVATE_KEY"]`) or a secrets manager. The examples below use a placeholder for clarity.
+</Warning>
+
+## Walkthrough
+
+<Steps>
+
+### Step 1: Get a quote
+
+Send a trade intention to `POST /api/v1/quote`. The API returns estimated amounts and fee information.
+
+```python
+import os
+import time
+import random
+import requests
+from eth_account import Account
+from eth_account.messages import encode_typed_data
+from web3 import Web3
+
+# --------------- Configuration ---------------
+PRIVATE_KEY = os.environ["PRIVATE_KEY"]
+API_BASE = "https://api.cow.fi/sepolia/api/v1"
+CHAIN_ID = 11155111  # Sepolia
+
+SETTLEMENT_CONTRACT = "0x9008D19f58AAbD9eD0D60971565AA8510560ab41"
+VAULT_RELAYER = "0xC92E8bdf79f0507f65a392b0ab4667716BFE0110"
+
+SELL_TOKEN = "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"  # WETH
+BUY_TOKEN = "0xbe72E441BF55620febc26715db68d3494213D8Cb"   # COW
+
+account = Account.from_key(PRIVATE_KEY)
+
+# --------------- Get a quote ---------------
+def get_quote(sell_token, buy_token, sell_amount, sender):
+    """Request a quote from the CoW Protocol API."""
+    quote_request = {
+        "sellToken": sell_token,
+        "buyToken": buy_token,
+        "sellAmountBeforeFee": str(sell_amount),
+        "kind": "sell",
+        "from": sender,
+        "receiver": sender,
+        "validFor": 600,  # 10 minutes — shorter validity for agents
+        "signingScheme": "eip712",
+    }
+
+    resp = requests.post(f"{API_BASE}/quote", json=quote_request)
+    resp.raise_for_status()
+    return resp.json()
+
+quote_data = get_quote(SELL_TOKEN, BUY_TOKEN, 10**17, account.address)
+quote = quote_data["quote"]
+
+print(f"Sell amount (after network costs): {quote['sellAmount']}")
+print(f"Buy amount (estimated):            {quote['buyAmount']}")
+print(f"Fee amount (network costs):        {quote['feeAmount']}")
+print(f"Valid until:                        {quote['validTo']}")
+```
+
+<Note>
+Use a shorter `validFor` (e.g. 600 seconds) for agent workflows. The quote expires after this period — if your agent takes too long between quoting and signing, the order will be rejected.
+</Note>
+
+### Step 2: Apply slippage
+
+For sell orders, the `buyAmount` from the quote is an estimate. Apply a slippage tolerance to set the minimum amount your agent will accept.
+
+```python
+SLIPPAGE_BPS = 50  # 0.5% slippage tolerance
+
+def apply_slippage(buy_amount, slippage_bps):
+    """Reduce buyAmount by slippage tolerance to get the minimum acceptable amount."""
+    return int(int(buy_amount) * (10000 - slippage_bps) / 10000)
+
+min_buy_amount = apply_slippage(quote["buyAmount"], SLIPPAGE_BPS)
+print(f"Min buy amount (with {SLIPPAGE_BPS/100}% slippage): {min_buy_amount}")
+```
+
+<Warning>
+Setting slippage too tight (e.g. 0.01%) causes orders to fail in volatile markets. Setting it too loose (e.g. 5%) exposes your agent to worse execution. 0.5% is a reasonable default for most liquid pairs.
+</Warning>
+
+### Step 3: Sign the order
+
+CoW Protocol orders are off-chain intents signed with EIP-712. The key points for the signed order:
+
+- **`sellAmount`** = `quote.sellAmount + quote.feeAmount` (the full amount before network cost deduction)
+- **`buyAmount`** = the slippage-adjusted minimum from Step 2
+- **`feeAmount`** = `0` (fees are handled by the settlement contract)
+
+<CodeGroup>
+
+```python Python
+# EIP-712 domain
+domain_data = {
+    "name": "Gnosis Protocol",
+    "version": "v2",
+    "chainId": CHAIN_ID,
+    "verifyingContract": SETTLEMENT_CONTRACT,
+}
+
+# Order type definition — must match the contract exactly
+order_types = {
+    "Order": [
+        {"name": "sellToken", "type": "address"},
+        {"name": "buyToken", "type": "address"},
+        {"name": "receiver", "type": "address"},
+        {"name": "sellAmount", "type": "uint256"},
+        {"name": "buyAmount", "type": "uint256"},
+        {"name": "validTo", "type": "uint32"},
+        {"name": "appData", "type": "bytes32"},
+        {"name": "feeAmount", "type": "uint256"},
+        {"name": "kind", "type": "string"},
+        {"name": "partiallyFillable", "type": "bool"},
+        {"name": "sellTokenBalance", "type": "string"},
+        {"name": "buyTokenBalance", "type": "string"},
+    ]
+}
+
+# Build signed order from quote
+sell_amount_to_sign = int(quote["sellAmount"]) + int(quote["feeAmount"])
+
+order_data = {
+    "sellToken": quote["sellToken"],
+    "buyToken": quote["buyToken"],
+    "receiver": quote["receiver"],
+    "sellAmount": sell_amount_to_sign,
+    "buyAmount": min_buy_amount,
+    "validTo": quote["validTo"],
+    "appData": bytes.fromhex(quote["appData"][2:]),
+    "feeAmount": 0,
+    "kind": "sell",
+    "partiallyFillable": False,
+    "sellTokenBalance": "erc20",
+    "buyTokenBalance": "erc20",
+}
+
+signable = encode_typed_data(domain_data, order_types, order_data)
+signed = account.sign_message(signable)
+signature = signed.signature.hex()
+
+print(f"Order signed: 0x{signature[:16]}...")
+```
+
+```typescript TypeScript (ethers.js)
+import { ethers } from "ethers";
+
+const domain = {
+  name: "Gnosis Protocol",
+  version: "v2",
+  chainId: 11155111,
+  verifyingContract: "0x9008D19f58AAbD9eD0D60971565AA8510560ab41",
+};
+
+const types = {
+  Order: [
+    { name: "sellToken", type: "address" },
+    { name: "buyToken", type: "address" },
+    { name: "receiver", type: "address" },
+    { name: "sellAmount", type: "uint256" },
+    { name: "buyAmount", type: "uint256" },
+    { name: "validTo", type: "uint32" },
+    { name: "appData", type: "bytes32" },
+    { name: "feeAmount", type: "uint256" },
+    { name: "kind", type: "string" },
+    { name: "partiallyFillable", type: "bool" },
+    { name: "sellTokenBalance", type: "string" },
+    { name: "buyTokenBalance", type: "string" },
+  ],
+};
+
+const order = {
+  sellToken: quote.sellToken,
+  buyToken: quote.buyToken,
+  receiver: quote.receiver,
+  sellAmount: (BigInt(quote.sellAmount) + BigInt(quote.feeAmount)).toString(),
+  buyAmount: minBuyAmount.toString(),
+  validTo: quote.validTo,
+  appData: quote.appData,
+  feeAmount: "0",
+  kind: "sell",
+  partiallyFillable: false,
+  sellTokenBalance: "erc20",
+  buyTokenBalance: "erc20",
+};
+
+const wallet = new ethers.Wallet(process.env.PRIVATE_KEY);
+const signature = await wallet.signTypedData(domain, types, order);
+```
+
+</CodeGroup>
+
+### Step 4: Submit the order
+
+Post the signed order to `POST /api/v1/orders`. The API returns an order UID.
+
+```python
+def submit_order(quote, sell_amount, buy_amount, signature, sender):
+    """Submit a signed order to the CoW Protocol order book."""
+    body = {
+        "sellToken": quote["sellToken"],
+        "buyToken": quote["buyToken"],
+        "receiver": quote["receiver"],
+        "sellAmount": str(sell_amount),
+        "buyAmount": str(buy_amount),
+        "validTo": quote["validTo"],
+        "appData": quote["appData"],
+        "feeAmount": "0",
+        "kind": "sell",
+        "partiallyFillable": False,
+        "sellTokenBalance": "erc20",
+        "buyTokenBalance": "erc20",
+        "signingScheme": "eip712",
+        "signature": "0x" + signature,
+        "from": sender,
+    }
+
+    resp = requests.post(f"{API_BASE}/orders", json=body)
+    resp.raise_for_status()
+    return resp.json()  # returns the order UID string
+
+order_uid = submit_order(
+    quote, sell_amount_to_sign, min_buy_amount, signature, account.address
+)
+print(f"Order UID: {order_uid}")
+print(f"Explorer:  https://explorer.cow.fi/sepolia/orders/{order_uid}")
+```
+
+<Note>
+The order UID is deterministic — it is derived from the order parameters and the signer address. Submitting the same signed order twice returns the same UID and does not create a duplicate. This gives you built-in idempotency.
+</Note>
+
+### Step 5: Monitor execution
+
+Poll `GET /api/v1/orders/{uid}` to track the order lifecycle.
+
+```python
+def wait_for_order(order_uid, timeout_seconds=300, poll_interval=10):
+    """Poll order status until it reaches a terminal state."""
+    deadline = time.time() + timeout_seconds
+
+    while time.time() < deadline:
+        resp = requests.get(f"{API_BASE}/orders/{order_uid}")
+        resp.raise_for_status()
+        status = resp.json()["status"]
+        print(f"  Status: {status}")
+
+        if status in ("fulfilled", "expired", "cancelled"):
+            return status
+
+        time.sleep(poll_interval)
+
+    return "timeout"
+
+final_status = wait_for_order(order_uid)
+
+if final_status == "fulfilled":
+    print("Order filled successfully.")
+elif final_status == "expired":
+    print("Order expired — re-quote and retry.")
+else:
+    print(f"Final status: {final_status}")
+```
+
+Possible status values:
+
+| Status | Meaning |
+|---|---|
+| `open` | In the order book, awaiting solver execution |
+| `fulfilled` | Settled on-chain |
+| `expired` | `validTo` timestamp passed without settlement |
+| `cancelled` | Cancelled by the owner |
+
+</Steps>
+
+## Agent-specific considerations
+
+### Rate limiting
+
+The CoW Protocol API enforces per-IP rate limits. Key limits for agent workflows:
+
+| Endpoint | Limit |
+|---|---|
+| `POST /quote` | 10 req/s |
+| `POST /orders` | 5 req/s |
+| `GET /orders/{uid}` | 100 req/min |
+
+Always implement exponential backoff with jitter for `429` responses. See the full [Rate Limits & Quotas](/cow-protocol/reference/core/rate-limits) reference for details and backoff code examples.
+
+### Quote freshness
+
+Quotes reflect current market conditions and expire. For agents:
+
+- Re-quote if more than **30 seconds** have passed since the last quote, even if the quote's `validTo` has not been reached. Market prices can shift significantly in that time.
+- CoW Protocol runs batch auctions roughly every **15 seconds**. Quoting more frequently than that provides no benefit.
+- Cache the quote response and only refresh when your agent's input parameters (token pair, amount) change or the 30-second window elapses.
+
+### Error recovery
+
+Your agent should handle these HTTP responses:
+
+| Status code | Meaning | Agent action |
+|---|---|---|
+| `200` | Success | Proceed normally |
+| `400` | Bad request (invalid parameters, expired quote, insufficient balance) | Parse the error body, fix the issue, and retry. Common errors: `InsufficientBalance`, `InsufficientAllowance`, `ExpiredQuote`. |
+| `429` | Rate limited | Read the `Retry-After` header, wait that duration plus random jitter, then retry. Max 3 retries. |
+| `403` | Cloudflare WAF block | Your IP has been flagged. Do not retry in a loop — this will make it worse. See [Rate Limits](/cow-protocol/reference/core/rate-limits#firewall-protection-cloudflare). |
+| `500` | Server error | Wait 5 seconds and retry. Max 3 retries. If persistent, back off longer. |
+
+```python
+def api_request(method, url, json=None, max_retries=3):
+    """Make an API request with exponential backoff for rate limits and errors."""
+    for attempt in range(max_retries):
+        resp = requests.request(method, url, json=json)
+
+        if resp.status_code == 200 or resp.status_code == 201:
+            return resp
+
+        if resp.status_code == 429:
+            retry_after = int(resp.headers.get("Retry-After", 2 ** attempt))
+            time.sleep(retry_after + random.random())
+            continue
+
+        if resp.status_code >= 500:
+            time.sleep(5 * (attempt + 1) + random.random())
+            continue
+
+        # 4xx errors (except 429) — do not retry, raise immediately
+        resp.raise_for_status()
+
+    raise Exception(f"Failed after {max_retries} retries: {url}")
+```
+
+### Idempotency
+
+Order UIDs are deterministic — derived from the order parameters and signer address. Submitting the same signed order twice returns the same UID without creating a duplicate. This means:
+
+- Your agent can safely retry a failed submission without risking double-execution.
+- If your agent crashes between signing and confirming submission, it can resubmit the same signed payload on restart.
+
+### Gas management
+
+CoW Protocol orders are **off-chain intents**. Submitting and monitoring orders requires zero gas. Your agent only needs ETH for:
+
+- **Token approvals** — a one-time `approve()` transaction per sell token for the GPv2VaultRelayer
+- **On-chain cancellations** — if you cancel via the settlement contract instead of the API (optional)
+
+For most agent workflows, a single approval per token is sufficient. The agent itself does not pay gas for trade execution — solvers handle that.
+
+## Complete example
+
+A minimal Python script that runs the full flow:
+
+```python
+"""
+Minimal CoW Protocol agent order — full flow from quote to fill.
+
+Usage:
+  export PRIVATE_KEY="0x..."
+  python agent_order.py
+"""
+
+import os
+import time
+import random
+import requests
+from eth_account import Account
+from eth_account.messages import encode_typed_data
+
+# --------------- Configuration ---------------
+PRIVATE_KEY = os.environ["PRIVATE_KEY"]
+API_BASE = "https://api.cow.fi/sepolia/api/v1"
+CHAIN_ID = 11155111
+SETTLEMENT_CONTRACT = "0x9008D19f58AAbD9eD0D60971565AA8510560ab41"
+
+SELL_TOKEN = "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"  # WETH
+BUY_TOKEN = "0xbe72E441BF55620febc26715db68d3494213D8Cb"   # COW
+SELL_AMOUNT = 10**17  # 0.1 WETH
+SLIPPAGE_BPS = 50     # 0.5%
+
+account = Account.from_key(PRIVATE_KEY)
+
+# --------------- Helpers ---------------
+def api_request(method, url, json=None, max_retries=3):
+    for attempt in range(max_retries):
+        resp = requests.request(method, url, json=json)
+        if resp.status_code in (200, 201):
+            return resp
+        if resp.status_code == 429:
+            retry_after = int(resp.headers.get("Retry-After", 2 ** attempt))
+            time.sleep(retry_after + random.random())
+            continue
+        if resp.status_code >= 500:
+            time.sleep(5 * (attempt + 1) + random.random())
+            continue
+        resp.raise_for_status()
+    raise Exception(f"Failed after {max_retries} retries: {url}")
+
+
+# --------------- Step 1: Quote ---------------
+quote_resp = api_request("POST", f"{API_BASE}/quote", json={
+    "sellToken": SELL_TOKEN,
+    "buyToken": BUY_TOKEN,
+    "sellAmountBeforeFee": str(SELL_AMOUNT),
+    "kind": "sell",
+    "from": account.address,
+    "receiver": account.address,
+    "validFor": 600,
+    "signingScheme": "eip712",
+})
+quote = quote_resp.json()["quote"]
+print(f"Quote: sell {quote['sellAmount']}, buy ~{quote['buyAmount']}, fee {quote['feeAmount']}")
+
+# --------------- Step 2: Slippage ---------------
+min_buy = int(int(quote["buyAmount"]) * (10000 - SLIPPAGE_BPS) / 10000)
+sell_amount_to_sign = int(quote["sellAmount"]) + int(quote["feeAmount"])
+
+# --------------- Step 3: Sign ---------------
+domain = {
+    "name": "Gnosis Protocol",
+    "version": "v2",
+    "chainId": CHAIN_ID,
+    "verifyingContract": SETTLEMENT_CONTRACT,
+}
+
+order_types = {
+    "Order": [
+        {"name": "sellToken", "type": "address"},
+        {"name": "buyToken", "type": "address"},
+        {"name": "receiver", "type": "address"},
+        {"name": "sellAmount", "type": "uint256"},
+        {"name": "buyAmount", "type": "uint256"},
+        {"name": "validTo", "type": "uint32"},
+        {"name": "appData", "type": "bytes32"},
+        {"name": "feeAmount", "type": "uint256"},
+        {"name": "kind", "type": "string"},
+        {"name": "partiallyFillable", "type": "bool"},
+        {"name": "sellTokenBalance", "type": "string"},
+        {"name": "buyTokenBalance", "type": "string"},
+    ]
+}
+
+order_data = {
+    "sellToken": quote["sellToken"],
+    "buyToken": quote["buyToken"],
+    "receiver": quote["receiver"],
+    "sellAmount": sell_amount_to_sign,
+    "buyAmount": min_buy,
+    "validTo": quote["validTo"],
+    "appData": bytes.fromhex(quote["appData"][2:]),
+    "feeAmount": 0,
+    "kind": "sell",
+    "partiallyFillable": False,
+    "sellTokenBalance": "erc20",
+    "buyTokenBalance": "erc20",
+}
+
+signable = encode_typed_data(domain, order_types, order_data)
+signed = account.sign_message(signable)
+signature = signed.signature.hex()
+print(f"Signed order: 0x{signature[:16]}...")
+
+# --------------- Step 4: Submit ---------------
+submit_resp = api_request("POST", f"{API_BASE}/orders", json={
+    "sellToken": quote["sellToken"],
+    "buyToken": quote["buyToken"],
+    "receiver": quote["receiver"],
+    "sellAmount": str(sell_amount_to_sign),
+    "buyAmount": str(min_buy),
+    "validTo": quote["validTo"],
+    "appData": quote["appData"],
+    "feeAmount": "0",
+    "kind": "sell",
+    "partiallyFillable": False,
+    "sellTokenBalance": "erc20",
+    "buyTokenBalance": "erc20",
+    "signingScheme": "eip712",
+    "signature": "0x" + signature,
+    "from": account.address,
+})
+order_uid = submit_resp.json()
+print(f"Order UID: {order_uid}")
+print(f"Explorer:  https://explorer.cow.fi/sepolia/orders/{order_uid}")
+
+# --------------- Step 5: Monitor ---------------
+print("Monitoring order...")
+deadline = time.time() + 300  # 5 minute timeout
+
+while time.time() < deadline:
+    resp = api_request("GET", f"{API_BASE}/orders/{order_uid}")
+    status = resp.json()["status"]
+    print(f"  Status: {status}")
+
+    if status in ("fulfilled", "expired", "cancelled"):
+        break
+    time.sleep(10)
+
+if status == "fulfilled":
+    print("Order filled successfully.")
+elif status == "expired":
+    print("Order expired. Re-quote and retry with fresh market data.")
+else:
+    print(f"Final status: {status}")
+```
+
+## Next steps
+
+- **[Rate Limits & Quotas](/cow-protocol/reference/core/rate-limits)** — full rate limit details and backoff strategies
+- **[How Intents Are Formed](/cow-protocol/explanation/how-it-works/how-intents-are-formed)** — understand the fee pipeline and amount calculations
+- **[Signing Schemes](/cow-protocol/reference/core/signing-schemes)** — EIP-712, `ethSign`, ERC-1271, and PreSign options
+- **[TypeScript SDK](/cow-sdk/introduction)** — higher-level SDK with built-in rate limiting
+- **[cow-py SDK](/cow-py/introduction)** — Python SDK with `swap_tokens()` and automatic backoff
+- **[API Integration Guide](/cow-protocol/howto/integrate/api)** — complete REST API reference

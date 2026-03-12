@@ -5,7 +5,7 @@ description: "The  feature on  lets you swap a token on one network and receive 
 
 This guide will walk you through the process step-by-step, from setting up your trade to tracking it in the explorer.
 
-![Cross-chain swaps](/images/cow-protocol/tutorials/cow-swap/assets/ideal-img/swap-form.873311a.1026.png)
+![Cross-chain swaps](/images/cowswap/bridging/swap-form.png)
 
 <Note>
   Currently, the Cross-chain swaps functionality is limited to swap orders and is not available for smart contract wallets. These features will be available in the future.
@@ -21,17 +21,17 @@ When using **Cross-chain swaps**, you’ll start by selecting the tokens you wan
 
 Open a source token selector:
 
-![Open source token selector](/images/cow-protocol/tutorials/cow-swap/assets/ideal-img/source-token-selector-place.2b4e04b.978.png)
+![Open source token selector](/images/cowswap/bridging/source-token-selector-place.png)
 
 Select the network and token you want to sell:
 
-![Source token selector](/images/cow-protocol/tutorials/cow-swap/assets/ideal-img/source-token-selector.f5606f2.1238.png)
+![Source token selector](/images/cowswap/bridging/source-token-selector.png)
 
 ### Destination Token Selector[​](#destination-token-selector "Direct link to Destination Token Selector")
 
 Similarly to Source Token Selector, open the selector, choose a network and token you would like to buy
 
-![Destination token selector](/images/cow-protocol/tutorials/cow-swap/assets/ideal-img/destination-token-selector.3a33827.994.png)
+![Destination token selector](/images/cowswap/bridging/destination-token-selector.png)
 
 <Check>
   The list of available destination networks depends on the source token you’ve selected.
@@ -64,7 +64,7 @@ Approvals can happen through:
 * Regular ERC-20 allowance transactions
 * [EIP-2612](https://eips.ethereum.org/EIPS/eip-2612) signature (when supported by the token)
 
-![Sign an approval](/images/cow-protocol/tutorials/cow-swap/assets/ideal-img/sign-approval.4e142f4.1150.png)
+![Sign an approval](/images/cowswap/bridging/sign-approval.png)
 
 ### Signing Steps[​](#signing-steps "Direct link to Signing Steps")
 
@@ -78,7 +78,7 @@ Approvals can happen through:
 * Sign an off-chain order (ERC-20 token selling).
 * Sign a transaction (Native tokens (e.g., ETH) selling).
 
-![Sign a post-hook](/images/cow-protocol/tutorials/cow-swap/assets/ideal-img/sign-post-hook.5222476.1192.png) ![Sign an order](/images/cow-protocol/tutorials/cow-swap/assets/ideal-img/sign-order.3b83e57.1172.png)
+![Sign a post-hook](/images/cowswap/bridging/sign-post-hook.png) ![Sign an order](/images/cowswap/bridging/sign-order.png)
 
 <Note>
   **Intermediate token** — the currency received on the source chain as the result of a swap, which is then deposited to the bridge provider. It is usually the same currency as on the destination chain, but issued on the source blockchain.
@@ -98,7 +98,7 @@ By default, your connected wallet address will be set as the recipient on the de
 * Enter a recipient address.
 * **Note:** ENS names are **not** supported here — you must use a full wallet address.
 
-![Custom recipient](/images/cow-protocol/tutorials/cow-swap/assets/ideal-img/custom-recipient.8252967.1116.png)
+![Custom recipient](/images/cowswap/bridging/custom-recipient.png)
 
 ***
 
@@ -112,7 +112,7 @@ In the Swap form you can see a detailed breakdown of the expected swap and bridg
 * **Estimated bridging time** → Pulled directly from a bridge provider (varies by a network and a provider).
 * Bridge **Min. to receive** → Calculated as: `(Swap min. to receive)` - `(Bridge provider cost)`
 
-![Quote preview](/images/cow-protocol/tutorials/cow-swap/assets/ideal-img/quote-preview.4a5e516.1008.png)
+![Quote preview](/images/cowswap/bridging/quote-preview.png)
 
 ***
 
@@ -131,7 +131,7 @@ The [**Account Proxy**](https://swap.cow.fi/#/1/account-proxy) (also known as **
 
 1. The bridge step will only start **after** a successful swap.
 
-![Swap is finished](/images/cow-protocol/tutorials/cow-swap/assets/ideal-img/swap-success.96d159a.530.png)
+![Swap is finished](/images/cowswap/bridging/swap-success.png)
 
 <Note>
   If your order expires, is canceled, or fails, bridging will not start — your funds will remain in your wallet.
@@ -151,11 +151,11 @@ The [**Account Proxy**](https://swap.cow.fi/#/1/account-proxy) (also known as **
 3. When the bridging completes, you’ll see a **“Bridging completed!”** status along with the final amount received on the destination chain.
 4. You’ll always get a link to the bridge provider’s explorer to track your order progress.
 
-![Bridging in progress](/images/cow-protocol/tutorials/cow-swap/assets/ideal-img/bridging-in-progress.5f0aa55.512.png) ![Bridging success](/images/cow-protocol/tutorials/cow-swap/assets/ideal-img/bridging-success.d07a90a.498.png)
+![Bridging in progress](/images/cowswap/bridging/bridging-in-progress.png) ![Bridging success](/images/cowswap/bridging/bridging-success.png)
 
 5. Your Cross-chain swaps history is available in the **Account modal** on CoW Swap. .
 
-![Activities button](/images/cow-protocol/tutorials/cow-swap/assets/ideal-img/activities-button.492751d.1188.png) ![Activities list](/images/cow-protocol/tutorials/cow-swap/assets/ideal-img/activities-list.4693293.811.png)
+![Activities button](/images/cowswap/bridging/activities-button.png) ![Activities list](/images/cowswap/bridging/activities-list.png)
 
 <Note>
   **Account modal** displays only last 10 orders. For your full order history, visit [CoW Explorer](https://explorer.cow.fi)
@@ -178,7 +178,7 @@ Once the refund arrives in your Account Proxy:
 * Open details of the required Account Proxy version.
 * Choose a token and recover the funds to your wallet.
 
-![Account proxies](/images/cow-protocol/tutorials/cow-swap/assets/ideal-img/account-proxy-list.3fcd30c.1038.png) ![Account proxy](/images/cow-protocol/tutorials/cow-swap/assets/ideal-img/account-proxy-card.0aa4e48.1030.png)
+![Account proxies](/images/cowswap/bridging/account-proxy-list.png) ![Account proxy](/images/cowswap/bridging/account-proxy-card.png)
 
 ***
 
@@ -190,5 +190,5 @@ You can view all your Cross-chain swaps on [explorer.cow.fi](https://explorer.co
 * Filter results and view full details for each trade.
 * Each Cross-chain swap has two tabs — Swap and Bridge — so you can easily explore both parts of the transaction.
 
-![CoW Explorer](/images/cow-protocol/tutorials/cow-swap/assets/ideal-img/cow-explorer.8159eee.2202.png)
+![CoW Explorer](/images/cowswap/bridging/cow-explorer.png)
 

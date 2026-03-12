@@ -73,7 +73,7 @@ See [Deployed Contracts](https://github.com/cowprotocol/composable-cow#deployed-
 </Info>
 
 **filterPolicy** (object, required)
-Defines filtering rules for conditional orders. See [Filter policy](#filter-policy) below.
+Defines filtering rules for programmatic orders. See [Filter policy](#filter-policy) below.
 
 ### Optional fields
 
@@ -104,7 +104,7 @@ Useful for reducing RPC load on networks with high block production rates.
 
 ## Filter policy
 
-The filter policy controls which conditional orders are processed by the Watch Tower.
+The filter policy controls which programmatic orders are processed by the Watch Tower.
 
 ### Structure
 
@@ -138,7 +138,7 @@ Default action for items not explicitly listed in filters.
 - `SKIP` - Skip processing temporarily
 
 **conditionalOrderIds** (object)
-Map of conditional order IDs to filter actions. Use this to block or allow specific order IDs.
+Map of programmatic order IDs to filter actions. Use this to block or allow specific order IDs.
 
 **transactions** (object)
 Map of transaction hashes to filter actions. Use this to filter orders from specific transactions.
@@ -237,7 +237,7 @@ CONFIG_PATH=/path/to/custom/config.json yarn cli run
 ## Important notes
 
 <Warning>
-Conditional order types may consume considerable RPC calls. Monitor your RPC provider's rate limits and usage.
+Programmatic order types may consume considerable RPC calls. Monitor your RPC provider's rate limits and usage.
 </Warning>
 
 <Note>

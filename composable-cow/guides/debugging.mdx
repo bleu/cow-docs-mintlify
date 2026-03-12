@@ -1,11 +1,11 @@
 ---
-title: "Debugging Conditional Orders"
-description: "Decision tree for diagnosing why a conditional order didn't execute — from watch-tower indexing to solver settlement."
+title: "Debugging Programmatic Orders"
+description: "Decision tree for diagnosing why a programmatic order didn't execute — from watch-tower indexing to solver settlement."
 ---
 
-# Debugging Conditional Orders
+# Debugging Programmatic Orders
 
-Use this decision tree when your conditional order isn't executing as expected.
+Use this decision tree when your programmatic order isn't executing as expected.
 
 ## Why didn't my order execute?
 
@@ -133,7 +133,7 @@ Sepolia has limited solver participation. See the [testing guide](/cow-protocol/
 
 For recurring orders (like TWAP), the watch-tower must post new discrete orders for each part. Check:
 - Is the watch-tower still running?
-- Has the conditional order been cancelled on-chain?
+- Has the programmatic order been cancelled on-chain?
 - Has the Safe's balance been depleted?
 
 ## Related resources

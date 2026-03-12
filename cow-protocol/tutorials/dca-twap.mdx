@@ -21,7 +21,7 @@ Total: 10,000 USDC → WETH over 10 hours
 Each part executes at the best available market price at that moment. The result is a position accumulated at the average price over the period.
 
 <Note>
-  TWAP orders are conditional orders created via the [ComposableCoW framework](/composable-cow/introduction). They require a Safe wallet and the [Watch Tower](/watch-tower/introduction) to monitor and submit each part.
+  TWAP orders are programmatic orders created via the [`ComposableCoW` framework](/composable-cow/introduction). They require a Safe wallet and the [Watch Tower](/watch-tower/introduction) to monitor and submit each part.
 </Note>
 
 ## Strategy Design
@@ -118,7 +118,7 @@ const sdk = new TradingSdk({
 
 // Create a TWAP order
 // Note: TWAP orders use ComposableCoW under the hood.
-// The SDK creates a conditional order that the Watch Tower monitors.
+// The SDK creates a programmatic order that the Watch Tower monitors.
 const parameters: TradeParameters = {
   kind: OrderKind.SELL,
   sellToken: USDC,
@@ -286,4 +286,4 @@ Track your DCA execution through:
 - [TWAP Orders (Python SDK)](/cow-py/advanced/twap-orders) — detailed Python SDK reference
 - [TWAP tutorial (UI)](/cow-protocol/tutorials/cow-swap/twap) — step-by-step CoW Swap walkthrough
 - [ComposableCoW Troubleshooting](/composable-cow/guides/troubleshooting) — setup issues and debugging
-- [Debugging Conditional Orders](/composable-cow/guides/debugging) — when parts don't execute
+- [Debugging Programmatic Orders](/composable-cow/guides/debugging) — when parts don't execute

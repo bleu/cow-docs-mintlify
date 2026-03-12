@@ -1,15 +1,15 @@
 ---
 title: "Composable Orders"
-description: "Create conditional orders that execute based on custom logic using CoW Protocol's ComposableCow framework"
+description: "Create programmatic orders that execute based on custom logic using CoW Protocol's ComposableCoW framework"
 ---
 
 ## Overview
 
-Composable orders enable you to create **conditional orders** that execute based on custom logic rather than executing immediately. These orders leverage the ComposableCow smart contract framework to define conditions that must be met before an order becomes tradeable.
+Composable orders enable you to create **programmatic orders** (sometimes called conditional orders) that execute based on custom logic rather than executing immediately. These orders leverage the `ComposableCoW` smart contract framework to define conditions that must be met before an order becomes tradeable.
 
 Key benefits of composable orders:
 
-- **Conditional Execution** -- Orders only execute when specific conditions are met
+- **Programmatic Execution** -- Orders only execute when specific conditions are met
 - **Advanced Strategies** -- Build complex trading strategies like TWAP, DCA, or custom logic
 - **Gas Efficiency** -- Reduce on-chain transactions by batching order logic
 - **Merkle Tree Storage** -- Efficiently store multiple orders using Merkle proofs
@@ -60,7 +60,7 @@ leaf = conditional_order.leaf       # Leaf data for Merkle tree storage
 
 ### Creating Orders
 
-Generate calldata to create a conditional order on-chain:
+Generate calldata to create a programmatic order on-chain:
 
 ```python
 from cowdao_cowpy.composable.order_types.twap import Twap, TwapData, StartType, DurationType
@@ -87,7 +87,7 @@ twap_order.assert_is_valid()
 
 ### Polling Orders
 
-Check if a conditional order is ready to be executed:
+Check if a programmatic order is ready to be executed:
 
 ```python
 import asyncio
@@ -170,7 +170,7 @@ tradeable_order, signature = await composable_cow.get_tradeable_order_with_signa
 
 ## Multiplexer for Multiple Orders
 
-The `Multiplexer` class enables efficient management of multiple conditional orders using Merkle trees:
+The `Multiplexer` class enables efficient management of multiple programmatic orders using Merkle trees:
 
 ```python
 from cowdao_cowpy.composable import Multiplexer
@@ -251,7 +251,7 @@ class PriceThresholdOrder(ConditionalOrder[PriceThresholdData, PriceThresholdStr
 </Note>
 
 - **Handle Polling Errors Gracefully**: Use appropriate `PollResultCode` values to signal whether polling should be retried, delayed, or stopped entirely.
-- **Test with Testnets First**: Always test conditional orders on testnets (like Sepolia) before deploying to mainnet.
+- **Test with Testnets First**: Always test programmatic orders on testnets (like Sepolia) before deploying to mainnet.
 - **Use Salt for Uniqueness**: The salt parameter ensures each order has a unique ID even if other parameters are identical.
 
 ## Related Resources

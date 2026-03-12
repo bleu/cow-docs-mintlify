@@ -1,11 +1,11 @@
 ---
 title: "Good After Time"
-description: "Conditional orders that activate after a specified timestamp with optional price validation."
+description: "Programmatic orders that activate after a specified timestamp with optional price validation."
 ---
 
 # Good After Time Orders
 
-Good After Time (GAT) orders are conditional trades that remain dormant until their `startTime` is reached, functioning as scheduled executions with optional price validation.
+Good After Time (GAT) orders are programmatic trades that remain dormant until their `startTime` is reached, functioning as scheduled executions with optional price validation.
 
 ## Core Mechanics
 
@@ -44,4 +44,4 @@ Where slippage uses basis points (100 bp = 1%).
 
 ## Order Structure
 
-The implementation uses `GPv2Order.Data` structures integrated with ComposableCoW's conditional order framework, enabling sophisticated DeFi automation patterns with time-based constraints and price protections.
+The implementation uses `GPv2Order.Data` structures integrated with `ComposableCoW`'s programmatic order framework, enabling sophisticated DeFi automation patterns with time-based constraints and price protections.

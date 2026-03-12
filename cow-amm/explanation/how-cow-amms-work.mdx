@@ -12,6 +12,26 @@ CoW AMM is a production-ready implementation of an FM-AMM that supplies liquidit
 
 CoW AMM pools are optimal for every token pair that is not stable-to-stable. Since volatility dictates the amount of LVR that takes place in any given liquidity pool, CoW AMM pools are most effective for volatile token pairs where arbitrage outweighs LP fees.
 
+## Contract architecture[​](#contract-architecture "Direct link to Contract architecture")
+
+CoW AMM is built as a set of contracts that integrate natively with Balancer's infrastructure and CoW Protocol's solver competition:
+
+- **`BCoWPool`**: The AMM pool contract, which extends Balancer's `BPool`. Each CoW AMM pool is a `BCoWPool` instance that holds liquidity and defines the trading function. It implements the `IConditionalOrder` interface from [ComposableCoW](/cow-protocol/reference/contracts/periphery/composable-cow), which allows the CoW Protocol watchtower to poll the pool for tradeable orders.
+- **`BCoWFactory`**: The factory contract used to deploy new CoW AMM pools. It creates `BCoWPool` instances with the correct configuration for CoW Protocol integration.
+- **`BCoWHelper`**: A helper contract for solvers. Given a pool and the current on-chain state, it generates valid order parameters that solvers can include in their settlement batches.
+
+The end-to-end flow works as follows:
+
+1. **Pool deployment** — An LP deploys a new pool via `BCoWFactory` and adds liquidity.
+2. **Watchtower polling** — The CoW Protocol watchtower periodically calls each pool's `getTradeableOrderWithSignature` (via the `IConditionalOrder` interface) to discover when the pool has a tradeable order.
+3. **Solver queries** — When a solver identifies a CoW AMM order, it can use `BCoWHelper` to compute valid order parameters that move the AMM curve higher.
+4. **Batch settlement** — The solver includes the CoW AMM order in its settlement batch alongside user orders, enabling coincidence of wants.
+5. **Pool rebalances** — After settlement, the pool's reserves are updated and the AMM curve moves to reflect the new balances.
+
+<Note>
+  CoW AMMs are **not** based on Safe (the old architecture). They are native Balancer pools with direct CoW Protocol integration via the ComposableCoW programmatic order framework.
+</Note>
+
 ## Getting Started with CoW AMM[​](#getting-started-with-cow-amm "Direct link to Getting Started with CoW AMM")
 
 To facilitate easy liquidity providing, CoW DAO has partnered with Balancer to implement CoW AMMs into the Balancer ecosystem. LPs can [use the Balancer app](https://balancer.fi/pools/cow) to LP direclty on one of over a dozen liquidity pools.

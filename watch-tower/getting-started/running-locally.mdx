@@ -93,7 +93,7 @@ yarn cli run [options]
   Environment variable: `SLACK_WEBHOOK`
 
 - **--only-owner** (string[])
-  Monitor conditional orders only from specific owner addresses (safes). Can be specified multiple times.
+  Monitor programmatic orders only from specific owner addresses (safes). Can be specified multiple times.
   ```bash
   yarn cli run --only-owner 0x1234... --only-owner 0x5678...
   ```
@@ -133,9 +133,9 @@ When you start the Watch Tower, you should see output similar to:
 When running, the Watch Tower continuously:
 
 1. **Monitors blockchain events** - Listens for `ConditionalOrderCreated` and `MerkleRootSet` events
-2. **Fetches conditional orders** - Retrieves order details from the blockchain
+2. **Fetches programmatic orders** - Retrieves order details from the blockchain
 3. **Posts discrete orders** - Submits orders to the CoW Protocol OrderBook API
-4. **Updates registry** - Maintains a local database of active conditional orders
+4. **Updates registry** - Maintains a local database of active programmatic orders
 5. **Removes expired orders** - Cleans up orders that have expired or been cancelled
 
 ## Accessing the API server
@@ -292,7 +292,7 @@ yarn cli run
 
 ## Monitoring specific safes
 
-To monitor conditional orders from specific Safe addresses only:
+To monitor programmatic orders from specific Safe addresses only:
 
 ```bash
 yarn cli run \

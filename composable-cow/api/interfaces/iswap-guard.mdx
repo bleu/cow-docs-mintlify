@@ -15,7 +15,7 @@ The interface requires a single `verify()` function that evaluates whether an or
 |-----------|------|-------------|
 | `order` | `GPv2Order.Data` | The CoW Protocol order data |
 | `ctx` | `bytes32` | Context identifier (either `bytes32(0)` for merkle trees or a hash for cabinet lookups) |
-| `params` | `ConditionalOrderParams` | Conditional order parameters |
+| `params` | `ConditionalOrderParams` | Programmatic order parameters |
 | `offchainInput` | `bytes` | Optional off-chain verification input |
 
 The function returns a boolean indicating approval.

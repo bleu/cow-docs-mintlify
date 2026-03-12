@@ -5,7 +5,7 @@ description: "API reference for the Safe fallback handler that enables signature
 
 # ExtensibleFallbackHandler
 
-The `ExtensibleFallbackHandler` is a Safe fallback handler enabling signature verification multiplexing through domain-specific verifiers. It works with ComposableCoW to validate conditional orders via EIP-1271.
+The `ExtensibleFallbackHandler` is a Safe fallback handler enabling signature verification multiplexing through domain-specific verifiers. It works with `ComposableCoW` to validate programmatic orders via EIP-1271.
 
 ## Deployment
 
@@ -23,7 +23,7 @@ When CoW Protocol initiates settlement:
 2. The Safe delegates to `ExtensibleFallbackHandler`
 3. The handler extracts the domain separator from the signature
 4. It routes to the appropriate domain verifier (typically ComposableCoW)
-5. The verifier validates the conditional order and returns the EIP-1271 magic value if valid
+5. The verifier validates the programmatic order and returns the EIP-1271 magic value if valid
 
 ## Essential Setup Steps
 

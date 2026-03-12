@@ -1,6 +1,6 @@
 ---
 title: "Custom Orders"
-description: "Build custom conditional order types using the IConditionalOrder and IConditionalOrderGenerator interfaces."
+description: "Build custom programmatic order types using the IConditionalOrder and IConditionalOrderGenerator interfaces."
 ---
 
 # Custom Orders
@@ -57,15 +57,23 @@ Specialized revert errors guide watchtowers on retry behavior:
 - Employ clear error messaging
 - Implement proper ERC165 interface support
 
+<Warning>
+**All revert paths must use recognized custom errors.**
+
+If `getTradeableOrder` (or `getTradeableOrderWithSignature`) reverts with bytes that the Watch Tower cannot decode to a known error (`OrderNotValid`, `PollTryNextBlock`, `PollTryAtBlock`, `PollTryAtEpoch`), the Watch Tower permanently stops polling your order with no notification to the order creator.
+
+This means arithmetic overflows, failed external calls, and bare `revert()` statements will silently kill your order's polling. Wrap your handler logic in a try/catch and always revert with `OrderNotValid(reason)` as a fallback for any unexpected failure. See [Troubleshooting — Order stopped being polled](/composable-cow/guides/troubleshooting#order-stopped-being-polled-unexpectedly) for debugging steps.
+</Warning>
+
 ### Security Considerations
 
 - Validate external calls
-- Manage arithmetic carefully
+- Manage arithmetic carefully — unhandled overflows will cause the Watch Tower to permanently drop your order
 - Address reentrancy risks
 
 ## Watch Tower Integration
 
-Custom handlers are automatically discovered and executed by the [Watch Tower](/watch-tower/introduction). When a conditional order is created via ComposableCoW, the Watch Tower:
+Custom handlers are automatically discovered and executed by the [Watch Tower](/watch-tower/introduction). When a programmatic order is created via `ComposableCoW`, the Watch Tower:
 
 1. Detects the `ConditionalOrderCreated` event on-chain
 2. [Polls](/watch-tower/concepts/polling) your handler's `getTradeableOrder()` on every block (or per your error hints)

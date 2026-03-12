@@ -5,7 +5,7 @@ description: "Understanding the architecture and protection mechanisms of Hooks 
 
 Hooks Trampoline is a critical security component in CoW Protocol that enables traders to execute custom Ethereum calls atomically within their settlement transactions—without compromising the protocol's security or stability.
 
-Hooks allow traders to specify custom Ethereum calls as part of orders, executing atomically in the same transaction as trades. This enables use cases like conditional orders, automated portfolio rebalancing, and multi-step DeFi interactions. However, executing arbitrary user code within settlement transactions introduces risks. The Hooks Trampoline contract acts as a protective intermediary isolating user hooks from the privileged settlement contract context.
+Hooks allow traders to specify custom Ethereum calls as part of orders, executing atomically in the same transaction as trades. This enables use cases like programmatic orders, automated portfolio rebalancing, and multi-step DeFi interactions. However, executing arbitrary user code within settlement transactions introduces risks. The Hooks Trampoline contract acts as a protective intermediary isolating user hooks from the privileged settlement contract context.
 
 ## The Problem: Why Trampoline is Needed
 

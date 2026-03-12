@@ -130,6 +130,7 @@
               "cow-protocol/explanation/order-types/programmatic-orders",
               "cow-protocol/explanation/order-types/cow-hooks",
               "cow-protocol/explanation/order-types/milkman-orders",
+              "cow-protocol/explanation/order-types/wrappers",
               "cow-protocol/explanation/order-types/pay-debt-flash-loans"
             ]
           },
@@ -171,9 +172,11 @@
               "cow-protocol/tutorials/swap-in-safe-app",
               "cow-protocol/tutorials/dca-twap",
               "cow-protocol/tutorials/multi-sig-orders",
+              "cow-protocol/tutorials/hooks-getting-started",
               "cow-protocol/tutorials/post-hook-examples",
               "cow-protocol/howto/integrate/widget",
               "cow-protocol/reference/widget-params",
+              "cow-protocol/reference/hook-store",
               "cow-protocol/reference/hook-dapp",
               "cow-protocol/reference/custom-links"
             ]
@@ -206,7 +209,8 @@
                   "cow-protocol/tutorials/quickstart-python",
                   "cow-protocol/tutorials/token-approvals"
                 ]
-              }
+              },
+              "cow-protocol/tutorials/agent-orders"
             ]
           },
           {
@@ -343,6 +347,7 @@
                 "pages": [
                   "composable-cow/guides/setup",
                   "composable-cow/guides/creating-orders",
+                  "composable-cow/guides/signature-construction",
                   "composable-cow/guides/managing-orders",
                   "composable-cow/guides/merkle-root-orders",
                   "composable-cow/guides/troubleshooting",
@@ -704,13 +709,7 @@
             "group": "Tutorials",
             "icon": "graduation-cap",
             "pages": [
-              "cow-protocol/tutorials/solvers/create",
-              "cow-protocol/tutorials/solvers/test",
-              "cow-protocol/tutorials/solvers/deploy",
-              "cow-protocol/tutorials/solvers/evaluate",
               "cow-protocol/tutorials/solvers/local_test",
-              "cow-protocol/tutorials/solvers/from_shadow_to_prod",
-              "cow-protocol/tutorials/solvers/workshop",
               "cow-amm/tutorials/cow-amm-for-solvers"
             ]
           },
@@ -854,7 +853,7 @@
               {
                 "group": "Concepts",
                 "pages": [
-                  "watch-tower/concepts/conditional-orders",
+                  "watch-tower/concepts/programmatic-orders",
                   "watch-tower/concepts/events",
                   "watch-tower/concepts/polling",
                   "watch-tower/concepts/registry"

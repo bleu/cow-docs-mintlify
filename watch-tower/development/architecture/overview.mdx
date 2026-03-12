@@ -50,13 +50,13 @@ src/
 
 - **Event handling**: `src/domain/events/`
   - Monitors for `ConditionalOrderCreated` events
-  - Indexes new conditional orders in registry
+  - Indexes new programmatic orders in registry
   - Processes events atomically per block
 
 ### 5. Order Polling
 
 - **Polling logic**: `src/domain/polling/`
-  - Checks each registered conditional order
+  - Checks each registered programmatic order
   - Determines if discrete orders should be created
   - Filters orders based on configured policies
   - Posts valid orders to OrderBook API

@@ -1,11 +1,11 @@
 ---
 title: "Composable SDK"
-description: "Advanced conditional order types including TWAP orders and custom conditional mechanisms"
+description: "Advanced programmatic order types including TWAP orders and custom programmatic mechanisms"
 ---
 
 ## Overview
 
-The Composable SDK enables advanced order types like TWAP (Time-Weighted Average Price) and custom conditional orders using the ComposableCoW framework. It provides tools for creating, managing, and polling conditional orders.
+The Composable SDK enables advanced order types like TWAP (Time-Weighted Average Price) and custom programmatic orders using the `ComposableCoW` framework. It provides tools for creating, managing, and polling programmatic orders.
 
 ## Installation
 
@@ -15,7 +15,7 @@ npm install @cowprotocol/sdk-composable
 
 ## ConditionalOrder
 
-Abstract base class for all conditional orders.
+Abstract base class for all programmatic orders.
 
 ### Creating Orders
 
@@ -43,7 +43,7 @@ const twapOrder = Twap.fromData({
 ### Properties
 
 <ResponseField name="handler" type="string">
-Address of the handler contract for this conditional order
+Address of the handler contract for this programmatic order
 </ResponseField>
 
 <ResponseField name="salt" type="string">
@@ -78,7 +78,7 @@ Whether this is a single order (vs part of a merkle tree)
 
 #### createCalldata
 
-Get calldata for creating the conditional order on-chain.
+Get calldata for creating the programmatic order on-chain.
 
 ```typescript
 const calldata = twapOrder.createCalldata
@@ -91,7 +91,7 @@ Encoded function call to create the order (emits ConditionalOrderCreated event)
 
 #### removeCalldata
 
-Get calldata for removing the conditional order.
+Get calldata for removing the programmatic order.
 
 ```typescript
 const calldata = twapOrder.removeCalldata
@@ -103,7 +103,7 @@ Encoded function call to remove the order
 
 #### poll()
 
-Poll the conditional order to check if it's tradeable.
+Poll the programmatic order to check if it's tradeable.
 
 ```typescript
 const result = await twapOrder.poll({
@@ -167,7 +167,7 @@ Poll result indicating order status
 
 #### isAuthorized()
 
-Check if the owner authorized this conditional order.
+Check if the owner authorized this programmatic order.
 
 ```typescript
 const isAuthorized = await twapOrder.isAuthorized({
@@ -318,7 +318,7 @@ const factory = CURRENT_BLOCK_TIMESTAMP_FACTORY_ADDRESS // 0x52eD56Da04309Aca4c3
 
 ## Multiplexer
 
-Manages multiple conditional orders using a Merkle tree.
+Manages multiple programmatic orders using a Merkle tree.
 
 ### Creating a Multiplexer
 
@@ -436,7 +436,7 @@ const proofs = multiplexer.dumpProofs()
 
 ## ConditionalOrderFactory
 
-Factory for creating and deploying conditional orders.
+Factory for creating and deploying programmatic orders.
 
 ```typescript
 import { ConditionalOrderFactory } from '@cowprotocol/sdk-composable'
@@ -482,7 +482,7 @@ enum ProofLocation {
 
 ### ConditionalOrderParams
 
-Parameters for a conditional order.
+Parameters for a programmatic order.
 
 ```typescript
 interface ConditionalOrderParams {
@@ -532,7 +532,7 @@ const calldata = twap.createCalldata
 // This will emit ConditionalOrderCreated event
 ```
 
-### Multiple Conditional Orders
+### Multiple Programmatic orders
 
 ```typescript
 import { Multiplexer, Twap, ProofLocation } from '@cowprotocol/sdk-composable'
@@ -609,7 +609,7 @@ for (const orderId of multiplexer.orderIds) {
 }
 ```
 
-### Custom Conditional Order
+### Custom Programmatic order
 
 ```typescript
 import { ConditionalOrder } from '@cowprotocol/sdk-composable'

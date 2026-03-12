@@ -9,16 +9,16 @@ An overview of the CoW Protocol Watch Tower for monitoring and executing program
 
 ## What is Watch Tower?
 
-The Watch Tower is a standalone application that monitors the blockchain for programmatic orders created through the [CoW Protocol](https://docs.cow.fi/cow-protocol) [programmatic order framework](https://docs.cow.fi/cow-protocol/concepts/order-types/programmatic-orders). It acts as a critical infrastructure component that bridges on-chain conditional orders with the CoW Protocol OrderBook API.
+The Watch Tower is a standalone application that monitors the blockchain for programmatic orders created through the [CoW Protocol](https://docs.cow.fi/cow-protocol) [programmatic order framework](https://docs.cow.fi/cow-protocol/concepts/order-types/programmatic-orders). It acts as a critical infrastructure component that bridges on-chain programmatic orders with the CoW Protocol OrderBook API.
 
-> "Watch Tower keeps an eye on Composable Cows, automatically detecting new conditional orders and posting eligible discrete orders to the orderbook."
+> "Watch Tower keeps an eye on Composable Cows, automatically detecting new programmatic orders and posting eligible discrete orders to the orderbook."
 
 ## Why does it exist?
 
-Programmatic orders in CoW Protocol allow users to define conditional trading logic on-chain through smart contracts. However, these orders need to be:
+Programmatic orders in CoW Protocol allow users to define trading logic on-chain through smart contracts. However, these orders need to be:
 
-1. **Discovered** - The watch tower monitors blockchain events to detect when new conditional orders are created
-2. **Evaluated** - It continuously polls conditional orders to check if their execution conditions are met
+1. **Discovered** - The watch tower monitors blockchain events to detect when new programmatic orders are created
+2. **Evaluated** - It continuously polls programmatic orders to check if their execution conditions are met
 3. **Submitted** - When conditions are satisfied, it posts the resulting discrete orders to the CoW Protocol OrderBook API
 
 Without the watch tower, programmatic orders would remain dormant on-chain with no mechanism to activate them when their conditions are met.
@@ -29,7 +29,7 @@ The watch tower serves as the execution layer in CoW Protocol's programmatic ord
 
 ```mermaid
 graph LR
-    A[User Creates<br/>Conditional Order] --> B[ComposableCoW<br/>Contract]
+    A[User Creates<br/>Programmatic Order] --> B[ComposableCoW<br/>Contract]
     B --> C[Watch Tower<br/>Monitors Events]
     C --> D[Polls Order<br/>Conditions]
     D --> E{Conditions<br/>Met?}
@@ -46,14 +46,14 @@ The watch tower operates as a decentralized service - anyone can run their own i
 
 The watch tower tracks two primary events emitted by the `ComposableCoW` contract:
 
-* **`ConditionalOrderCreated`** - Emitted when a single conditional order is created
-* **`MerkleRootSet`** - Emitted when a batch of conditional orders (merkle tree) is set for a safe
+* **`ConditionalOrderCreated`** - Emitted when a single programmatic order is created
+* **`MerkleRootSet`** - Emitted when a batch of programmatic orders (merkle tree) is set for a safe
 
 ### Persistent registry
 
-All discovered conditional orders are stored in a local LevelDB database, maintaining:
+All discovered programmatic orders are stored in a local LevelDB database, maintaining:
 
-* Active conditional orders by owner (safe address)
+* Active programmatic orders by owner (safe address)
 * Order parameters and merkle proofs
 * Last processed block information
 * Submitted discrete order status
@@ -64,7 +64,7 @@ The watch tower uses LevelDB for its ACID guarantees. If a write fails, the appl
 
 ### Continuous polling
 
-For each registered conditional order, the watch tower:
+For each registered programmatic order, the watch tower:
 
 1. Calls the order's poll method with current block context
 2. Evaluates if trading conditions are satisfied
@@ -103,11 +103,11 @@ The watch tower is available as a [DAppNode package](https://github.com/cowproto
 Use the watch tower locally to:
 
 * Test programmatic order implementations
-* Debug conditional order logic
+* Debug programmatic order logic
 * Validate order execution flow
 
 <Warning>
-Conditional order types may consume considerable RPC calls. Ensure you have access to a reliable RPC endpoint with sufficient rate limits when running a watch tower instance.
+Programmatic order types may consume considerable RPC calls. Ensure you have access to a reliable RPC endpoint with sufficient rate limits when running a watch tower instance.
 </Warning>
 
 ## Getting started
@@ -157,5 +157,5 @@ See [Deployed Contracts](https://github.com/cowprotocol/composable-cow#deployed-
 
 * Learn about the [Architecture](/watch-tower/architecture) and how the watch tower processes events
 * Review configuration options in the example `config.json.example`
-* [Build a custom conditional order handler](/composable-cow/advanced/custom-orders) — the Watch Tower will automatically discover and poll any handler deployed via ComposableCoW
+* [Build a custom programmatic order handler](/composable-cow/advanced/custom-orders) — the Watch Tower will automatically discover and poll any handler deployed via `ComposableCoW`
 * Explore the [source code](https://github.com/cowprotocol/watch-tower) on GitHub

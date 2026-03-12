@@ -39,7 +39,7 @@ To create a TWAP order:
    * `salt`: set to a unique value.
    * `staticInput`: the ABI-encoded `TWAP.Data` struct.
 
-2. Use the `struct` from (1) as either a Merkle leaf, or with `ComposableCoW.create` to create a single conditional order.
+2. Use the `struct` from (1) as either a Merkle leaf, or with `ComposableCoW.create` to create a single programmatic order.
 
 3. Approve `GPv2VaultRelayer` to trade `n x partSellAmount` of the safe's `sellToken` tokens (in the example above, `GPv2VaultRelayer` would receive approval for spending 12,000,000 DAI tokens).
 
@@ -50,6 +50,6 @@ To create a TWAP order:
 Fortunately, when using Safe, it is possible to batch together all the above calls to perform this step atomically, and optimise gas consumption / UX.
 
 <Note>
-  For cancelling a TWAP order, follow the instructions at [Conditional order cancellation](/cow-protocol/reference/contracts/periphery/composable-cow#remove).
+  For cancelling a TWAP order, follow the instructions at [Programmatic order cancellation](/cow-protocol/reference/contracts/periphery/composable-cow#remove).
 </Note>
 

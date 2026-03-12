@@ -1,11 +1,11 @@
 ---
 title: "Programmatic Orders"
-description: "Build sophisticated trading strategies through conditional orders that execute automatically"
+description: "Build sophisticated trading strategies through programmatic orders that execute automatically"
 ---
 
 # Programmatic Orders
 
-The CoW Protocol Composable SDK enables sophisticated trading strategies through conditional orders that execute automatically when specified conditions are met. This allows you to build advanced trading logic without constant monitoring.
+The CoW Protocol Composable SDK enables sophisticated trading strategies through programmatic orders that execute automatically when specified conditions are met. The `ComposableCoW` contract implements these orders, allowing you to build advanced trading logic without constant monitoring.
 
 ## Installation
 
@@ -17,7 +17,7 @@ npm install @cowprotocol/sdk-composable
 
 ### ConditionalOrderFactory
 
-Registry-based factory for creating different types of conditional orders:
+Registry-based factory for creating different types of programmatic orders:
 
 ```typescript
 import { ConditionalOrderFactory } from '@cowprotocol/sdk-composable'
@@ -28,7 +28,7 @@ const conditionalOrder = factory.fromParams(orderParams)
 
 ### Multiplexer
 
-Manages batches of conditional orders using merkle trees:
+Manages batches of programmatic orders using merkle trees:
 
 ```typescript
 import { Multiplexer } from '@cowprotocol/sdk-composable'
@@ -39,7 +39,7 @@ const proofs = multiplexer.dumpProofsAndParams()
 
 ### ConditionalOrder
 
-Base class for implementing custom conditional order types:
+Base class for implementing custom programmatic order types:
 
 ```typescript
 import { ConditionalOrder } from '@cowprotocol/sdk-composable'
@@ -68,7 +68,7 @@ const provider = new JsonRpcProvider('YOUR_RPC_URL')
 const wallet = new Wallet('YOUR_PRIVATE_KEY', provider)
 const adapter = new EthersV6Adapter({ provider, signer: wallet })
 
-// Create a conditional order factory
+// Create a programmatic order factory
 const registry = {
   twap: TWAPOrderFactory,
   dca: DCAOrderFactory,
@@ -77,7 +77,7 @@ const registry = {
 
 const factory = new ConditionalOrderFactory(registry, adapter)
 
-// Create conditional orders
+// Create programmatic orders
 const twapOrder = factory.fromParams({
   handler: TWAP_HANDLER_ADDRESS,
   salt: '0x...',
@@ -134,7 +134,7 @@ const sdk = new CowSdk({
 const factory = sdk.composable.factory
 const multiplexer = sdk.composable.multiplexer
 
-// Create conditional orders
+// Create programmatic orders
 const conditionalOrder = factory.fromParams(orderParams)
 ```
 
@@ -192,7 +192,7 @@ Each part sells 100 USDC for WETH once per day. See the [TWAP Orders guide](/cow
 
 ## Merkle Tree Management
 
-Conditional orders are stored in merkle trees for efficient on-chain verification:
+Programmatic orders are stored in merkle trees for efficient on-chain verification:
 
 ```typescript
 // Create multiplexer with multiple orders
@@ -214,10 +214,10 @@ const proofs = multiplexer.dumpProofsAndParams((order) => {
 
 ## Order Validation
 
-Validate conditional orders before execution:
+Validate programmatic orders before execution:
 
 ```typescript
-// Check if conditional order is valid
+// Check if programmatic order is valid
 const validationResult = await conditionalOrder.isValid({
   owner: userAddress,
   ctx: contextData,
