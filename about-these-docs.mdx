@@ -16,20 +16,27 @@ graph TB
     subgraph Protocol["CoW Protocol"]
         direction TB
         OV[Overview] --> EXP[Explanation]
-        OV --> TUT[Tutorials]
-        OV --> HT[How-To Guides]
+        OV --> SWAP[CoW Swap]
+        OV --> EXPL[CoW Explorer]
+        OV --> INT[Integration]
         OV --> REF[Reference]
 
         EXP --> EXP_HW[How It Works]
         EXP --> EXP_BEN[Benefits]
         EXP --> EXP_OT[Order Types]
         EXP --> EXP_FL[Flash Loans]
+        EXP --> EXP_AMM[CoW AMM]
         EXP --> EXP_ARCH[Architecture]
 
-        TUT --> TUT_QS[Quickstarts]
-        TUT --> TUT_CS[CoW Swap]
-        TUT --> TUT_CE[CoW Explorer]
-        TUT --> TUT_SOL[Solvers]
+        SWAP --> SWAP_TUT[Trading Tutorials]
+        SWAP --> SWAP_WID[Widget]
+        SWAP --> SWAP_HOOK[Hook dApps]
+
+        EXPL --> EXPL_TUT[Explorer Tutorials]
+
+        INT --> INT_API[API Integration]
+        INT --> INT_QS[Quickstarts]
+        INT --> INT_TEST[Testing]
 
         REF --> REF_API[APIs]
         REF --> REF_CORE[Core Reference]
@@ -37,8 +44,8 @@ graph TB
     end
 
     subgraph SDKs["Developer SDKs"]
-        COWSDK[CoW SDK - TypeScript]
-        COWPY[cow-py - Python]
+        COWSDK[TypeScript SDK]
+        COWPY[Python SDK]
     end
 
     subgraph Contracts["Contracts"]
@@ -126,10 +133,10 @@ graph LR
     subgraph Tabs
         T1["CoW Protocol"]
         T2["Contracts"]
-        T3["CoW SDK"]
-        T4["cow-py"]
+        T3["TypeScript SDK"]
+        T4["Python SDK"]
         T5["Solvers"]
-        T6["BFF & Services"]
+        T6["Backend"]
         T7["Governance"]
     end
 ```
@@ -144,33 +151,79 @@ graph TD
     CP --> G4[Order Types]
     CP --> G5[Flash Loans]
     CP --> G6[CoW AMM]
-    CP --> G7[Trading Tutorials]
-    CP --> G8[How-To Guides]
-    CP --> G9[Architecture]
-    CP --> G10[API Reference]
-    CP --> G11[Core Reference]
-    CP --> G12[Auctions]
+    CP --> G7[CoW Swap]
+    CP --> G8[CoW Explorer]
+    CP --> G9[Integration]
+    CP --> G10[Architecture]
+    CP --> G11[API Reference]
+    CP --> G12[Core Reference]
+    CP --> G13[Auctions]
 
     G2 --> F1[Flow of an Order]
     G2 --> F2[How Intents Are Formed]
     G2 --> F3[Quote Selection]
     G2 --> F4[Coincidence of Wants]
-    G2 --> F5[Protocol vs Swap]
+    G2 --> F5[Fee Model]
 
-    G7 --> QS[Quickstarts]
-    G7 --> CS[CoW Swap]
-    G7 --> CE[CoW Explorer]
+    G7 --> CS0[Protocol vs Swap]
+    G7 --> CS1[Trading Tutorials]
+    G7 --> CS2[Widget]
+    G7 --> CS3[Hook dApps]
+    G7 --> CS4[Custom Links]
+    G7 --> CS5[Swap in Safe App]
+
+    CS1 --> T1[Swap]
+    CS1 --> T2[Limit Orders]
+    CS1 --> T3[TWAP]
+    CS1 --> T4[Native ETH]
+    CS1 --> T5[Flash Loans]
+    CS1 --> T6[Swap & Bridge]
+
+    G8 --> CE1[Explorer Tutorials]
+
+    G9 --> I1[API Integration]
+    G9 --> I2[Testing]
+    G9 --> QS[Quickstarts]
 
     QS --> Q1[cURL]
     QS --> Q2[Python]
     QS --> Q3[Token Approvals]
 
-    G11 --> D1[Definitions]
-    G11 --> D2[Signing Schemes]
-    G11 --> D3[Error Reference]
-    G11 --> D4[Rate Limits]
-    G11 --> D5[Intents]
+    G12 --> D1[Definitions]
+    G12 --> D2[Signing Schemes]
+    G12 --> D3[Error Reference]
+    G12 --> D4[Rate Limits]
+    G12 --> D5[Intents]
 ```
+
+## Known Gaps
+
+These are areas where the documentation is incomplete or could be significantly improved. Contributions are welcome — see [Content Guidelines](#content-guidelines) below for how to structure new pages.
+
+### Missing guides and tutorials
+
+| Gap | What's needed | Priority |
+|---|---|---|
+| **Flash loan SDK guide** | Programmatic flash loan order creation via SDK. The current [tutorial](/cow-protocol/tutorials/cow-swap/flash-loans) is UI-focused with a Sepolia walkthrough but lacks an SDK-first guide. | Low |
+| **Batch order creation** | How to create and manage multiple orders in a single session — useful for market makers and automated strategies. | Low |
+
+### Structural weaknesses
+
+| Area | Issue |
+|---|---|
+| **Multi-chain specifics** | Docs are Ethereum-centric. Gnosis Chain, Arbitrum, and Base have different liquidity profiles, gas dynamics, and solver participation, but chain-specific guidance is sparse. |
+| **Code freshness** | Static code snippets can go stale as the SDK evolves. The [interactive tutorials at learn.cow.fi](https://learn.cow.fi) mitigate this, but in-docs examples need periodic review against latest SDK versions. |
+| **API reference depth** | The [Orderbook API reference](/cow-protocol/reference/apis/orderbook) links to the external [api.cow.fi/docs](https://api.cow.fi/docs) for full specs. Inline parameter documentation within the docs would reduce context-switching. |
+| **Solver docs** | The solver tutorials cover creation and deployment, but advanced topics (custom routing strategies, gas optimization, competition dynamics) are thin. |
+
+### How to help
+
+If you'd like to contribute to any of these areas:
+
+1. Check the [GitHub repository](https://github.com/cowprotocol) for the docs source
+2. Follow the [Diataxis framework](#framework-diataxis) to decide where content belongs
+3. Use existing guides as templates for style and structure
+4. Ask in [Discord #tech-talk](https://discord.com/invite/cowprotocol) if you need protocol-level clarification
 
 ## Tech Stack
 

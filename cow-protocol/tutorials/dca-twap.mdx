@@ -1,0 +1,289 @@
+---
+title: "Dollar-Cost Averaging with TWAP"
+description: "Build a dollar-cost averaging strategy using TWAP orders to accumulate tokens over time"
+---
+
+Dollar-cost averaging (DCA) is a strategy where you invest a fixed amount at regular intervals, regardless of price. CoW Protocol's TWAP (Time-Weighted Average Price) orders are ideal for this — they split a large trade into smaller parts executed at regular intervals.
+
+## How DCA via TWAP Works
+
+A TWAP order splits your total sell amount into `N` equal parts, each executed at a fixed interval:
+
+```
+Total: 10,000 USDC → WETH over 10 hours
+├── Part 1:  1,000 USDC → WETH  (hour 0)
+├── Part 2:  1,000 USDC → WETH  (hour 1)
+├── Part 3:  1,000 USDC → WETH  (hour 2)
+│   ...
+└── Part 10: 1,000 USDC → WETH  (hour 9)
+```
+
+Each part executes at the best available market price at that moment. The result is a position accumulated at the average price over the period.
+
+<Note>
+  TWAP orders are conditional orders created via the [ComposableCoW framework](/composable-cow/introduction). They require a Safe wallet and the [Watch Tower](/watch-tower/introduction) to monitor and submit each part.
+</Note>
+
+## Strategy Design
+
+Before creating the order, decide on your DCA parameters:
+
+| Parameter | Consideration |
+|---|---|
+| **Total amount** | How much you want to invest in total |
+| **Number of parts** | More parts = better averaging, but each part must be large enough to attract solver attention |
+| **Interval** | Time between each buy. Common: 1 hour, 4 hours, 1 day |
+| **Duration** | Total time = parts × interval |
+| **Minimum buy amount** | Price protection — set a floor to avoid buying at extreme prices |
+
+### Recommended Configurations
+
+| Strategy | Parts | Interval | Duration | Best for |
+|---|---|---|---|---|
+| **Intraday DCA** | 6–12 | 1 hour | 6–12 hours | Averaging within a volatile day |
+| **Daily DCA** | 7–30 | 24 hours | 1–4 weeks | Accumulating over weeks |
+| **Aggressive DCA** | 20–50 | 30 min | 10–25 hours | High-frequency averaging |
+
+<Warning>
+  Each TWAP part must be large enough to be economically viable for solvers. On mainnet, parts under ~$100 equivalent may not fill reliably. On L2s (Arbitrum, Base), smaller amounts work due to lower gas costs.
+</Warning>
+
+## Using the CoW Swap UI
+
+The simplest way to create a DCA strategy is through the CoW Swap interface:
+
+<Steps>
+  <Step title="Connect your Safe wallet">
+    TWAP orders require a Safe wallet. Connect via [swap.cow.fi](https://swap.cow.fi).
+  </Step>
+  <Step title="Select TWAP order type">
+    Click the order type selector and choose **TWAP**.
+  </Step>
+  <Step title="Configure the order">
+    - Select your sell token (e.g., USDC) and buy token (e.g., WETH)
+    - Enter the **total amount** to sell
+    - Set the **number of parts** and **time interval**
+    - Review the per-part amount and total duration
+  </Step>
+  <Step title="Set price protection">
+    Optionally set a minimum price to avoid buying at extreme levels. This applies to each individual part.
+  </Step>
+  <Step title="Submit the order">
+    Review and sign the transaction from your Safe. The Watch Tower will automatically submit each part at the scheduled time.
+  </Step>
+</Steps>
+
+For a detailed walkthrough of TWAP in the UI, see the [TWAP tutorial](/cow-protocol/tutorials/cow-swap/twap).
+
+## Using the TypeScript SDK
+
+```typescript
+import {
+  SupportedChainId,
+  OrderKind,
+  TradingSdk,
+  TradeParameters,
+  SwapAdvancedSettings,
+  SigningScheme,
+} from '@cowprotocol/sdk-trading'
+import { generateAppDataDoc } from '@cowprotocol/sdk-app-data'
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+import { createPublicClient, http, privateKeyToAccount } from 'viem'
+import { mainnet } from 'viem/chains'
+
+// Token addresses (Mainnet)
+const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
+
+// DCA parameters
+const TOTAL_SELL_AMOUNT = 10000n * 10n ** 6n  // 10,000 USDC
+const NUMBER_OF_PARTS = 10
+const TIME_BETWEEN_PARTS = 3600  // 1 hour
+
+// Each part sells 1,000 USDC
+const SELL_AMOUNT_PER_PART = TOTAL_SELL_AMOUNT / BigInt(NUMBER_OF_PARTS)
+
+const adapter = new ViemAdapter({
+  provider: createPublicClient({
+    chain: mainnet,
+    transport: http('YOUR_RPC_URL'),
+  }),
+  signer: privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`),
+})
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.MAINNET,
+  appCode: 'my-dca-bot',
+}, {}, adapter)
+
+// Create a TWAP order
+// Note: TWAP orders use ComposableCoW under the hood.
+// The SDK creates a conditional order that the Watch Tower monitors.
+const parameters: TradeParameters = {
+  kind: OrderKind.SELL,
+  sellToken: USDC,
+  sellTokenDecimals: 6,
+  buyToken: WETH,
+  buyTokenDecimals: 18,
+  amount: TOTAL_SELL_AMOUNT.toString(),
+}
+
+const advancedParameters: SwapAdvancedSettings = {
+  quoteRequest: {
+    signingScheme: SigningScheme.PRESIGN,
+  },
+}
+
+// For programmatic TWAP, use the ComposableCoW contract directly
+// See the Python SDK example below for the lower-level approach
+```
+
+## Using the Python SDK
+
+The Python SDK has first-class TWAP support through the `Twap` class:
+
+```python
+import asyncio
+import os
+import time
+from web3 import Web3, Account
+from cowdao_cowpy.composable.order_types.twap import (
+    Twap, TwapData, StartType, DurationType
+)
+from cowdao_cowpy.common.chains import Chain
+
+# Token addresses (Mainnet)
+USDC = Web3.to_checksum_address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")
+WETH = Web3.to_checksum_address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
+
+account = Account.from_key(os.getenv("PRIVATE_KEY"))
+
+# DCA: 10,000 USDC → WETH over 10 hours
+twap_data = TwapData(
+    sell_token=USDC,
+    buy_token=WETH,
+    receiver=account.address,
+    sell_amount=10000 * 10**6,           # 10,000 USDC total
+    buy_amount=3 * 10**18,               # Minimum 3 WETH total (price protection)
+    start_type=StartType.AT_MINING_TIME, # Start immediately
+    number_of_parts=10,                  # 10 parts of 1,000 USDC each
+    time_between_parts=3600,             # 1 hour between parts
+    duration_type=DurationType.AUTO,     # Each part valid until next starts
+    app_data="0x" + "0" * 64,
+    start_time_epoch=0,
+    duration_of_part=0,
+)
+
+twap = Twap.from_data(twap_data)
+twap.assert_is_valid()
+
+print(f"DCA Strategy:")
+print(f"  Total sell: {twap_data.sell_amount / 10**6} USDC")
+print(f"  Per part:   {twap_data.sell_amount / twap_data.number_of_parts / 10**6} USDC")
+print(f"  Parts:      {twap_data.number_of_parts}")
+print(f"  Interval:   {twap_data.time_between_parts / 3600} hours")
+print(f"  Duration:   {twap_data.number_of_parts * twap_data.time_between_parts / 3600} hours")
+
+# Submit to ComposableCoW
+composable_cow = Web3.to_checksum_address("0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74")
+provider = Web3(Web3.HTTPProvider("YOUR_RPC_URL"))
+
+tx = {
+    'from': account.address,
+    'to': composable_cow,
+    'data': twap.create_calldata,
+    'gas': 500000,
+    'gasPrice': provider.eth.gas_price,
+    'nonce': provider.eth.get_transaction_count(account.address),
+    'chainId': 1,
+}
+
+signed_tx = account.sign_transaction(tx)
+tx_hash = provider.eth.send_raw_transaction(signed_tx.rawTransaction)
+print(f"TWAP created: {tx_hash.hex()}")
+```
+
+### Scheduling a Future DCA
+
+To start the DCA at a specific time (e.g., next Monday):
+
+```python
+import time
+
+# Start next Monday at 9:00 UTC
+next_monday_9am = ...  # Calculate epoch timestamp
+
+twap_data = TwapData(
+    # ... token parameters ...
+    start_type=StartType.AT_EPOCH,
+    start_time_epoch=next_monday_9am,
+    number_of_parts=5,
+    time_between_parts=86400,     # 1 day between parts
+    duration_type=DurationType.LIMIT_DURATION,
+    duration_of_part=43200,       # Each part valid for 12 hours only
+)
+```
+
+### Cancelling a DCA
+
+```python
+# Cancel the TWAP order
+tx = {
+    'from': account.address,
+    'to': composable_cow,
+    'data': twap.remove_calldata,
+    'gas': 200000,
+    'gasPrice': provider.eth.gas_price,
+    'nonce': provider.eth.get_transaction_count(account.address),
+    'chainId': 1,
+}
+
+signed_tx = account.sign_transaction(tx)
+tx_hash = provider.eth.send_raw_transaction(signed_tx.rawTransaction)
+print(f"DCA cancelled: {tx_hash.hex()}")
+```
+
+## Price Protection
+
+The `buy_amount` parameter serves as price protection — it sets the **minimum total** amount of buy tokens you'll receive across all parts. Each individual part gets a proportional minimum:
+
+```
+Total buy_amount: 3 WETH (for 10,000 USDC across 10 parts)
+Per-part minimum: 0.3 WETH (for 1,000 USDC)
+Effective max price: ~3,333 USDC/WETH per part
+```
+
+If the market price exceeds your limit for a particular part, that part won't execute during its window and will be skipped.
+
+<Warning>
+  Setting a very tight `buy_amount` (close to market price) risks parts not executing. For DCA, a wider limit (e.g., 10–20% below market) is typically preferred — the goal is consistent accumulation, not price precision.
+</Warning>
+
+## Monitoring
+
+Track your DCA execution through:
+
+1. **CoW Explorer** — search for your Safe address to see each part as it fills
+2. **OrderBook API** — query `GET /api/v1/account/{address}/orders` for order status
+3. **Python SDK polling** — use `twap.poll()` to check the current part status (see [TWAP Orders](/cow-py/advanced/twap-orders#monitoring-twap-execution))
+
+## Prerequisites
+
+<Steps>
+  <Step title="Safe wallet">
+    TWAP orders require a [Safe](https://safe.global) with the ComposableCoW `ExtensibleFallbackHandler` configured. See the [ComposableCoW setup guide](/composable-cow/guides/setup).
+  </Step>
+  <Step title="Token approval">
+    Approve the CoW Protocol Vault Relayer to spend your sell token from the Safe.
+  </Step>
+  <Step title="Sufficient balance">
+    Ensure the Safe holds the full sell amount before the TWAP starts.
+  </Step>
+</Steps>
+
+## Next Steps
+
+- [TWAP Orders (Python SDK)](/cow-py/advanced/twap-orders) — detailed Python SDK reference
+- [TWAP tutorial (UI)](/cow-protocol/tutorials/cow-swap/twap) — step-by-step CoW Swap walkthrough
+- [ComposableCoW Troubleshooting](/composable-cow/guides/troubleshooting) — setup issues and debugging
+- [Debugging Conditional Orders](/composable-cow/guides/debugging) — when parts don't execute

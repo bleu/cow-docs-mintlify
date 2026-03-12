@@ -1,0 +1,300 @@
+---
+title: "Creating Limit Orders"
+description: "How to create limit orders with specific price targets using the CoW Protocol Python SDK"
+---
+
+## Overview
+
+Limit orders let you specify both the sell and buy amounts, creating an order that only executes at your desired price or better. Unlike the [`swap_tokens`](/cow-py/guides/swapping-tokens) function which gets a market quote, limit orders give you precise control over the exchange rate.
+
+<Note>
+  Limit orders remain in the order book until filled, cancelled, or expired. Set `valid_to` to control how long the order stays active.
+</Note>
+
+## Prerequisites
+
+Before creating limit orders, ensure you have:
+
+- An Ethereum account with a private key
+- Sufficient balance of the sell token
+- Token approval for the CoW Protocol Vault Relayer (see [Swapping Tokens — Token Approval Flow](/cow-py/guides/swapping-tokens#token-approval-flow))
+
+## Basic Limit Order
+
+To create a limit order, construct an `Order` with explicit `sell_amount` and `buy_amount`, sign it, and submit it to the OrderBook API:
+
+```python
+import asyncio
+import time
+from web3 import Account, Web3
+from cowdao_cowpy.common.chains import Chain
+from cowdao_cowpy.common.config import SupportedChainId
+from cowdao_cowpy.contracts.order import Order, OrderKind
+from cowdao_cowpy.cow.swap import sign_order
+from cowdao_cowpy.order_book.api import OrderBookApi
+from cowdao_cowpy.order_book.config import OrderBookAPIConfigFactory
+from cowdao_cowpy.order_book.generated.model import OrderCreation, SigningScheme
+
+# Setup
+account = Account.from_key("YOUR_PRIVATE_KEY")
+
+# Token addresses (Mainnet)
+WETH = Web3.to_checksum_address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
+USDC = Web3.to_checksum_address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")
+
+# Limit order: sell 1 WETH for at least 3000 USDC
+order = Order(
+    sell_token=WETH,
+    buy_token=USDC,
+    sell_amount=str(10**18),          # 1 WETH (18 decimals)
+    buy_amount=str(3000 * 10**6),     # 3000 USDC (6 decimals)
+    kind=OrderKind.SELL.value,
+    valid_to=int(time.time()) + 86400,  # 24 hours
+    fee_amount="0",
+    partially_fillable=False,
+    sell_token_balance="erc20",
+    buy_token_balance="erc20",
+    receiver=account.address,
+    app_data="0x0000000000000000000000000000000000000000000000000000000000000000",
+)
+
+# Sign the order
+signature = sign_order(Chain.MAINNET, account, order)
+
+async def main():
+    api = OrderBookApi(
+        OrderBookAPIConfigFactory.get_config("prod", SupportedChainId.MAINNET)
+    )
+
+    order_creation = OrderCreation(
+        from_=account.address,
+        sellToken=order.sell_token,
+        buyToken=order.buy_token,
+        sellAmount=order.sell_amount,
+        buyAmount=order.buy_amount,
+        validTo=order.valid_to,
+        feeAmount="0",
+        kind=order.kind,
+        partiallyFillable=order.partially_fillable,
+        sellTokenBalance=order.sell_token_balance,
+        buyTokenBalance=order.buy_token_balance,
+        receiver=order.receiver,
+        appData=order.app_data,
+        signingScheme=SigningScheme.eip712,
+        signature=signature,
+    )
+
+    order_uid = await api.post_order(order_creation)
+    print(f"Limit order created: {order_uid}")
+
+asyncio.run(main())
+```
+
+## Calculating Limit Prices
+
+The limit price is determined by the ratio of `sell_amount` to `buy_amount`. You specify both amounts explicitly:
+
+```python
+# Sell 1 WETH for at least 3000 USDC
+# Effective price: 3000 USDC/WETH
+order = Order(
+    sell_token=WETH,
+    buy_token=USDC,
+    sell_amount=str(1 * 10**18),       # 1 WETH
+    buy_amount=str(3000 * 10**6),      # 3000 USDC
+    kind=OrderKind.SELL.value,
+    # ...
+)
+```
+
+```python
+# Buy 1 WETH for at most 2900 USDC
+# Effective price: 2900 USDC/WETH
+order = Order(
+    sell_token=USDC,
+    buy_token=WETH,
+    sell_amount=str(2900 * 10**6),     # 2900 USDC
+    buy_amount=str(1 * 10**18),        # 1 WETH
+    kind=OrderKind.BUY.value,
+    # ...
+)
+```
+
+<Note>
+  **Price calculation:**
+
+  - Limit price = buyAmount / sellAmount (in token units, adjusted for decimals)
+  - The order fills only when the market reaches your price or better
+</Note>
+
+## Order Kinds
+
+<Tabs>
+  <Tab title="Sell Limit Orders">
+    Sell orders guarantee you receive **at least** the specified `buy_amount` for your `sell_amount`:
+
+    ```python
+    order = Order(
+        kind=OrderKind.SELL.value,
+        sell_amount=str(1 * 10**18),      # Selling exactly 1 WETH
+        buy_amount=str(3000 * 10**6),     # Must receive at least 3000 USDC
+        # ...
+    )
+    ```
+
+    **Use case:** "I want to sell 1 WETH and receive at least 3000 USDC"
+  </Tab>
+
+  <Tab title="Buy Limit Orders">
+    Buy orders guarantee you pay **at most** the specified `sell_amount` for your `buy_amount`:
+
+    ```python
+    order = Order(
+        kind=OrderKind.BUY.value,
+        sell_amount=str(3000 * 10**6),    # Pay at most 3000 USDC
+        buy_amount=str(1 * 10**18),       # To receive exactly 1 WETH
+        # ...
+    )
+    ```
+
+    **Use case:** "I want to buy 1 WETH and pay at most 3000 USDC"
+  </Tab>
+</Tabs>
+
+## Using a Quote as Price Reference
+
+You can fetch a market quote first and adjust the price to set your limit:
+
+```python
+from cowdao_cowpy.order_book.generated.model import (
+    OrderQuoteRequest,
+    OrderQuoteSide1,
+)
+
+async def limit_order_from_quote():
+    api = OrderBookApi(
+        OrderBookAPIConfigFactory.get_config("prod", SupportedChainId.MAINNET)
+    )
+
+    # Get current market quote
+    quote = await api.post_quote(
+        OrderQuoteRequest(
+            sellToken=WETH,
+            buyToken=USDC,
+            from_=account.address,
+        ),
+        OrderQuoteSide1(
+            sellAmountBeforeFee=str(10**18),  # 1 WETH
+        ),
+    )
+
+    # Set limit price 5% above market (better price for seller)
+    market_buy_amount = int(quote.quote.buyAmount)
+    limit_buy_amount = int(market_buy_amount * 1.05)
+
+    order = Order(
+        sell_token=WETH,
+        buy_token=USDC,
+        sell_amount=str(10**18),
+        buy_amount=str(limit_buy_amount),
+        kind=OrderKind.SELL.value,
+        valid_to=int(time.time()) + 7 * 86400,  # 7 days
+        fee_amount="0",
+        partially_fillable=False,
+        sell_token_balance="erc20",
+        buy_token_balance="erc20",
+        receiver=account.address,
+        app_data="0x0000000000000000000000000000000000000000000000000000000000000000",
+    )
+
+    signature = sign_order(Chain.MAINNET, account, order)
+
+    order_creation = OrderCreation(
+        from_=account.address,
+        sellToken=order.sell_token,
+        buyToken=order.buy_token,
+        sellAmount=order.sell_amount,
+        buyAmount=order.buy_amount,
+        validTo=order.valid_to,
+        feeAmount="0",
+        kind=order.kind,
+        partiallyFillable=order.partially_fillable,
+        sellTokenBalance=order.sell_token_balance,
+        buyTokenBalance=order.buy_token_balance,
+        receiver=order.receiver,
+        appData=order.app_data,
+        signingScheme=SigningScheme.eip712,
+        signature=signature,
+    )
+
+    order_uid = await api.post_order(order_creation)
+    print(f"Limit order (5% above market): {order_uid}")
+```
+
+## Partially Fillable Orders
+
+For large orders, enable partial fills to allow incremental execution:
+
+```python
+order = Order(
+    sell_token=WETH,
+    buy_token=USDC,
+    sell_amount=str(10 * 10**18),      # 10 WETH
+    buy_amount=str(30000 * 10**6),     # 30000 USDC
+    kind=OrderKind.SELL.value,
+    partially_fillable=True,            # Allow partial fills
+    valid_to=int(time.time()) + 7 * 86400,
+    fee_amount="0",
+    sell_token_balance="erc20",
+    buy_token_balance="erc20",
+    receiver=account.address,
+    app_data="0x0000000000000000000000000000000000000000000000000000000000000000",
+)
+```
+
+<Warning>
+  Partially fillable orders may execute in multiple transactions over time. Use the [OrderBookApi](/cow-py/api/order-book) to track fill progress.
+</Warning>
+
+## Custom App Data
+
+Add metadata to identify your application or configure partner fees:
+
+```python
+from cowdao_cowpy.app_data.utils import generate_app_data
+
+app_data_result = generate_app_data(
+    app_code="my-limit-order-bot",
+)
+
+order = Order(
+    # ... token parameters ...
+    app_data=app_data_result.app_data_hash.root,
+)
+```
+
+See the [App Data guide](/cow-py/guides/app-data) for advanced metadata options including partner fees and order class configuration.
+
+## Comparing Swap vs Limit Orders
+
+| Feature       | `swap_tokens`                   | Manual Limit Order             |
+| ------------- | ------------------------------- | ------------------------------ |
+| **Price**     | Current market price (via quote)| Your specified price           |
+| **Amounts**   | Sell amount only                | Both sell AND buy amounts      |
+| **Execution** | Immediate (if liquidity exists) | When price target is reached   |
+| **Slippage**  | Applied automatically           | Controlled by your price       |
+| **Complexity**| Single function call             | Build, sign, and submit order  |
+
+## Best Practices
+
+1. **Set realistic prices** — orders too far from market may never fill
+2. **Use `valid_to` wisely** — set appropriate expiration for your strategy
+3. **Consider partial fills** — for large orders, partial fills improve execution
+4. **Monitor order status** — check if your order has been filled or partially filled using [Managing Orders](/cow-py/guides/managing-orders)
+5. **Token approvals** — ensure the Vault Relayer has sufficient allowance before submitting
+
+## Next Steps
+
+- Learn about [Managing Orders](/cow-py/guides/managing-orders) to track and cancel limit orders
+- Explore [TWAP Orders](/cow-py/advanced/twap-orders) for time-weighted average price execution
+- See [App Data](/cow-py/guides/app-data) for custom metadata and partner fees

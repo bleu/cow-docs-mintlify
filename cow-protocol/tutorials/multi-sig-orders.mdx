@@ -1,0 +1,314 @@
+---
+title: "Multi-Sig Order Flow"
+description: "Place CoW Protocol orders from a Safe with multiple signers using ERC-1271 and PreSign"
+---
+
+Placing orders from a Safe with multiple signers (multi-sig) requires coordinating signatures from threshold owners before the order can be submitted. This tutorial covers the complete flow using both PreSign and ERC-1271 approaches.
+
+## Overview
+
+Safe multi-sig wallets can't sign messages with a single key. Instead, you need to:
+
+1. **Propose** the order and collect the required number of owner signatures
+2. **Submit** the signed transaction to register the order on-chain (PreSign) or off-chain (ERC-1271)
+
+| Approach | How it works | Gas cost | When to use |
+|---|---|---|---|
+| **PreSign** | Execute a transaction calling `setPreSignature` on the settlement contract | ~60k gas | Simple, reliable, works with any Safe configuration |
+| **ERC-1271** | Submit an off-chain signature that the settlement contract verifies via `isValidSignature` on the Safe | No gas (off-chain) | Gas-efficient, but requires Safe's ERC-1271 support |
+
+<Note>
+  Most multi-sig integrations use **PreSign** because it's simpler and doesn't require handling Safe's internal signature encoding. Use ERC-1271 when gas costs matter (e.g., frequent trading).
+</Note>
+
+## Prerequisites
+
+- A [Safe](https://safe.global) deployed with 2+ owners and a threshold ≥ 2
+- The sell token approved for the CoW Protocol [Vault Relayer](/cow-protocol/reference/contracts/core/vault-relayer) from the Safe
+- [Safe Protocol Kit](https://docs.safe.global/sdk/protocol-kit) installed: `npm install @safe-global/protocol-kit`
+
+## Method 1: PreSign (Recommended)
+
+PreSign is the simplest approach — you create the order, then execute a Safe transaction to call `setPreSignature` on the settlement contract.
+
+<Steps>
+  <Step title="Create the order with PRESIGN signing scheme">
+    ```typescript
+    import {
+      SupportedChainId,
+      OrderKind,
+      TradingSdk,
+      TradeParameters,
+      SwapAdvancedSettings,
+      SigningScheme,
+    } from '@cowprotocol/sdk-trading'
+    import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+    import { createPublicClient, http, privateKeyToAccount } from 'viem'
+    import { mainnet } from 'viem/chains'
+
+    const SAFE_ADDRESS = '0xYourSafeAddress'
+
+    const adapter = new ViemAdapter({
+      provider: createPublicClient({
+        chain: mainnet,
+        transport: http('YOUR_RPC_URL'),
+      }),
+      // Use any Safe owner's key — this is for the SDK to create quotes
+      signer: privateKeyToAccount('OWNER_1_PRIVATE_KEY' as `0x${string}`),
+    })
+
+    const sdk = new TradingSdk({
+      chainId: SupportedChainId.MAINNET,
+      appCode: 'my-multisig-app',
+    }, {}, adapter)
+
+    const parameters: TradeParameters = {
+      kind: OrderKind.SELL,
+      sellToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
+      sellTokenDecimals: 6,
+      buyToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',  // WETH
+      buyTokenDecimals: 18,
+      amount: '10000000000', // 10,000 USDC
+    }
+
+    const advancedSettings: SwapAdvancedSettings = {
+      quoteRequest: {
+        from: SAFE_ADDRESS,                  // Quote from the Safe
+        signingScheme: SigningScheme.PRESIGN, // Use PreSign for multi-sig
+      },
+    }
+
+    const { orderId } = await sdk.postSwapOrder(parameters, advancedSettings)
+    console.log('Order created (pending PreSign):', orderId)
+    ```
+
+    The order is now in the orderbook with status `presignaturePending`.
+  </Step>
+
+  <Step title="Build the PreSign Safe transaction">
+    ```typescript
+    import Safe from '@safe-global/protocol-kit'
+    import { encodeFunctionData } from 'viem'
+
+    // Settlement contract ABI (just the setPreSignature function)
+    const SETTLEMENT_ABI = [{
+      name: 'setPreSignature',
+      type: 'function',
+      inputs: [
+        { name: 'orderUid', type: 'bytes' },
+        { name: 'signed', type: 'bool' },
+      ],
+      outputs: [],
+    }]
+
+    const SETTLEMENT_CONTRACT = '0x9008D19f58AAbD9eD0D60971565AA8510560ab41'
+
+    // Encode the setPreSignature call
+    const callData = encodeFunctionData({
+      abi: SETTLEMENT_ABI,
+      functionName: 'setPreSignature',
+      args: [orderId, true],
+    })
+
+    // Initialize Safe SDK (owner 1)
+    const safe = await Safe.init({
+      provider: 'YOUR_RPC_URL',
+      signer: 'OWNER_1_PRIVATE_KEY',
+      safeAddress: SAFE_ADDRESS,
+    })
+
+    // Create the Safe transaction
+    const safeTx = await safe.createTransaction({
+      transactions: [{
+        to: SETTLEMENT_CONTRACT,
+        value: '0',
+        data: callData,
+      }],
+    })
+
+    // Owner 1 signs
+    const signedTx = await safe.signTransaction(safeTx)
+    console.log('Owner 1 signed. Collecting more signatures...')
+    ```
+  </Step>
+
+  <Step title="Collect additional owner signatures">
+    Each additional owner signs the same transaction:
+
+    ```typescript
+    // Owner 2 initializes their Safe SDK instance
+    const safeOwner2 = await Safe.init({
+      provider: 'YOUR_RPC_URL',
+      signer: 'OWNER_2_PRIVATE_KEY',
+      safeAddress: SAFE_ADDRESS,
+    })
+
+    // Owner 2 signs the same transaction
+    const fullySignedTx = await safeOwner2.signTransaction(signedTx)
+    console.log('Owner 2 signed. Threshold reached.')
+    ```
+
+    <Note>
+      In practice, Safe owners typically sign via the [Safe Transaction Service](https://docs.safe.global/core-api/transaction-service-overview) or Safe UI rather than sharing private keys. The Safe SDK supports both approaches.
+    </Note>
+  </Step>
+
+  <Step title="Execute the transaction">
+    Once enough signatures are collected (≥ threshold), any owner can execute:
+
+    ```typescript
+    const result = await safe.executeTransaction(fullySignedTx)
+    console.log('PreSign tx hash:', result.hash)
+    console.log('Order is now Open and ready for execution!')
+    ```
+  </Step>
+</Steps>
+
+### Using Safe Transaction Service
+
+For production multi-sig flows, use the Safe Transaction Service to propose and collect signatures asynchronously:
+
+```typescript
+import SafeApiKit from '@safe-global/api-kit'
+
+const apiKit = new SafeApiKit({
+  chainId: 1n,
+})
+
+// Owner 1: Propose the transaction
+const safeTxHash = await safe.getTransactionHash(safeTx)
+const signature = await safe.signHash(safeTxHash)
+
+await apiKit.proposeTransaction({
+  safeAddress: SAFE_ADDRESS,
+  safeTransactionData: safeTx.data,
+  safeTxHash,
+  senderAddress: owner1Address,
+  senderSignature: signature.data,
+})
+
+console.log('Transaction proposed. Other owners can sign via Safe UI.')
+
+// Owner 2 (later): Confirm the transaction
+await apiKit.confirmTransaction(safeTxHash, owner2Signature)
+
+// Any owner: Execute when threshold is met
+const pendingTxs = await apiKit.getPendingTransactions(SAFE_ADDRESS)
+// Find the transaction and execute it
+```
+
+## Method 2: ERC-1271 (Gas-Efficient)
+
+ERC-1271 allows off-chain signing — no gas cost for the signature itself. The settlement contract calls `isValidSignature` on the Safe to verify.
+
+```typescript
+import {
+  SupportedChainId,
+  OrderKind,
+  TradingSdk,
+  SigningScheme,
+} from '@cowprotocol/sdk-trading'
+
+const advancedSettings: SwapAdvancedSettings = {
+  quoteRequest: {
+    from: SAFE_ADDRESS,
+    signingScheme: SigningScheme.EIP1271,
+  },
+}
+
+const { orderId } = await sdk.postSwapOrder(parameters, advancedSettings)
+```
+
+<Warning>
+  ERC-1271 with Safe multi-sig requires encoding the combined Safe signatures in a specific format. This is more complex than PreSign. See the [ERC-1271 Signing Guide](/cow-sdk/guides/erc1271-signing) for details on signature encoding.
+</Warning>
+
+## Python SDK
+
+The Python SDK's `swap_tokens` function supports Safe multi-sig orders with the `safe_address` parameter:
+
+```python
+from web3 import Account, Web3
+from web3.types import Wei
+from cowdao_cowpy.cow.swap import swap_tokens
+from cowdao_cowpy.common.chains import Chain
+
+account = Account.from_key("OWNER_PRIVATE_KEY")
+safe_address = Web3.to_checksum_address("0xYourSafeAddress")
+
+# This creates a PreSign order and returns the order UID
+# You still need to execute the setPreSignature transaction from the Safe
+completed_order = await swap_tokens(
+    amount=Wei(10000 * 10**6),   # 10,000 USDC
+    account=account,
+    chain=Chain.MAINNET,
+    sell_token=USDC_ADDRESS,
+    buy_token=WETH_ADDRESS,
+    safe_address=safe_address,   # Triggers PreSign signing scheme
+)
+
+print(f"Order UID: {completed_order.uid}")
+print(f"Now execute setPreSignature from the Safe to activate the order")
+```
+
+## Transaction Batching
+
+For efficiency, you can batch the token approval and PreSign into a single Safe transaction using `MultiSend`:
+
+```typescript
+// Batch: approve + setPreSignature in one Safe tx
+const transactions = [
+  {
+    to: SELL_TOKEN,
+    value: '0',
+    data: encodeFunctionData({
+      abi: ERC20_ABI,
+      functionName: 'approve',
+      args: [VAULT_RELAYER, sellAmount],
+    }),
+  },
+  {
+    to: SETTLEMENT_CONTRACT,
+    value: '0',
+    data: encodeFunctionData({
+      abi: SETTLEMENT_ABI,
+      functionName: 'setPreSignature',
+      args: [orderId, true],
+    }),
+  },
+]
+
+const safeTx = await safe.createTransaction({ transactions })
+// Sign and execute as above...
+```
+
+## Order Lifecycle
+
+```
+1. Create order (signingScheme: PRESIGN)
+   └── Status: presignaturePending
+
+2. Propose Safe tx (setPreSignature)
+   └── Owners sign via Safe UI or API
+
+3. Execute Safe tx (threshold met)
+   └── Status: open
+
+4. Solver fills the order
+   └── Status: fulfilled
+```
+
+## Troubleshooting
+
+| Issue | Cause | Fix |
+|---|---|---|
+| Order stays `presignaturePending` | `setPreSignature` tx not executed | Ensure the Safe tx has enough signatures and execute it |
+| `WrongOwner` error | `from` in quote doesn't match Safe address | Set `from: SAFE_ADDRESS` in the quote request |
+| Order expires before signing | Validity too short for multi-sig coordination | Use a longer `validTo` (e.g., 7 days) |
+| Insufficient allowance | Vault Relayer not approved | Approve from the Safe before or batch with the PreSign tx |
+
+## Next Steps
+
+- [Smart Contract Wallets](/cow-sdk/guides/smart-contract-wallets) — PreSign details for the TypeScript SDK
+- [ERC-1271 Signing](/cow-sdk/guides/erc1271-signing) — off-chain signing for custom contracts
+- [Token Approvals](/cow-protocol/tutorials/token-approvals) — managing ERC-20 approvals

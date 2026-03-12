@@ -1,0 +1,366 @@
+---
+title: "Post-Hook Examples"
+description: "End-to-end examples of swap → stake, swap → bridge, and swap → deposit using CoW Protocol hooks"
+---
+
+Post-hooks let you chain actions after a swap settles — stake received tokens, bridge them to another chain, or deposit into a vault. This tutorial shows complete worked examples for each pattern.
+
+<Warning>
+  Post-hooks that need to act on received tokens **must** use [CoW Shed](/cow-sdk/advanced/account-abstraction). Without it, the tokens land in your wallet but the post-hook executes in the [HooksTrampoline](/hooks-trampoline/introduction) contract, which can't access your wallet.
+</Warning>
+
+## How Post-Hooks Work
+
+```
+1. Order settles → tokens sent to receiver
+2. Post-hook executes in HooksTrampoline context
+
+With CoW Shed:
+1. Order settles → tokens sent to CoW Shed proxy (your deterministic smart account)
+2. Post-hook calls CoW Shed proxy → proxy executes pre-signed operations on your tokens
+```
+
+## Example 1: Swap → Stake (Lido stETH)
+
+Swap USDC for WETH, then stake the WETH into Lido to receive stETH.
+
+```typescript
+import {
+  SupportedChainId,
+  OrderKind,
+  TradingSdk,
+  TradeParameters,
+  SwapAdvancedSettings,
+} from '@cowprotocol/sdk-trading'
+import { CowShedSdk } from '@cowprotocol/sdk-cow-shed'
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
+import { encodeFunctionData, parseEther, createPublicClient, http, privateKeyToAccount } from 'viem'
+import { mainnet } from 'viem/chains'
+
+const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
+const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+const LIDO_WSTETH = '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0'
+
+const signer = privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`)
+
+const adapter = new ViemAdapter({
+  provider: createPublicClient({ chain: mainnet, transport: http('YOUR_RPC_URL') }),
+  signer,
+})
+
+const tradingSdk = new TradingSdk({
+  chainId: SupportedChainId.MAINNET,
+  appCode: 'swap-and-stake',
+}, {}, adapter)
+
+const cowShedSdk = new CowShedSdk()
+
+// 1. Prepare the staking call via CoW Shed
+const stakeAmount = parseEther('1') // Amount of WETH to stake
+
+const hookResult = await cowShedSdk.signCalls({
+  calls: [
+    // Approve Lido to spend WETH
+    {
+      target: WETH,
+      callData: encodeFunctionData({
+        abi: [{
+          name: 'approve',
+          type: 'function',
+          inputs: [
+            { name: 'spender', type: 'address' },
+            { name: 'amount', type: 'uint256' },
+          ],
+          outputs: [{ type: 'bool' }],
+        }],
+        functionName: 'approve',
+        args: [LIDO_WSTETH, stakeAmount],
+      }),
+      value: 0n,
+      allowFailure: false,
+      isDelegateCall: false,
+    },
+    // Wrap WETH → wstETH via Lido
+    {
+      target: LIDO_WSTETH,
+      callData: encodeFunctionData({
+        abi: [{
+          name: 'wrap',
+          type: 'function',
+          inputs: [{ name: '_wstETHAmount', type: 'uint256' }],
+          outputs: [{ type: 'uint256' }],
+        }],
+        functionName: 'wrap',
+        args: [stakeAmount],
+      }),
+      value: 0n,
+      allowFailure: false,
+      isDelegateCall: false,
+    },
+  ],
+  signer,
+  chainId: SupportedChainId.MAINNET,
+  deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
+})
+
+// 2. Create the swap order with post-hook
+const parameters: TradeParameters = {
+  kind: OrderKind.SELL,
+  sellToken: USDC,
+  sellTokenDecimals: 6,
+  buyToken: WETH,
+  buyTokenDecimals: 18,
+  amount: '3000000000', // 3,000 USDC
+  receiver: hookResult.cowShedAccount, // Tokens go to CoW Shed
+}
+
+const advancedSettings: SwapAdvancedSettings = {
+  appData: {
+    metadata: {
+      hooks: {
+        post: [{
+          target: hookResult.signedMulticall.to,
+          callData: hookResult.signedMulticall.data,
+          gasLimit: hookResult.gasLimit,
+        }],
+      },
+    },
+  },
+}
+
+const { orderId } = await tradingSdk.postSwapOrder(parameters, advancedSettings)
+console.log('Swap → Stake order created:', orderId)
+```
+
+## Example 2: Swap → Bridge (Across Protocol)
+
+Swap tokens on Ethereum, then bridge the received tokens to Arbitrum via Across.
+
+```typescript
+const ACROSS_SPOKE_POOL = '0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5'
+
+// 1. Prepare the bridge call via CoW Shed
+const bridgeAmount = 1000n * 10n ** 6n // 1,000 USDC to bridge
+
+const bridgeHookResult = await cowShedSdk.signCalls({
+  calls: [
+    // Approve Across SpokePool
+    {
+      target: USDC,
+      callData: encodeFunctionData({
+        abi: [{
+          name: 'approve',
+          type: 'function',
+          inputs: [
+            { name: 'spender', type: 'address' },
+            { name: 'amount', type: 'uint256' },
+          ],
+          outputs: [{ type: 'bool' }],
+        }],
+        functionName: 'approve',
+        args: [ACROSS_SPOKE_POOL, bridgeAmount],
+      }),
+      value: 0n,
+      allowFailure: false,
+      isDelegateCall: false,
+    },
+    // Initiate bridge deposit
+    {
+      target: ACROSS_SPOKE_POOL,
+      callData: encodeFunctionData({
+        abi: [{
+          name: 'depositV3',
+          type: 'function',
+          inputs: [
+            { name: 'depositor', type: 'address' },
+            { name: 'recipient', type: 'address' },
+            { name: 'inputToken', type: 'address' },
+            { name: 'outputToken', type: 'address' },
+            { name: 'inputAmount', type: 'uint256' },
+            { name: 'outputAmount', type: 'uint256' },
+            { name: 'destinationChainId', type: 'uint256' },
+            { name: 'exclusiveRelayer', type: 'address' },
+            { name: 'quoteTimestamp', type: 'uint32' },
+            { name: 'fillDeadline', type: 'uint32' },
+            { name: 'exclusivityDeadline', type: 'uint32' },
+            { name: 'message', type: 'bytes' },
+          ],
+          outputs: [],
+        }],
+        functionName: 'depositV3',
+        args: [
+          signer.address,              // depositor (CoW Shed account)
+          signer.address,              // recipient on destination
+          USDC,                         // input token
+          USDC,                         // output token (same on Arbitrum)
+          bridgeAmount,                 // input amount
+          bridgeAmount * 995n / 1000n,  // output amount (0.5% bridge fee)
+          42161n,                       // Arbitrum chain ID
+          '0x0000000000000000000000000000000000000000',
+          Math.floor(Date.now() / 1000),
+          Math.floor(Date.now() / 1000) + 7200,
+          0,
+          '0x',
+        ],
+      }),
+      value: 0n,
+      allowFailure: false,
+      isDelegateCall: false,
+    },
+  ],
+  signer,
+  chainId: SupportedChainId.MAINNET,
+  deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
+})
+
+// 2. Create the swap + bridge order
+const { orderId } = await tradingSdk.postSwapOrder(
+  {
+    kind: OrderKind.SELL,
+    sellToken: WETH,
+    sellTokenDecimals: 18,
+    buyToken: USDC,
+    buyTokenDecimals: 6,
+    amount: parseEther('1').toString(), // Sell 1 WETH
+    receiver: bridgeHookResult.cowShedAccount,
+  },
+  {
+    appData: {
+      metadata: {
+        hooks: {
+          post: [{
+            target: bridgeHookResult.signedMulticall.to,
+            callData: bridgeHookResult.signedMulticall.data,
+            gasLimit: bridgeHookResult.gasLimit,
+          }],
+        },
+      },
+    },
+  },
+)
+
+console.log('Swap → Bridge order created:', orderId)
+```
+
+<Note>
+  CoW Swap also supports [native cross-chain swaps](/cow-protocol/tutorials/cow-swap/swap-and-bridge) through the UI, which handles bridging automatically without custom hooks.
+</Note>
+
+## Example 3: Swap → Vault Deposit (ERC-4626)
+
+Swap tokens and deposit into an ERC-4626 yield vault:
+
+```typescript
+const YIELD_VAULT = '0xYourERC4626VaultAddress'
+const DAI = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
+
+const depositAmount = parseEther('5000') // 5,000 DAI
+
+const vaultHookResult = await cowShedSdk.signCalls({
+  calls: [
+    // Approve vault
+    {
+      target: DAI,
+      callData: encodeFunctionData({
+        abi: [{
+          name: 'approve',
+          type: 'function',
+          inputs: [
+            { name: 'spender', type: 'address' },
+            { name: 'amount', type: 'uint256' },
+          ],
+          outputs: [{ type: 'bool' }],
+        }],
+        functionName: 'approve',
+        args: [YIELD_VAULT, depositAmount],
+      }),
+      value: 0n,
+      allowFailure: false,
+      isDelegateCall: false,
+    },
+    // Deposit into ERC-4626 vault
+    {
+      target: YIELD_VAULT,
+      callData: encodeFunctionData({
+        abi: [{
+          name: 'deposit',
+          type: 'function',
+          inputs: [
+            { name: 'assets', type: 'uint256' },
+            { name: 'receiver', type: 'address' },
+          ],
+          outputs: [{ type: 'uint256' }],
+        }],
+        functionName: 'deposit',
+        args: [depositAmount, signer.address],
+      }),
+      value: 0n,
+      allowFailure: false,
+      isDelegateCall: false,
+    },
+  ],
+  signer,
+  chainId: SupportedChainId.MAINNET,
+  deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
+})
+
+const { orderId } = await tradingSdk.postSwapOrder(
+  {
+    kind: OrderKind.SELL,
+    sellToken: USDC,
+    sellTokenDecimals: 6,
+    buyToken: DAI,
+    buyTokenDecimals: 18,
+    amount: '5000000000', // 5,000 USDC
+    receiver: vaultHookResult.cowShedAccount,
+  },
+  {
+    appData: {
+      metadata: {
+        hooks: {
+          post: [{
+            target: vaultHookResult.signedMulticall.to,
+            callData: vaultHookResult.signedMulticall.data,
+            gasLimit: vaultHookResult.gasLimit,
+          }],
+        },
+      },
+    },
+  },
+)
+
+console.log('Swap → Vault deposit order created:', orderId)
+```
+
+## Key Considerations
+
+### Gas Limits
+
+| Post-hook operation | Recommended gas limit |
+|---|---|
+| ERC-20 approve | 50,000 |
+| Lido wrap/unwrap | 100,000 |
+| Bridge deposit (Across) | 200,000 |
+| ERC-4626 deposit | 150,000 |
+| CoW Shed multicall overhead | +50,000 |
+
+### Amount Handling
+
+Post-hooks execute with a **fixed** amount — the exact `callData` you sign. If the swap returns more tokens than expected (surplus), the extra tokens remain in the CoW Shed proxy.
+
+To handle variable amounts, you can:
+- Use the full balance in the CoW Shed proxy (if the protocol supports `type(uint256).max`)
+- Set the post-hook amount to the order's `buyAmount` (guaranteed minimum)
+
+### Failure Modes
+
+If a post-hook fails, the entire settlement transaction reverts — your swap doesn't execute either. Ensure:
+- Sufficient gas limits for each hook operation
+- Correct token approvals in the hook chain
+- The target protocol accepts the deposit/stake/bridge at the time of execution
+
+## Next Steps
+
+- [Hooks Guide](/cow-sdk/advanced/hooks) — complete hooks reference
+- [Account Abstraction (CoW Shed)](/cow-sdk/advanced/account-abstraction) — CoW Shed setup and API
+- [Hook dApp Development](/cow-protocol/reference/hook-dapp) — build hooks for the CoW Swap UI

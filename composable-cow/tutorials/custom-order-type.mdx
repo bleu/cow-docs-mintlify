@@ -1,0 +1,366 @@
+---
+title: "Building a Custom Order Type"
+description: "Tutorial for implementing, deploying, and registering a custom conditional order with ComposableCoW"
+---
+
+This tutorial walks through building a custom conditional order type — a smart contract that generates CoW Protocol orders based on on-chain conditions. By the end, you'll have a working `TradeAboveThreshold` handler that automatically sells tokens when a wallet's balance exceeds a threshold.
+
+## What You'll Build
+
+A `TradeAboveThreshold` conditional order that:
+- Monitors a token balance in a Safe wallet
+- When the balance exceeds a threshold, generates a sell order for the excess
+- Automatically repeats until cancelled
+
+```
+Safe balance: 15,000 USDC (threshold: 10,000)
+→ Generates order: sell 5,000 USDC for WETH
+→ Watch Tower submits it to CoW Protocol
+→ Order fills, balance drops to ~10,000 USDC
+→ Next block: balance below threshold, no order generated
+```
+
+## Prerequisites
+
+- [Foundry](https://book.getfoundry.sh) installed
+- A Safe wallet with the [ComposableCoW setup](/composable-cow/guides/setup) completed (fallback handler + domain verifier)
+- Basic Solidity knowledge
+
+## Step 1: Project Setup
+
+```bash
+mkdir custom-order && cd custom-order
+forge init
+forge install cowprotocol/composable-cow
+```
+
+Create `remappings.txt`:
+
+```
+@cowprotocol/=lib/composable-cow/
+@openzeppelin/=lib/composable-cow/lib/openzeppelin-contracts/
+safe/=lib/composable-cow/lib/safe-contracts/contracts/
+```
+
+## Step 2: Implement the Handler
+
+Create `src/TradeAboveThreshold.sol`:
+
+```solidity
+// SPDX-License-Identifier: GPL-3.0
+pragma solidity ^0.8.24;
+
+import {BaseConditionalOrder} from "@cowprotocol/src/BaseConditionalOrder.sol";
+import {GPv2Order} from "@cowprotocol/lib/cowprotocol/src/contracts/libraries/GPv2Order.sol";
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+
+/// @title TradeAboveThreshold
+/// @notice Sells excess token balance above a threshold
+contract TradeAboveThreshold is BaseConditionalOrder {
+    /// @dev Order parameters, abi-encoded as `staticInput` when creating the order
+    struct Data {
+        IERC20 sellToken;
+        IERC20 buyToken;
+        uint256 threshold;     // Balance threshold in sell token units
+        uint256 maxSellAmount; // Cap per trade to limit exposure
+        bytes32 appData;
+    }
+
+    /// @inheritdoc IConditionalOrder
+    function getTradeableOrder(
+        address owner,
+        address,
+        bytes32,
+        bytes calldata staticInput,
+        bytes calldata
+    ) public view override returns (GPv2Order.Data memory order) {
+        Data memory data = abi.decode(staticInput, (Data));
+
+        uint256 balance = data.sellToken.balanceOf(owner);
+
+        // Revert if balance is below threshold — tells Watch Tower to retry later
+        if (balance <= data.threshold) {
+            revert IConditionalOrder.PollTryNextBlock("Balance below threshold");
+        }
+
+        uint256 excess = balance - data.threshold;
+        uint256 sellAmount = excess > data.maxSellAmount
+            ? data.maxSellAmount
+            : excess;
+
+        // Build the order
+        order = GPv2Order.Data({
+            sellToken: data.sellToken,
+            buyToken: data.buyToken,
+            receiver: owner,                          // Tokens back to the Safe
+            sellAmount: sellAmount,
+            buyAmount: 1,                              // Minimum 1 wei (use oracle for real price)
+            validTo: uint32(block.timestamp + 1800),   // 30 min validity
+            appData: data.appData,
+            feeAmount: 0,
+            kind: GPv2Order.KIND_SELL,
+            partiallyFillable: false,
+            sellTokenBalance: GPv2Order.BALANCE_ERC20,
+            buyTokenBalance: GPv2Order.BALANCE_ERC20
+        });
+    }
+}
+```
+
+### Key Design Decisions
+
+| Decision | Rationale |
+|---|---|
+| `PollTryNextBlock` revert | Tells the Watch Tower to check again next block instead of giving up |
+| `maxSellAmount` cap | Prevents selling the entire balance in one trade |
+| `buyAmount: 1` | Placeholder — in production, use a price oracle for proper price protection |
+| `validTo: +30 min` | Short validity since conditions can change quickly |
+
+## Step 3: Add Price Protection (Optional)
+
+For production, add an oracle to set a reasonable `buyAmount`:
+
+```solidity
+import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+
+struct Data {
+    IERC20 sellToken;
+    IERC20 buyToken;
+    uint256 threshold;
+    uint256 maxSellAmount;
+    bytes32 appData;
+    AggregatorV3Interface priceFeed;  // Chainlink oracle
+    uint256 maxSlippageBps;           // e.g., 100 = 1%
+}
+
+// In getTradeableOrder:
+(, int256 price,,,) = data.priceFeed.latestRoundData();
+uint256 expectedBuy = (sellAmount * uint256(price)) / (10 ** data.priceFeed.decimals());
+uint256 minBuy = expectedBuy * (10000 - data.maxSlippageBps) / 10000;
+order.buyAmount = minBuy;
+```
+
+## Step 4: Write Tests
+
+Create `test/TradeAboveThreshold.t.sol`:
+
+```solidity
+// SPDX-License-Identifier: GPL-3.0
+pragma solidity ^0.8.24;
+
+import "forge-std/Test.sol";
+import "../src/TradeAboveThreshold.sol";
+import {GPv2Order} from "@cowprotocol/lib/cowprotocol/src/contracts/libraries/GPv2Order.sol";
+import {IConditionalOrder} from "@cowprotocol/src/interfaces/IConditionalOrder.sol";
+
+contract MockERC20 {
+    mapping(address => uint256) public balanceOf;
+    function setBalance(address account, uint256 amount) external {
+        balanceOf[account] = amount;
+    }
+}
+
+contract TradeAboveThresholdTest is Test {
+    TradeAboveThreshold handler;
+    MockERC20 sellToken;
+    MockERC20 buyToken;
+    address owner = address(0x1234);
+
+    function setUp() public {
+        handler = new TradeAboveThreshold();
+        sellToken = new MockERC20();
+        buyToken = new MockERC20();
+    }
+
+    function testGeneratesOrderAboveThreshold() public {
+        sellToken.setBalance(owner, 15000e6); // 15,000 USDC
+
+        bytes memory staticInput = abi.encode(
+            TradeAboveThreshold.Data({
+                sellToken: IERC20(address(sellToken)),
+                buyToken: IERC20(address(buyToken)),
+                threshold: 10000e6,     // 10,000 USDC threshold
+                maxSellAmount: 10000e6, // Max 10,000 per trade
+                appData: bytes32(0)
+            })
+        );
+
+        GPv2Order.Data memory order = handler.getTradeableOrder(
+            owner, address(0), bytes32(0), staticInput, ""
+        );
+
+        assertEq(order.sellAmount, 5000e6); // Excess: 15,000 - 10,000
+    }
+
+    function testRevertsAtThreshold() public {
+        sellToken.setBalance(owner, 10000e6); // Exactly at threshold
+
+        bytes memory staticInput = abi.encode(
+            TradeAboveThreshold.Data({
+                sellToken: IERC20(address(sellToken)),
+                buyToken: IERC20(address(buyToken)),
+                threshold: 10000e6,
+                maxSellAmount: 10000e6,
+                appData: bytes32(0)
+            })
+        );
+
+        vm.expectRevert();
+        handler.getTradeableOrder(owner, address(0), bytes32(0), staticInput, "");
+    }
+
+    function testCapsAtMaxSellAmount() public {
+        sellToken.setBalance(owner, 50000e6); // 50,000 USDC
+
+        bytes memory staticInput = abi.encode(
+            TradeAboveThreshold.Data({
+                sellToken: IERC20(address(sellToken)),
+                buyToken: IERC20(address(buyToken)),
+                threshold: 10000e6,
+                maxSellAmount: 5000e6,  // Cap at 5,000
+                appData: bytes32(0)
+            })
+        );
+
+        GPv2Order.Data memory order = handler.getTradeableOrder(
+            owner, address(0), bytes32(0), staticInput, ""
+        );
+
+        assertEq(order.sellAmount, 5000e6); // Capped, not full 40,000
+    }
+}
+```
+
+Run tests:
+
+```bash
+forge test -vvv
+```
+
+## Step 5: Deploy
+
+```bash
+# Deploy to Sepolia first
+forge create src/TradeAboveThreshold.sol:TradeAboveThreshold \
+  --rpc-url $SEPOLIA_RPC_URL \
+  --private-key $DEPLOYER_KEY \
+  --verify \
+  --etherscan-api-key $ETHERSCAN_KEY
+```
+
+Note the deployed address — you'll need it to create orders.
+
+## Step 6: Create an Order
+
+Use the ComposableCoW contract to register your conditional order:
+
+```typescript
+import { encodeFunctionData, encodeAbiParameters } from 'viem'
+
+const COMPOSABLE_COW = '0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74'
+const HANDLER_ADDRESS = '0xYourDeployedHandlerAddress'
+
+// Encode the handler's static input
+const staticInput = encodeAbiParameters(
+  [
+    { type: 'address' }, // sellToken
+    { type: 'address' }, // buyToken
+    { type: 'uint256' }, // threshold
+    { type: 'uint256' }, // maxSellAmount
+    { type: 'bytes32' }, // appData
+  ],
+  [
+    USDC_ADDRESS,
+    WETH_ADDRESS,
+    10000n * 10n ** 6n,   // 10,000 USDC threshold
+    5000n * 10n ** 6n,    // Max 5,000 USDC per trade
+    '0x0000000000000000000000000000000000000000000000000000000000000000',
+  ],
+)
+
+// Create the conditional order via ComposableCoW
+const createCalldata = encodeFunctionData({
+  abi: [{
+    name: 'create',
+    type: 'function',
+    inputs: [
+      {
+        name: 'params',
+        type: 'tuple',
+        components: [
+          { name: 'handler', type: 'address' },
+          { name: 'salt', type: 'bytes32' },
+          { name: 'staticInput', type: 'bytes' },
+        ],
+      },
+      { name: 'dispatch', type: 'bool' },
+    ],
+    outputs: [],
+  }],
+  functionName: 'create',
+  args: [
+    {
+      handler: HANDLER_ADDRESS,
+      salt: '0x' + crypto.randomUUID().replace(/-/g, '') + '0'.repeat(32).slice(0, 32),
+      staticInput,
+    },
+    true, // dispatch = true to emit event for Watch Tower
+  ],
+})
+
+// Execute from the Safe
+const safeTx = await safe.createTransaction({
+  transactions: [{
+    to: COMPOSABLE_COW,
+    value: '0',
+    data: createCalldata,
+  }],
+})
+```
+
+## Step 7: Verify Watch Tower Picks It Up
+
+After the creation transaction confirms, the Watch Tower should detect the `ConditionalOrderCreated` event and start polling your handler.
+
+Check the Watch Tower API:
+
+```bash
+# Check if your order appears in the Watch Tower's dump
+curl https://barn.api.cow.fi/mainnet/api/v1/account/$SAFE_ADDRESS/orders
+```
+
+If the order doesn't appear, see [Debugging Conditional Orders](/composable-cow/guides/debugging) for troubleshooting.
+
+## Error Handling Best Practices
+
+Use specific revert errors to guide the Watch Tower:
+
+```solidity
+// Retry next block — temporary condition
+revert IConditionalOrder.PollTryNextBlock("Balance below threshold");
+
+// Retry at specific time — saves Watch Tower resources
+revert IConditionalOrder.PollTryAtEpoch(block.timestamp + 3600, "Check back in 1 hour");
+
+// Never retry — permanent condition
+revert IConditionalOrder.PollNever("Order permanently invalid");
+```
+
+## Architecture
+
+```
+Safe Wallet
+  └── ComposableCoW (fallback handler)
+        └── Your Handler (TradeAboveThreshold)
+              └── getTradeableOrder() called by Watch Tower
+                    └── Returns GPv2Order.Data if conditions met
+                          └── Watch Tower submits to OrderBook API
+                                └── Solvers compete to fill
+```
+
+## Next Steps
+
+- [Custom Orders Reference](/composable-cow/advanced/custom-orders) — interface details and advanced patterns
+- [ComposableCoW Troubleshooting](/composable-cow/guides/troubleshooting) — setup issues
+- [Debugging Conditional Orders](/composable-cow/guides/debugging) — when orders don't execute
+- [Watch Tower](/watch-tower/introduction) — how the Watch Tower monitors and submits orders
