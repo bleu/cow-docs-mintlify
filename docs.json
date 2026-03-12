@@ -191,7 +191,8 @@
               "cow-protocol/explanation/order-types/cow-hooks",
               "cow-protocol/explanation/order-types/milkman-orders",
               "cow-protocol/explanation/order-types/wrappers",
-              "cow-protocol/explanation/order-types/pay-debt-flash-loans"
+              "cow-protocol/explanation/order-types/pay-debt-flash-loans",
+              "cow-protocol/explanation/order-types/liquidations"
             ]
           },
           {
@@ -750,7 +751,8 @@
             "pages": [
               "cow-protocol/howto/solvers/onboard",
               "cow-protocol/howto/solvers/routes_integration",
-              "cow-protocol/howto/solvers/flashloans_support"
+              "cow-protocol/howto/solvers/flashloans_support",
+              "cow-protocol/howto/solvers/fee-computation"
             ]
           }
         ]

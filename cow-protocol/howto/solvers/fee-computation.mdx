@@ -1,0 +1,78 @@
+---
+title: "Fee computation for limit orders"
+description: "Guidelines for how solvers should compute fees when executing limit orders, where users sign orders with zero fees and solvers propose fees at execution time."
+---
+
+## Background
+
+Unlike market orders (where fees are estimated at quote time), **limit orders** are signed with zero fees. When a limit order becomes executable, the solver proposes a fee to deduct from the order at settlement time. This fee must be fair — it should cover the solver's costs without overcharging the user.
+
+These guidelines derive from the social consensus established in [CIP-11](https://snapshot.org/#/cow.eth/proposal/0x16d8c681d52b24f1ccd854084e07a99fce6a7af1e25fd21ddae6534b411df870) and have been refined through ongoing governance discussions.
+
+## The two principles
+
+Solver-computed fees for limit orders must approximately satisfy two constraints:
+
+### 1. Batch coverage
+
+> The sum of fees of all orders within a batch should cover the execution cost of settling that batch.
+
+If a batch contains multiple orders, the gas cost of the settlement transaction should be distributed across all orders in the batch. A limit order should not be forced to subsidize other orders that are paying very low fees.
+
+### 2. Individual order fairness
+
+> The fee charged to an individual order should cover the execution cost of that order by itself, but not more.
+
+The fee for a limit order should reflect what it would cost to execute that specific order in isolation. Solvers should not use limit orders as a revenue source beyond cost recovery.
+
+## Practical guidance
+
+### Estimating execution cost
+
+When computing fees for a limit order, solvers should estimate:
+
+- **Gas cost**: The gas required to execute the order's swap interactions on-chain, priced at the current gas rate
+- **Liquidity cost**: Any adverse price impact from routing through AMMs
+- **Revert risk**: A small buffer to account for the probability that the settlement fails
+
+### What counts as "execution cost"
+
+The fee should cover the marginal cost of including the order in a batch:
+
+- Gas for the order's specific AMM interactions
+- Gas for transferring tokens to/from the user
+- Proportional share of the base settlement transaction overhead
+
+### What is NOT acceptable
+
+- Charging fees that significantly exceed the order's execution cost
+- Using limit order fees to subsidize rewards or cover losses from other orders
+- Systematically overcharging to accumulate positive slippage
+
+<Warning>
+Violations of fair fee practices are considered potentially slashable offenses under CIP-11's malicious behavior provisions. The protocol monitors fee behavior and systematic overcharging can lead to penalties. See the [competition rules](/cow-protocol/reference/core/auctions/competition-rules#governance) for details.
+</Warning>
+
+## How fees interact with rewards
+
+Solver-computed fees are distinct from the [reward mechanism](/cow-protocol/reference/core/auctions/rewards):
+
+- **Fees** compensate the solver for the direct cost of executing the order
+- **Rewards** compensate the solver for generating surplus beyond the baseline
+
+A solver should not rely on rewards to cover execution costs, nor should fees be inflated to increase the solver's score in the auction.
+
+## Long-standing limit orders
+
+Limit orders can remain open for extended periods. When a long-standing limit order finally becomes executable:
+
+- The fee should reflect **current** gas prices and market conditions at execution time, not conditions from when the order was created
+- If gas prices have increased significantly, a higher fee is justified
+- If the order can be batched with other orders sharing liquidity paths, the per-order fee should decrease accordingly
+
+## Related resources
+
+- [Solver rewards](/cow-protocol/reference/core/auctions/rewards) — how rewards work alongside fees
+- [Fee model](/cow-protocol/explanation/fee-model) — how fees work from the user's perspective
+- [Competition rules](/cow-protocol/reference/core/auctions/competition-rules) — rules governing solver behavior
+- [Accounting](/cow-protocol/reference/core/auctions/accounting) — weekly settlement of fees and slippage

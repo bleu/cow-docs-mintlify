@@ -1,0 +1,78 @@
+---
+title: "Liquidations"
+description: "How lending protocols can use CoW Protocol to execute liquidations with MEV protection and competitive pricing, using ERC-1271 smart orders and the settlement contract's on-chain guarantees."
+---
+
+## The problem with traditional liquidations
+
+In traditional DeFi lending protocols, liquidations must be **atomic** — the collateral seizure and debt repayment happen in a single transaction. This atomicity requirement creates MEV extraction opportunities: liquidators compete in priority gas auctions, and the surplus flows to block proposers rather than to the lending protocol or its users.
+
+## Why CoW Protocol is different
+
+CoW Protocol's settlement model separates operations into distinct phases:
+
+1. Collect trade amounts from users
+2. Execute interactions (AMM swaps, etc.)
+3. Transfer outputs to users
+
+This sequential approach initially seems incompatible with atomic liquidations, since collateral disbursement and debt recovery happen in different calls. However, CoW Protocol's **immutable settlement contract** provides strong on-chain guarantees that can replace the need for atomicity.
+
+## The ERC-1271 smart order approach
+
+The key insight is that lending protocols can use [ERC-1271 signature validation](/cow-protocol/reference/core/signing-schemes) to verify liquidation conditions at order execution time, while trusting the settlement contract to guarantee trade execution.
+
+### How it works
+
+1. **Create a liquidation order**: The lending protocol (or a keeper) creates a CoW Protocol order where:
+   - **Sell token**: The borrower's collateral asset
+   - **Buy token**: The debt asset needed for repayment
+   - **Limit price**: Set generously to allow solver competition to improve the price
+
+2. **ERC-1271 verification**: During signature validation (when the settlement contract calls `isValidSignature`), the lending protocol's smart contract verifies that:
+   - The borrower's position is eligible for liquidation
+   - The collateral being sold covers the minimum debt owed
+   - The order parameters are within acceptable bounds
+
+3. **Settlement guarantees**: The CoW Protocol settlement contract guarantees that the trader will receive **at least** the specified buy amount. This on-chain guarantee replaces the need for atomicity — the lending protocol can trust that if the order executes, the debt repayment will happen.
+
+4. **Solver competition**: Multiple solvers compete to fill the liquidation order, driving price improvement. This replaces the MEV extraction of traditional liquidations with genuine competition for the best execution price.
+
+### Using pre/post hooks
+
+[CoW Hooks](/cow-protocol/explanation/order-types/cow-hooks) can handle additional bookkeeping:
+
+- **Pre-hooks**: Prepare the collateral for transfer (e.g., withdraw from a vault)
+- **Post-hooks**: Update the lending protocol's accounting after the liquidation completes
+
+### Advantages over traditional liquidations
+
+| Aspect | Traditional | CoW Protocol |
+|---|---|---|
+| **MEV exposure** | High — priority gas auctions | Protected — batch auction with uniform clearing prices |
+| **Price discovery** | Single liquidator sets price | Multiple solvers compete |
+| **Execution speed** | Single block | Single batch auction (can be fast with generous limit prices) |
+| **Atomicity** | Required | Replaced by settlement contract guarantees |
+| **Flash loan dependency** | Often needed | Not required |
+
+<Note>
+This approach works best with smart contract wallets (e.g., Safe) or purpose-built liquidation contracts that implement ERC-1271. EOA-based positions require a wrapper contract.
+</Note>
+
+## When to use this approach
+
+CoW Protocol liquidations are most suitable when:
+
+- The lending protocol can tolerate a short delay (one batch auction cycle) for execution
+- MEV protection and price improvement are priorities
+- The protocol wants to eliminate dependency on flash loan infrastructure
+- Liquidation volumes are large enough to attract solver competition
+
+For time-critical liquidations where sub-block execution is essential, traditional atomic approaches may still be preferable.
+
+## Related resources
+
+- [ERC-1271 signing scheme](/cow-protocol/reference/core/signing-schemes)
+- [CoW Hooks](/cow-protocol/explanation/order-types/cow-hooks)
+- [Flash loans](/cow-protocol/explanation/flash-loans/Introduction) — complementary approach for debt repayment
+- [Repay debt with collateral](/cow-protocol/explanation/order-types/pay-debt-flash-loans) — flash loan-based alternative
+- [Programmatic orders](/cow-protocol/explanation/order-types/programmatic-orders) — for automated liquidation monitoring
