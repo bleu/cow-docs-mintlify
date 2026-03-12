@@ -37,7 +37,7 @@ As long as the full appdata with hook information is included when posting the o
 
 ## Call context[​](#call-context "Direct link to Call context")
 
-Hooks are executed through the [HooksTrampoline](/cow-protocol/reference/contracts/periphery/hooks-trampoline).
+Hooks may be executed through the [HooksTrampoline](/cow-protocol/reference/contracts/periphery/hooks-trampoline), a pragmatic way to meet many of the security guarantees of hooks execution.
 
 Anyone can execute calls using the trampoline, so you must not expect a call to the trampoline to be trusted.
 
@@ -55,7 +55,9 @@ The parameters of a hook are signed by the user along with the order as part of 
 
 ## Solver execution rules[​](#solver-execution-rules "Direct link to Solver execution rules")
 
-Solvers are required to execute hooks exactly as specified by the user — the `target`, `callData`, and `gasLimit` parameters must be forwarded without modification. Pre-hooks are executed before pulling funds from the user, and post-hooks are executed after crediting the order proceeds to the receiver.
+The driver encodes all matched orders' pre- and post-hooks into the solution on behalf of the solver, so the solver does not need to add them manually. The `preInteractions` and `postInteractions` fields in the solver's response are only for additional calls the solver itself needs (e.g., AMM approvals), not for user hooks.
+
+Hooks must be executed exactly as specified by the user — the `target`, `callData`, and `gasLimit` parameters must be forwarded without modification. Pre-hooks are executed before pulling funds from the user, and post-hooks are executed after crediting the order proceeds to the receiver.
 
 When executing a hook, the solver must forward at least `gasLimit` gas to the hook call. If the hook consumes more gas than the specified `gasLimit`, the hook call reverts internally, but the order itself still executes. This means hooks are best-effort — critical logic should be designed such that the order depends on the hook succeeding (e.g., by setting allowances in a pre-hook).
 
@@ -68,13 +70,13 @@ Solvers should account for hook gas costs when computing solution quality, as th
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Hooks: Getting Started" icon="play" href="/cow-protocol/tutorials/hooks-getting-started">
+  <Card title="Hooks: Getting Started" icon="play" href="/cow-swap/hooks/getting-started">
     Create your first hook step-by-step using CoW Swap
   </Card>
-  <Card title="Hook Store" icon="store" href="/cow-protocol/reference/hook-store">
+  <Card title="Hook Store" icon="store" href="/cow-swap/hooks/hook-store">
     Browse pre-built hooks or publish your own hook dApp
   </Card>
-  <Card title="Post-Hook Examples" icon="arrow-right" href="/cow-protocol/tutorials/post-hook-examples">
+  <Card title="Post-Hook Examples" icon="arrow-right" href="/cow-swap/hooks/post-hook-examples">
     End-to-end swap → stake, bridge, and deposit examples
   </Card>
   <Card title="Hooks SDK Guide" icon="book" href="/cow-sdk/advanced/hooks">

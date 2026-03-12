@@ -66,7 +66,7 @@
           "href": "/"
         },
         {
-          "anchor": "CoW Swap",
+          "anchor": "Launch CoW Swap",
           "icon": "arrow-right-arrow-left",
           "href": "https://swap.cow.fi"
         },
@@ -83,6 +83,66 @@
       ]
     },
     "tabs": [
+      {
+        "tab": "CoW Swap",
+        "icon": "arrow-right-arrow-left",
+        "groups": [
+          {
+            "group": "Overview",
+            "icon": "book-open",
+            "pages": [
+              "cow-swap/overview",
+              "cow-swap/features"
+            ]
+          },
+          {
+            "group": "Trading Tutorials",
+            "icon": "graduation-cap",
+            "pages": [
+              "cow-swap/tutorials/swap",
+              "cow-swap/tutorials/limit",
+              "cow-swap/tutorials/twap",
+              "cow-swap/tutorials/native",
+              "cow-swap/tutorials/flash-loans",
+              "cow-swap/tutorials/swap-and-bridge"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "icon": "wrench",
+            "pages": [
+              "cow-swap/tutorials/safe-app",
+              "cow-swap/tutorials/dca-twap",
+              "cow-swap/tutorials/multi-sig-orders"
+            ]
+          },
+          {
+            "group": "Hooks",
+            "icon": "hook",
+            "pages": [
+              "cow-swap/hooks/getting-started",
+              "cow-swap/hooks/post-hook-examples",
+              "cow-swap/hooks/hook-store",
+              "cow-swap/hooks/hook-dapp"
+            ]
+          },
+          {
+            "group": "Widget",
+            "icon": "window",
+            "pages": [
+              "cow-swap/widget/overview",
+              "cow-swap/widget/params"
+            ]
+          },
+          {
+            "group": "Reference",
+            "icon": "file-code",
+            "pages": [
+              "cow-swap/reference/custom-links"
+            ]
+          }
+        ]
+      },
       {
         "tab": "CoW Protocol",
         "icon": "cow",
@@ -150,35 +210,6 @@
               "cow-amm/explanation/the-problem-of-lvr",
               "cow-amm/explanation/how-cow-amms-work",
               "cow-protocol/tutorials/cow-amm-deployer"
-            ]
-          },
-          {
-            "group": "CoW Swap",
-            "icon": "arrow-right-arrow-left",
-            "pages": [
-              "cow-protocol/explanation/how-it-works/protocol-vs-swap",
-              "cow-protocol/howto/cow-swap",
-              {
-                "group": "Trading Tutorials",
-                "pages": [
-                  "cow-protocol/tutorials/cow-swap/swap",
-                  "cow-protocol/tutorials/cow-swap/limit",
-                  "cow-protocol/tutorials/cow-swap/twap",
-                  "cow-protocol/tutorials/cow-swap/native",
-                  "cow-protocol/tutorials/cow-swap/flash-loans",
-                  "cow-protocol/tutorials/cow-swap/swap-and-bridge"
-                ]
-              },
-              "cow-protocol/tutorials/swap-in-safe-app",
-              "cow-protocol/tutorials/dca-twap",
-              "cow-protocol/tutorials/multi-sig-orders",
-              "cow-protocol/tutorials/hooks-getting-started",
-              "cow-protocol/tutorials/post-hook-examples",
-              "cow-protocol/howto/integrate/widget",
-              "cow-protocol/reference/widget-params",
-              "cow-protocol/reference/hook-store",
-              "cow-protocol/reference/hook-dapp",
-              "cow-protocol/reference/custom-links"
             ]
           },
           {
@@ -1049,7 +1080,7 @@
     },
     {
       "source": "/cow-protocol/concepts/how-it-works/protocol-vs-swap",
-      "destination": "/cow-protocol/explanation/how-it-works/protocol-vs-swap"
+      "destination": "/cow-swap/overview"
     },
     {
       "source": "/cow-protocol/concepts/benefits/mev-protection",
@@ -1137,7 +1168,7 @@
     },
     {
       "source": "/cow-protocol/integrate/widget",
-      "destination": "/cow-protocol/howto/integrate/widget"
+      "destination": "/cow-swap/widget/overview"
     },
     {
       "source": "/cow-protocol/integrate/sdk",
@@ -1149,7 +1180,7 @@
     },
     {
       "source": "/cow-protocol/tutorials/cow-swap",
-      "destination": "/cow-protocol/howto/cow-swap"
+      "destination": "/cow-swap/features"
     },
     {
       "source": "/cow-protocol/tutorials/cow-explorer",
@@ -1169,15 +1200,15 @@
     },
     {
       "source": "/cow-protocol/tutorials/widget",
-      "destination": "/cow-protocol/reference/widget-params"
+      "destination": "/cow-swap/widget/params"
     },
     {
       "source": "/cow-protocol/tutorials/cow-swap/custom-links",
-      "destination": "/cow-protocol/reference/custom-links"
+      "destination": "/cow-swap/reference/custom-links"
     },
     {
       "source": "/cow-protocol/tutorials/hook-dapp",
-      "destination": "/cow-protocol/reference/hook-dapp"
+      "destination": "/cow-swap/hooks/hook-dapp"
     },
     {
       "source": "/cow-amm/concepts/the-problem-of-lvr",
@@ -1245,7 +1276,7 @@
     },
     {
       "source": "/cow-protocol/cow-swap",
-      "destination": "/cow-protocol/howto/cow-swap"
+      "destination": "/cow-swap/features"
     },
     {
       "source": "/cow-protocol/explanation/how-it-works/fee-model",
@@ -1254,6 +1285,78 @@
     {
       "source": "/cow-protocol/explanation/introduction/integrate",
       "destination": "/cow-protocol/explanation/integration-overview"
+    },
+    {
+      "source": "/cow-protocol/explanation/how-it-works/protocol-vs-swap",
+      "destination": "/cow-swap/overview"
+    },
+    {
+      "source": "/cow-protocol/howto/cow-swap",
+      "destination": "/cow-swap/features"
+    },
+    {
+      "source": "/cow-protocol/tutorials/cow-swap/swap",
+      "destination": "/cow-swap/tutorials/swap"
+    },
+    {
+      "source": "/cow-protocol/tutorials/cow-swap/limit",
+      "destination": "/cow-swap/tutorials/limit"
+    },
+    {
+      "source": "/cow-protocol/tutorials/cow-swap/twap",
+      "destination": "/cow-swap/tutorials/twap"
+    },
+    {
+      "source": "/cow-protocol/tutorials/cow-swap/native",
+      "destination": "/cow-swap/tutorials/native"
+    },
+    {
+      "source": "/cow-protocol/tutorials/cow-swap/flash-loans",
+      "destination": "/cow-swap/tutorials/flash-loans"
+    },
+    {
+      "source": "/cow-protocol/tutorials/cow-swap/swap-and-bridge",
+      "destination": "/cow-swap/tutorials/swap-and-bridge"
+    },
+    {
+      "source": "/cow-protocol/tutorials/swap-in-safe-app",
+      "destination": "/cow-swap/tutorials/safe-app"
+    },
+    {
+      "source": "/cow-protocol/tutorials/dca-twap",
+      "destination": "/cow-swap/tutorials/dca-twap"
+    },
+    {
+      "source": "/cow-protocol/tutorials/multi-sig-orders",
+      "destination": "/cow-swap/tutorials/multi-sig-orders"
+    },
+    {
+      "source": "/cow-protocol/tutorials/hooks-getting-started",
+      "destination": "/cow-swap/hooks/getting-started"
+    },
+    {
+      "source": "/cow-protocol/tutorials/post-hook-examples",
+      "destination": "/cow-swap/hooks/post-hook-examples"
+    },
+    {
+      "source": "/cow-protocol/reference/hook-store",
+      "destination": "/cow-swap/hooks/hook-store"
+    },
+    {
+      "source": "/cow-protocol/reference/hook-dapp",
+      "destination": "/cow-swap/hooks/hook-dapp"
+    },
+    {
+      "source": "/cow-protocol/howto/integrate/widget",
+      "destination": "/cow-swap/widget/overview"
+    },
+    {
+      "source": "/cow-protocol/reference/widget-params",
+      "destination": "/cow-swap/widget/params"
+    },
+    {
+      "source": "/cow-protocol/reference/custom-links",
+      "destination": "/cow-swap/reference/custom-links"
     }
   ]
 }

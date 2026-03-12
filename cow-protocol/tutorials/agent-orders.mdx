@@ -24,7 +24,7 @@ Before starting, make sure your agent has access to:
 
 - **A private key** for an EOA wallet (stored securely — environment variable or secrets manager)
 - **ETH on the target chain** — only needed for token approval transactions, not for order submission
-- **Tokens to trade** — the sell token must already be in the wallet
+- **Tokens to trade** — the sell token must already be in the wallet. Any ERC-20 token is tradeable, not just those on the [CoW token list](https://files.cow.fi/tokens/CowSwap.json) (the list is used by the UI for display purposes)
 - **Token approval** for the GPv2VaultRelayer (`0xC92E8bdf79f0507f65a392b0ab4667716BFE0110`) to spend the sell token
 - **Python 3.8+** with `requests`, `web3`, and `eth-account` installed
 
@@ -39,8 +39,12 @@ API base URLs by network:
 | Sepolia (testnet) | `https://api.cow.fi/sepolia/api/v1` |
 
 <Warning>
-Never hardcode private keys. Use environment variables (`os.environ["PRIVATE_KEY"]`) or a secrets manager. The examples below use a placeholder for clarity.
+Never hardcode private keys. Use `os.environ.get("PRIVATE_KEY")` in Python (not string interpolation or shell expansion) to avoid exposing secrets in process argument lists visible via `ps`. Avoid passing keys as command-line arguments (e.g., `python script.py --key 0x...`). For production agents, use a secrets manager.
 </Warning>
+
+<Note>
+Want to trade native ETH (not WETH)? You can use [Eth-flow](/cow-protocol/reference/core/intents/eth-flow) to place orders selling native ETH directly, without wrapping to WETH first.
+</Note>
 
 ## Walkthrough
 
@@ -126,9 +130,11 @@ Setting slippage too tight (e.g. 0.01%) causes orders to fail in volatile market
 
 CoW Protocol orders are off-chain intents signed with EIP-712. The key points for the signed order:
 
-- **`sellAmount`** = `quote.sellAmount + quote.feeAmount` (the full amount before network cost deduction)
+- **`feeAmount`** = `0` (fees are handled by the settlement contract, always sign with zero)
+- **`sellAmount`** = `quote.sellAmount + quote.feeAmount` (add the fee back to get the full pre-fee amount)
 - **`buyAmount`** = the slippage-adjusted minimum from Step 2
-- **`feeAmount`** = `0` (fees are handled by the settlement contract)
+
+The correct sequence is: (1) add `feeAmount` back to `sellAmount`, (2) apply slippage tolerance to `buyAmount`, (3) apply partner fee if applicable. Always sign with `feeAmount: 0`.
 
 <CodeGroup>
 
@@ -267,6 +273,10 @@ order_uid = submit_order(
 print(f"Order UID: {order_uid}")
 print(f"Explorer:  https://explorer.cow.fi/sepolia/orders/{order_uid}")
 ```
+
+<Note>
+**`appData` differs between endpoints.** `POST /api/v1/quote` accepts the full JSON metadata document as `appData` and its keccak256 hash as `appDataHash`. `POST /api/v1/orders` expects only the **bytes32 hash** as `appData`. The quote response returns `appData` already as the hash, so you can pass it through to the order submission unchanged (as shown above). If you construct `appData` yourself, make sure you submit the hash — not the raw JSON — when posting orders. See the [appData documentation](/cow-protocol/reference/core/intents/app-data) for details.
+</Note>
 
 <Note>
 The order UID is deterministic — it is derived from the order parameters and the signer address. Submitting the same signed order twice returns the same UID and does not create a duplicate. This gives you built-in idempotency.

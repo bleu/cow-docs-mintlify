@@ -102,6 +102,18 @@ At the end of each accounting period, the accounting aggregates all native-token
 
 Overdrafts are tracked on-chain via the overdraft management contract. When a solver’s aggregated native-token components — slippage, network fees, and COW rewards (converted to native) — sum to a negative value for a given accounting period, the deficit is recorded as an overdraft. These overdraft amounts are automatically deducted from future weekly reward payouts until the balance is cleared. Solvers also have the option to submit direct payments to the overdraft management contract to clear outstanding amounts ahead of schedule.
 
+The overdraft management contract is deployed at `0x8fd67ea651329fd142d7cfd8e90406f133f26e8a` (same address on all networks). It exposes two relevant functions:
+
+```solidity
+// Check a solver’s outstanding overdraft balance (returns amount in wei)
+function solverOverdraftBalance(address solver) external view returns (uint256);
+
+// Pay down a solver’s overdraft — send the payment as msg.value (no amount parameter)
+function payOverdraft(address solver) external payable;
+```
+
+To check an overdraft, call `solverOverdraftBalance` with the solver address. To pay it off, call `payOverdraft` with the solver address and attach the desired payment as `msg.value` in wei.
+
 <Note>
   Solvers should monitor their overdraft status regularly. Accumulated overdrafts reduce future payouts and, if left unaddressed, can significantly delay reward distributions. The [solver rewards Dune dashboard](https://dune.com/cowprotocol/cow-solver-rewards) can be used to track current balances and outstanding overdraft amounts.
 </Note>

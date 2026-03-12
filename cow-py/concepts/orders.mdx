@@ -109,9 +109,9 @@ order.sell_token_balance = OrderBalance.INTERNAL.value
 order.sell_token_balance = OrderBalance.EXTERNAL.value
 ```
 
-<Note>
-  Most implementations should use `OrderBalance.ERC20` for both balances. Balancer Vault options serve specialized integrations.
-</Note>
+<Warning>
+  Always use `OrderBalance.ERC20` for both balances. On most networks (Ethereum mainnet, Gnosis Chain, Arbitrum, Base), the Balancer Vault contract has a compromised admin key, meaning `INTERNAL` and `EXTERNAL` balance types may expose users to risk. The CoW Protocol API rejects orders using these balance types on affected networks. Only use Vault balance types after verifying the Balancer deployment is safe on your target network.
+</Warning>
 
 ## Partially Fillable Orders
 

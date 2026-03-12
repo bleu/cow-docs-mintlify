@@ -13,12 +13,12 @@ A percentage of the Partner Fee shall be retained as a service fee to CoW Protoc
 The Partner Fee net of the Service Fee is the Partner Fee amount (the "Net Partner Fee") eligible for weekly payment. See the [Partner Fee calculation](#partner-fee-calculation-examples) section for examples.
 
 <Note>
-  You may charge users a fee of no more than 100 bps of order volume through your Widget. The Partner Fee will begin to accrue on April 4th, 2024 (the release date of the Partner Fee feature). The Partner Fee is currently only applicable to [Market order](https://docs.cow.fi/cow-protocol/explanation/order-types/market-orders) trades executed by your users through the Widget or API integration.
+  You may charge users a fee of no more than 100 bps of order volume through your Widget or API integration. The Partner Fee will begin to accrue on April 4th, 2024 (the release date of the Partner Fee feature). The Partner Fee is currently only applicable to [Market order](/cow-protocol/explanation/order-types/market-orders) trades executed by your users through the Widget or API integration.
 </Note>
 
 ### Partner Fee Calculation Examples[​](#partner-fee-calculation-examples "Direct link to Partner Fee Calculation Examples")
 
-#### A User Sells 1 ETH for DAI on your Widget[​](#a-user-sells-1-eth-for-dai-on-your-widget "Direct link to A User Sells 1 ETH for DAI on your Widget")
+#### A User Sells 1 ETH for DAI on Your Integration[​](#a-user-sells-1-eth-for-dai-on-your-widget "Direct link to A User Sells 1 ETH for DAI on Your Integration")
 
 * Partner Fee: **100 BPS**
 
@@ -45,7 +45,7 @@ The Partner Fee net of the Service Fee is the Partner Fee amount (the "Net Partn
   * User Receives: **3489.75 DAI** (3,525 - 35.25)
   * User's Surplus: **24.75 DAI** (3,489.75 - 3465)
 
-#### A User Buys 1 ETH for DAI on your Widget[​](#a-user-buys-1-eth-for-dai-on-your-widget "Direct link to A User Buys 1 ETH for DAI on your Widget")
+#### A User Buys 1 ETH for DAI on Your Integration[​](#a-user-buys-1-eth-for-dai-on-your-widget "Direct link to A User Buys 1 ETH for DAI on Your Integration")
 
 * Partner Fee: **100 BPS**
 
@@ -75,7 +75,7 @@ The Partner Fee net of the Service Fee is the Partner Fee amount (the "Net Partn
 ### Partner Fee Payment Process[​](#partner-fee-payment-process "Direct link to Partner Fee Payment Process")
 
 1. Upon completing the implementation of the Partner Fee parameters, you will be eligible to receive the Partner Fee on trades executed by your users through the Widget or API integration.
-2. A data script will be run on a weekly basis on your project's eligible Partner Fee amount calculated based on the sum of all transactions traded through your project's Widget or API integration associated with Partner Fee defined in the [`appData`](/cow-protocol/reference/core/intents/app-data) your AppKey.
+2. A data script will be run on a weekly basis on your project's eligible Partner Fee amount, calculated based on the sum of all transactions traded through your project's Widget or API integration with Partner Fee defined in the [`appData`](/cow-protocol/reference/core/intents/app-data) for your AppKey.
 3. The Net Partner Fee (refer to the [Partner Fee Calculation](#partner-fee-calculation) section for details on calculations) will be transferred to your designated Ethereum wallet address defined under the Partner Fee "Recipient" parameter of the integration on a weekly basis.
 
 <Note>

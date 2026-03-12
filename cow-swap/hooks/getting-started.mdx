@@ -38,7 +38,7 @@ For example, if you want to claim GNO from Gnosis Chain validators before a swap
 CoW Swap will simulate the call on-chain so you can verify it does what you expect before placing the order.
 
 <Note>
-  The call executes in the context of the [HooksTrampoline](/hooks-trampoline/introduction) contract. If your hook needs to act on tokens the user holds (e.g., staking received tokens), you'll need [CoW Shed](/cow-sdk/advanced/account-abstraction) — see [Post-Hook Examples](/cow-protocol/tutorials/post-hook-examples) for patterns.
+  The call executes in the context of the [HooksTrampoline](/hooks-trampoline/introduction) contract. If your hook needs to act on tokens the user holds (e.g., staking received tokens), you'll need [CoW Shed](/cow-sdk/advanced/account-abstraction) — see [Post-Hook Examples](/cow-swap/hooks/post-hook-examples) for patterns.
 </Note>
 
 ## Step 3: Place the order
@@ -72,13 +72,13 @@ Solvers execute your hooks as part of the settlement transaction. When a solver 
 ## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Hook Store" icon="store" href="/cow-protocol/reference/hook-store">
+  <Card title="Hook Store" icon="store" href="/cow-swap/hooks/hook-store">
     Browse and use pre-built hooks from the Hook Store
   </Card>
-  <Card title="Build a Hook dApp" icon="code" href="/cow-protocol/reference/hook-dapp">
+  <Card title="Build a Hook dApp" icon="code" href="/cow-swap/hooks/hook-dapp">
     Create your own hook dApp with a custom UI
   </Card>
-  <Card title="Post-Hook Examples" icon="arrow-right" href="/cow-protocol/tutorials/post-hook-examples">
+  <Card title="Post-Hook Examples" icon="arrow-right" href="/cow-swap/hooks/post-hook-examples">
     Swap → stake, swap → bridge, and swap → vault patterns
   </Card>
   <Card title="Hooks SDK Guide" icon="book" href="/cow-sdk/advanced/hooks">

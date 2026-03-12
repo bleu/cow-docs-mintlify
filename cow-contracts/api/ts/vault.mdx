@@ -66,6 +66,10 @@ const vaultRelayer = "0xC92E8bdf79f0507f65a392b0ab4667716BFE0110";
 const vault = new ethers.Contract(vaultAddress, VAULT_INTERFACE, provider);
 ```
 
+<Warning>
+On networks where the Balancer Vault contract has a known compromised admin key (notably Ethereum mainnet, Gnosis Chain, Arbitrum, and Base), using `INTERNAL` or `EXTERNAL` balance types may expose users to risk. The CoW Protocol API rejects orders using these balance types on affected networks. Always use `ERC20` balance type unless you have verified that the Balancer Vault on your target network is safe (e.g., Plasma, which uses a non-compromised deployment).
+</Warning>
+
 <Tip>
 Internal balance operations have different gas cost characteristics than standard ERC20 transfers. Test thoroughly on testnets before using Vault integration in production.
 </Tip>
