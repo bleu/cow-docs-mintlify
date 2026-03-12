@@ -49,7 +49,7 @@ All core CoW Protocol contracts are deployed at **identical addresses** across e
 
 A standard approval sends a transaction to the token's `approve` function, granting the VaultRelayer a spending allowance. This costs gas but works with every ERC-20 token.
 
-### Using the CoW SDK (TypeScript)
+### Using the TypeScript SDK
 
 The SDK provides built-in methods that automatically target the correct VaultRelayer address for your chain:
 
@@ -244,7 +244,7 @@ Not every token supports EIP-2612. Here are some guidelines:
 
 ### Using the SDK (Automatic Detection)
 
-The CoW SDK automatically detects whether a token supports EIP-2612 and uses permit when available:
+The TypeScript SDK automatically detects whether a token supports EIP-2612 and uses permit when available:
 
 ```typescript
 import { TradingSdk, SupportedChainId, OrderKind } from '@cowprotocol/sdk-trading'
@@ -361,6 +361,6 @@ cast send $SELL_TOKEN \
 
 ## Next Steps
 
-- **[CoW SDK Quickstart](/cow-sdk/guides/token-approvals)** -- Detailed SDK reference for approval methods
+- **[TypeScript SDK: Token Approvals](/cow-sdk/guides/token-approvals)** -- Detailed SDK reference for approval methods
 - **[API Integration](/cow-protocol/howto/integrate/api)** -- Submit orders via the REST API after approving
 - **[GPv2VaultRelayer Reference](/cow-protocol/reference/contracts/core/vault-relayer)** -- Architecture details and advanced balance mechanisms (Balancer external/internal balances)

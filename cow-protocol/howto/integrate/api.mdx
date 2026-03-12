@@ -151,6 +151,30 @@ try {
 
 For per-endpoint limits, backoff strategies, Cloudflare WAF details, and troubleshooting, see the **[Rate Limits & Quotas](/cow-protocol/reference/core/rate-limits)** reference.
 
+## Error Handling[​](#error-handling-2 "Direct link to Error Handling 2")
+
+For a comprehensive list of every API error code with root causes and fixes, see the **[Error Reference](/cow-protocol/reference/core/error-reference)**. Key errors to handle:
+
+| Error | When | Quick fix |
+|---|---|---|
+| `SellAmountDoesNotCoverFee` | Quote request | Increase sell amount |
+| `NoLiquidity` | Quote request | Check token addresses and liquidity |
+| `InvalidSignature` | Order submission | Verify EIP-712 domain and signer match |
+| `InsufficientAllowance` | Order submission | Approve VaultRelayer (`0xC92E8bdf79f0507f65a392b0ab4667716BFE0110`) |
+| `InsufficientBalance` | Order submission | Check sell token balance covers amount |
+
+### `sellAmountBeforeFee` vs `sellAmount`
+
+A common source of confusion:
+
+- **`sellAmountBeforeFee`** — used in the **quote request**. This is the total amount you want to sell, before any fees.
+- **`sellAmount`** in the **quote response** — the sell amount **after** network costs have been deducted.
+- **`feeAmount`** in the response — the network cost, in sell token units.
+
+The relationship: `sellAmountBeforeFee = response.sellAmount + response.feeAmount`
+
+For the full fee pipeline (how protocol fees, partner fees, and slippage transform these amounts), see the **[Fee Model](/cow-protocol/explanation/fee-model)**.
+
 ## Understanding Quotes and Fees
 
 The quote response contains fee breakdowns and amount stages that are essential for building correct orders:

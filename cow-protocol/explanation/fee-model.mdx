@@ -1,0 +1,120 @@
+---
+title: "Fee Model"
+description: "How fees work in CoW Protocol — from the quote response to on-chain settlement. Everything you need to understand protocol fees, network costs, partner fees, and how to retrieve fee data for accounting."
+---
+
+## How fees work
+
+CoW Protocol does **not** charge fees as a separate transaction. Instead, fees are embedded in the trade itself — deducted from the amounts you're already swapping. This means:
+
+- **Sell orders**: fees reduce the buy amount you receive
+- **Buy orders**: fees increase the sell amount you pay
+
+There is no separate fee transfer, no gas token deduction, and no invoice. If you're looking for fee data for accounting, see [Retrieving fee data](#retrieving-fee-data-for-accounting) below.
+
+## Fee types
+
+| Fee | What it covers | Applied to |
+|---|---|---|
+| **Network costs** | Gas fees for on-chain settlement | Sell token (always) |
+| **Protocol fee** | CoW Protocol's revenue (`protocolFeeBps` in quote) | Buy token (sell orders) / Sell token (buy orders) |
+| **Partner fee** | Optional integrator fee (set via [appData](/cow-sdk/concepts/app-data)) | Buy token (sell orders) / Sell token (buy orders) |
+| **Slippage** | Price movement tolerance (not a fee, but part of the pipeline) | Buy token (sell orders) / Sell token (buy orders) |
+
+## Fee pipeline
+
+Fees are applied in a specific order, transforming the raw spot price into the final signed amounts:
+
+```
+Spot Price (beforeAllFees)
+  → after Protocol Fee
+    → after Network Costs
+      → after Partner Fee
+        → after Slippage = amounts you sign
+```
+
+For the full pipeline with code examples and diagrams, see **[How Intents Are Formed](/cow-protocol/explanation/how-it-works/how-intents-are-formed#3-amount-stages)**.
+
+## Current protocol fee parameters
+
+| Fee | Rate | Applies to |
+|---|---|---|
+| **Surplus fee** | 50% of surplus, capped at 0.98% of volume | Out-of-market limit orders |
+| **Quote improvement fee** | 50% of improvement, capped at 0.98% of volume | Market orders (swaps) |
+| **Volume fee** | 2 bps (standard) / 0.3 bps (correlated assets) | All orders |
+
+For full definitions and calculation formulas, see **[Fees (Governance)](/governance/reference/fees)**.
+
+## Understanding the quote response
+
+The `/quote` API response is the starting point for understanding fees:
+
+```json
+{
+  "protocolFeeBps": "2",
+  "quote": {
+    "sellAmount": "99937516653569264",
+    "buyAmount": "191179999",
+    "feeAmount": "62483346430736",
+    "kind": "sell"
+  }
+}
+```
+
+| Field | What it means |
+|---|---|
+| `sellAmount` | Sell amount **after** network costs deducted |
+| `buyAmount` | Buy amount **after** network costs and protocol fee deducted |
+| `feeAmount` | Network costs in **sell token** units |
+| `protocolFeeBps` | Protocol fee in basis points (already reflected in `buyAmount`) |
+
+<Warning>
+`feeAmount` is the **network cost** only — not the total fee. The protocol fee is already embedded in `buyAmount` (sell orders) or `sellAmount` (buy orders).
+</Warning>
+
+### What you sign vs. what you see
+
+For a **sell order**, the amounts signed into the order are:
+- `sellAmount` = spot price amount (= `quote.sellAmount + quote.feeAmount`)
+- `buyAmount` = minimum to receive after all fees and slippage
+
+For a **buy order**:
+- `sellAmount` = maximum to pay after all fees and slippage
+- `buyAmount` = exact amount to receive (= spot price)
+
+## Retrieving fee data for accounting
+
+On-chain, `feeAmount` is set to **zero** in the order struct. This confuses many integrators looking for fee data. The actual fees are embedded in the price difference between the quoted and executed amounts.
+
+To get fee breakdowns for a filled order:
+
+### 1. Query the order details
+
+```bash
+curl https://api.cow.fi/mainnet/api/v1/orders/{ORDER_UID}
+```
+
+The response includes `executedSellAmount`, `executedBuyAmount`, `executedSellAmountBeforeFees`, and `executedFeeAmount` — these reflect the actual settlement values.
+
+### 2. Query the solver competition
+
+```bash
+curl https://api.cow.fi/mainnet/api/v1/solver_competition/by_tx_hash/{TX_HASH}
+```
+
+This shows the solver's execution plan including surplus generated and fees taken.
+
+### 3. Use the CoW Explorer
+
+Visit `https://explorer.cow.fi/orders/{ORDER_UID}` for a visual breakdown of the order's fee components and settlement details.
+
+<Note>
+For programmatic accounting, the [TypeScript SDK](/cow-sdk/api/order-book-api) and [Python SDK](/cow-py/api/order-book) provide typed access to order details including executed amounts and fees.
+</Note>
+
+## Related resources
+
+- **[How Intents Are Formed](/cow-protocol/explanation/how-it-works/how-intents-are-formed)** — Full fee pipeline with code and diagrams
+- **[Fees (Governance)](/governance/reference/fees)** — Current fee parameters and definitions
+- **[Partner Fee](/governance/reference/partner-fee)** — How integrator fees work
+- **[Error Reference](/cow-protocol/reference/core/error-reference)** — Fee-related errors (`SellAmountDoesNotCoverFee`)

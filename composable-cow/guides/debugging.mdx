@@ -1,0 +1,143 @@
+---
+title: "Debugging Conditional Orders"
+description: "Decision tree for diagnosing why a conditional order didn't execute — from watch-tower indexing to solver settlement."
+---
+
+# Debugging Conditional Orders
+
+Use this decision tree when your conditional order isn't executing as expected.
+
+## Why didn't my order execute?
+
+```
+Order not executing
+├── Is the tx confirmed on-chain?
+│   └── No → Wait for confirmation or check if tx reverted
+├── Does the order appear in CoW Explorer?
+│   └── No → Watch-tower hasn't indexed it (see below)
+├── Is the order status "open"?
+│   ├── "presignaturePending" → PreSign tx not yet confirmed
+│   ├── "cancelled" → Order was cancelled (check who/when)
+│   └── "expired" → validTo passed before a solver could fill it
+└── Order is "open" but not filling
+    ├── Is the Safe balance sufficient?
+    ├── Is the VaultRelayer approved?
+    ├── Is getTradeableOrder() reverting?
+    └── Are solvers finding it unprofitable? (check competition)
+```
+
+## Step 1: Check the transaction
+
+Verify the `ComposableCoW.create()` transaction was confirmed:
+- Check the tx hash on Etherscan/block explorer
+- Look for the `ConditionalOrderCreated` event in the logs
+- If the tx reverted, check the revert reason (usually setup issues — see [Troubleshooting](/composable-cow/guides/troubleshooting))
+
+## Step 2: Check watch-tower indexing
+
+The [watch-tower](/watch-tower/introduction) monitors on-chain events and posts discrete orders to the orderbook.
+
+**Is the public watch-tower monitoring your chain?**
+
+Supported: Ethereum, Gnosis Chain, Arbitrum, Base, Sepolia
+
+**Check via the watch-tower API:**
+
+If you're running your own watch-tower:
+```bash
+# Dump the database to see all indexed orders
+curl http://localhost:8080/api/dump/<CHAIN_ID>
+```
+
+Look for your Safe address in the output. If it's not there, the watch-tower hasn't seen the `ConditionalOrderCreated` event yet.
+
+**Run a one-shot check:**
+```bash
+LOG_LEVEL=DEBUG yarn cli run \
+  --only-owner <YOUR_SAFE_ADDRESS> \
+  --one-shot \
+  --dry-run
+```
+
+This will show exactly what the watch-tower sees for your Safe and what orders it would post.
+
+## Step 3: Check `getTradeableOrder()`
+
+The watch-tower calls your handler's `getTradeableOrder()` function each polling cycle. If it reverts, no order is posted.
+
+**Test it manually:**
+```bash
+cast call <HANDLER_ADDRESS> \
+  "getTradeableOrder(address,address,bytes32,bytes,bytes)(tuple)" \
+  <SAFE_ADDRESS> \
+  <SAFE_ADDRESS> \
+  <CONDITIONAL_ORDER_PARAMS_HASH> \
+  <STATIC_INPUT> \
+  <OFF_CHAIN_INPUT>
+```
+
+Common revert reasons:
+
+| Revert | Cause | Fix |
+|---|---|---|
+| `OrderNotValid` | Time condition not met (e.g., TWAP part not started) | Wait for the next time window |
+| `InsufficientBalance` | Safe doesn't hold enough sell tokens | Fund the Safe |
+| `SwapGuardRestriction` | A swap guard is blocking the order | Check guard conditions |
+| Custom revert | Handler-specific validation failed | Check your handler's logic |
+
+## Step 4: Check order status
+
+Once the watch-tower posts an order, query its status:
+
+```bash
+curl https://api.cow.fi/mainnet/api/v1/orders/<ORDER_UID>
+```
+
+| Status | Meaning | Action |
+|---|---|---|
+| `open` | Order is in the orderbook, waiting for solvers | Check if balance/allowance is sufficient |
+| `fulfilled` | Order was filled | Success |
+| `expired` | `validTo` passed without fill | Widen slippage or increase validity |
+| `cancelled` | Order was cancelled | Check if it was intentional |
+| `presignaturePending` | Waiting for on-chain pre-signature | Only applies to PreSign, not ERC-1271 |
+
+## Step 5: Check solver competition
+
+If the order is `open` but not filling:
+
+```bash
+# Get the latest auction to see if your order was included
+curl https://api.cow.fi/mainnet/api/v1/auction
+```
+
+Solvers may skip your order if:
+- **Insufficient balance** at settlement time
+- **Insufficient allowance** for VaultRelayer
+- **Unprofitable** — the trade doesn't generate enough surplus to cover gas
+- **Illiquid pair** — no good routing available
+
+## Common patterns
+
+### TWAP order only partially executing
+
+TWAP orders execute in parts over time. Each part has its own time window. If a part doesn't execute:
+- The time window may be too short for solvers to find it
+- The part amount may be too small to be profitable
+- The Safe may not have enough balance for the remaining parts
+
+### Order works on mainnet but not testnet
+
+Sepolia has limited solver participation. See the [testing guide](/cow-protocol/howto/integrate/testing) for testnet-specific advice.
+
+### Order executes once but not again
+
+For recurring orders (like TWAP), the watch-tower must post new discrete orders for each part. Check:
+- Is the watch-tower still running?
+- Has the conditional order been cancelled on-chain?
+- Has the Safe's balance been depleted?
+
+## Related resources
+
+- **[Troubleshooting](/composable-cow/guides/troubleshooting)** — Setup issues (fallback handler, domain verifier)
+- **[Watch Tower: Running Locally](/watch-tower/getting-started/running-locally)** — Debug with your own watch-tower
+- **[Error Reference](/cow-protocol/reference/core/error-reference)** — API error codes and fixes

@@ -1,0 +1,170 @@
+---
+title: "Troubleshooting"
+description: "Common issues when setting up ComposableCoW conditional orders and how to diagnose and fix them."
+---
+
+# Troubleshooting
+
+This guide covers the most common issues developers hit when setting up ComposableCoW, based on frequent questions in the CoW Protocol Discord.
+
+## Setup issues
+
+### `setDomainVerifier` transaction reverts
+
+The most common setup error. The call to `setDomainVerifier` must be made **from the Safe to itself** — not to the ExtensibleFallbackHandler.
+
+<Warning>
+`setDomainVerifier` is a function on the **ExtensibleFallbackHandler**, but it must be called via the Safe's `execTransaction`. The Safe calls itself, and the fallback handler intercepts the call.
+</Warning>
+
+**Correct flow:**
+1. Safe executes a transaction where `to` = **the Safe's own address**
+2. The call data encodes `setDomainVerifier(domainSeparator, composableCowAddress)`
+3. The ExtensibleFallbackHandler (set as the Safe's fallback handler) processes it
+
+**Wrong:** Calling `setDomainVerifier` directly on the ExtensibleFallbackHandler address — this will revert or have no effect.
+
+### Correct setup sequence
+
+The setup must happen in this exact order:
+
+1. **Set the fallback handler** on the Safe to ExtensibleFallbackHandler (`0x2f55e8b20D0B9FEFA187AA7d00B6Cbe563605bF5`)
+2. **Register ComposableCoW as domain verifier** by calling `setDomainVerifier` from the Safe to itself
+3. **Create conditional orders** via `ComposableCoW.create()`
+
+If step 1 is not done before step 2, the `setDomainVerifier` call will silently fail (no fallback handler to intercept it).
+
+### Verifying setup is correct
+
+Check both configurations on-chain:
+
+**1. Verify fallback handler:**
+```bash
+# Read the Safe's fallback handler slot
+cast storage <SAFE_ADDRESS> \
+  0x6c9a6c4a39284e37ed1cf53d337577d14212a4870fb976a4366c693b939918d5
+```
+
+Expected: `0x2f55e8b20D0B9FEFA187AA7d00B6Cbe563605bF5` (ExtensibleFallbackHandler)
+
+**2. Verify domain verifier:**
+```bash
+# Call domainVerifiers on the Safe (via fallback handler)
+cast call <SAFE_ADDRESS> \
+  "domainVerifiers(address,bytes32)(address)" \
+  <SAFE_ADDRESS> \
+  <DOMAIN_SEPARATOR>
+```
+
+Expected: `0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74` (ComposableCoW)
+
+The domain separator for CoW Protocol is chain-specific. You can read it from the settlement contract:
+```bash
+cast call 0x9008D19f58AAbD9eD0D60971565AA8510560ab41 "domainSeparator()(bytes32)"
+```
+
+### MultiSend atomic setup
+
+To do both steps atomically in a single Safe transaction:
+
+```solidity
+// Transaction 1: Set fallback handler
+to: <SAFE_ADDRESS>
+data: setFallbackHandler(0x2f55e8b20D0B9FEFA187AA7d00B6Cbe563605bF5)
+
+// Transaction 2: Register domain verifier (Safe calls itself)
+to: <SAFE_ADDRESS>
+data: setDomainVerifier(<DOMAIN_SEPARATOR>, 0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74)
+```
+
+Bundle via Safe's MultiSend contract.
+
+## Order not appearing in explorer
+
+After creating a conditional order, it should appear in [CoW Explorer](https://explorer.cow.fi). If it doesn't:
+
+### 1. Check if the watch-tower picked it up
+
+The [watch-tower](/watch-tower/introduction) monitors `ConditionalOrderCreated` events. If it hasn't indexed your order:
+
+- **Was the transaction confirmed?** Check the tx hash on the block explorer
+- **Did the event fire?** Look for `ConditionalOrderCreated` in the transaction logs
+- **Is the watch-tower running for your chain?** The public watch-tower covers Ethereum, Gnosis, Arbitrum, Base, and Sepolia
+- **Is there a delay?** The watch-tower processes blocks periodically — wait a few minutes
+
+### 2. Check if the order is currently valid
+
+The watch-tower calls `getTradeableOrder()` on your handler. If it reverts, the order won't be posted. Common reasons:
+
+- **Balance insufficient** — the Safe doesn't hold enough sell tokens
+- **Time condition not met** — for TWAP, the current part hasn't started yet
+- **Guard rejection** — a swap guard is blocking the order
+
+### 3. Run your own watch-tower for debugging
+
+```bash
+# Clone and run with debug logging, monitoring only your Safe
+git clone https://github.com/cowprotocol/watch-tower
+cd watch-tower
+yarn install
+
+LOG_LEVEL=DEBUG yarn cli run \
+  --config-path ./config.json \
+  --only-owner <YOUR_SAFE_ADDRESS> \
+  --one-shot
+```
+
+The `--one-shot` flag processes once and exits. `--dry-run` shows what orders would be posted without actually posting them.
+
+## Foundry / Forge dependency issues
+
+When installing ComposableCoW with Forge, Safe library dependencies may not resolve automatically.
+
+### Missing `SignatureVerifierMuxer.sol`
+
+```bash
+forge install cowprotocol/composable-cow
+```
+
+If this fails to resolve Safe dependencies, add the remappings manually:
+
+```toml
+# foundry.toml or remappings.txt
+[profile.default]
+remappings = [
+    "composable-cow/=lib/composable-cow/src/",
+    "safe/=lib/composable-cow/lib/safe-contracts/contracts/",
+    "safe-contracts/=lib/composable-cow/lib/safe-contracts/contracts/",
+]
+```
+
+You may also need to install the Safe contracts explicitly:
+```bash
+cd lib/composable-cow
+forge install safe-global/safe-contracts --no-commit
+```
+
+## Salt and replay protection
+
+Each conditional order needs a unique salt. If you reuse a salt for the same handler + parameters + Safe, the order will be a duplicate.
+
+- Use `keccak256(abi.encodePacked(block.timestamp, nonce))` or similar for unique salts
+- The salt is used to compute the order's storage key in ComposableCoW
+- Cancelling an order frees its salt for reuse
+
+## Contract addresses (all chains)
+
+| Contract | Address |
+|---|---|
+| ComposableCoW | `0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74` |
+| ExtensibleFallbackHandler | `0x2f55e8b20D0B9FEFA187AA7d00B6Cbe563605bF5` |
+| GPv2Settlement | `0x9008D19f58AAbD9eD0D60971565AA8510560ab41` |
+
+These addresses are the same on Ethereum, Gnosis Chain, Arbitrum, Base, Optimism, Polygon, and Sepolia.
+
+## Related resources
+
+- **[Setup Guide](/composable-cow/guides/setup)** — Initial configuration walkthrough
+- **[Architecture](/composable-cow/architecture)** — How the system works
+- **[Watch Tower](/watch-tower/introduction)** — The service that monitors and posts conditional orders
+- **[Debugging Conditional Orders](/composable-cow/guides/debugging)** — Decision tree for "why didn't my order execute?"

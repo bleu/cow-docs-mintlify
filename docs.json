@@ -107,7 +107,7 @@
               "cow-protocol/explanation/how-it-works/how-intents-are-formed",
               "cow-protocol/explanation/how-it-works/quote-selection",
               "cow-protocol/explanation/how-it-works/coincidence-of-wants",
-              "cow-protocol/explanation/how-it-works/protocol-vs-swap"
+              "cow-protocol/explanation/fee-model"
             ]
           },
           {
@@ -147,23 +147,18 @@
             "icon": "droplet",
             "pages": [
               "cow-amm/explanation/the-problem-of-lvr",
-              "cow-amm/explanation/how-cow-amms-work"
+              "cow-amm/explanation/how-cow-amms-work",
+              "cow-protocol/tutorials/cow-amm-deployer"
             ]
           },
           {
-            "group": "Trading Tutorials",
-            "icon": "graduation-cap",
+            "group": "CoW Swap",
+            "icon": "arrow-right-arrow-left",
             "pages": [
+              "cow-protocol/explanation/how-it-works/protocol-vs-swap",
+              "cow-protocol/howto/cow-swap",
               {
-                "group": "Quickstarts",
-                "pages": [
-                  "cow-protocol/tutorials/quickstart-curl",
-                  "cow-protocol/tutorials/quickstart-python",
-                  "cow-protocol/tutorials/token-approvals"
-                ]
-              },
-              {
-                "group": "CoW Swap",
+                "group": "Trading Tutorials",
                 "pages": [
                   "cow-protocol/tutorials/cow-swap/swap",
                   "cow-protocol/tutorials/cow-swap/limit",
@@ -173,26 +168,42 @@
                   "cow-protocol/tutorials/cow-swap/swap-and-bridge"
                 ]
               },
+              "cow-protocol/tutorials/swap-in-safe-app",
+              "cow-protocol/howto/integrate/widget",
+              "cow-protocol/reference/widget-params",
+              "cow-protocol/reference/hook-dapp",
+              "cow-protocol/reference/custom-links"
+            ]
+          },
+          {
+            "group": "CoW Explorer",
+            "icon": "magnifying-glass",
+            "pages": [
+              "cow-protocol/howto/cow-explorer",
               {
-                "group": "CoW Explorer",
+                "group": "Tutorials",
                 "pages": [
                   "cow-protocol/tutorials/cow-explorer/order",
                   "cow-protocol/tutorials/cow-explorer/batch-auction",
                   "cow-protocol/tutorials/cow-explorer/address"
                 ]
-              },
-              "cow-protocol/tutorials/swap-in-safe-app",
-              "cow-protocol/tutorials/cow-amm-deployer"
+              }
             ]
           },
           {
-            "group": "How-To Guides",
+            "group": "Integration",
             "icon": "wrench",
             "pages": [
-              "cow-protocol/howto/cow-swap",
-              "cow-protocol/howto/cow-explorer",
-              "cow-protocol/howto/integrate/widget",
-              "cow-protocol/howto/integrate/api"
+              "cow-protocol/howto/integrate/api",
+              "cow-protocol/howto/integrate/testing",
+              {
+                "group": "Quickstarts",
+                "pages": [
+                  "cow-protocol/tutorials/quickstart-curl",
+                  "cow-protocol/tutorials/quickstart-python",
+                  "cow-protocol/tutorials/token-approvals"
+                ]
+              }
             ]
           },
           {
@@ -247,15 +258,6 @@
               "cow-protocol/reference/core/auctions/rewards",
               "cow-protocol/reference/core/auctions/accounting",
               "cow-protocol/reference/core/auctions/bonding-pools"
-            ]
-          },
-          {
-            "group": "Other Reference",
-            "icon": "ellipsis",
-            "pages": [
-              "cow-protocol/reference/widget-params",
-              "cow-protocol/reference/hook-dapp",
-              "cow-protocol/reference/custom-links"
             ]
           }
         ]
@@ -339,7 +341,9 @@
                   "composable-cow/guides/setup",
                   "composable-cow/guides/creating-orders",
                   "composable-cow/guides/managing-orders",
-                  "composable-cow/guides/merkle-root-orders"
+                  "composable-cow/guides/merkle-root-orders",
+                  "composable-cow/guides/troubleshooting",
+                  "composable-cow/guides/debugging"
                 ]
               },
               {
@@ -536,7 +540,7 @@
         ]
       },
       {
-        "tab": "CoW SDK",
+        "tab": "TypeScript SDK",
         "icon": "code",
         "groups": [
           {
@@ -567,6 +571,7 @@
               "cow-sdk/guides/native-token-swaps",
               "cow-sdk/guides/order-management",
               "cow-sdk/guides/smart-contract-wallets",
+              "cow-sdk/guides/erc1271-signing",
               "cow-sdk/guides/token-approvals"
             ]
           },
@@ -629,7 +634,7 @@
         ]
       },
       {
-        "tab": "CoW Python SDK",
+        "tab": "Python SDK",
         "icon": "python",
         "groups": [
           {
@@ -716,7 +721,7 @@
         ]
       },
       {
-        "tab": "BFF & Services",
+        "tab": "Backend",
         "icon": "server",
         "groups": [
           {

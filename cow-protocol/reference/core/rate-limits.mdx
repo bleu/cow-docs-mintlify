@@ -73,7 +73,7 @@ Content-Type: application/json
 
 The official SDKs include built-in rate limiting so you don't have to implement it yourself:
 
-- **[CoW SDK](/cow-sdk/introduction)** (TypeScript) — ships with a default limiter set to 5 requests/second
+- **[TypeScript SDK](/cow-sdk/introduction)** — ships with a default limiter set to 5 requests/second
 - **[cow-py](/cow-py/introduction)** (Python) — includes automatic backoff and retry strategies for all API calls
 
 Using an official SDK is the recommended approach for most integrations, as it handles rate limiting, retries, and request formatting out of the box.
@@ -152,7 +152,7 @@ def fetch_with_backoff(url, payload=None, max_retries=3):
 ### Aggregator
 
 - Rate limits apply **per IP** — if running multiple instances behind the same IP, coordinate request budgets across them
-- Consider using the [CoW SDK](/cow-sdk/introduction) which handles rate limiting internally
+- Consider using the [TypeScript SDK](/cow-sdk/introduction) which handles rate limiting internally
 - For production aggregator integrations that need elevated throughput, contact **bd@cow.fi**
 
 <Note>
@@ -185,5 +185,5 @@ When reporting an issue, include your **public IP address** and the **HTTP statu
 - [API Integration Guide](/cow-protocol/howto/integrate/api) — Getting started with the CoW Protocol API
 - [Order Book API Reference](/cow-protocol/reference/apis/orderbook) — Complete endpoint documentation
 - [Interactive API Explorer](https://api.cow.fi/docs/) — Test endpoints directly
-- [CoW SDK](/cow-sdk/introduction) — TypeScript SDK with built-in rate limiting
+- [TypeScript SDK](/cow-sdk/introduction) — built-in rate limiting
 - [cow-py](/cow-py/introduction) — Python SDK with built-in backoff strategies

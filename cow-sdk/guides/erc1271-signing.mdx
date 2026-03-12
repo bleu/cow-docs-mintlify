@@ -1,0 +1,225 @@
+---
+title: "ERC-1271 Signing (Custom Contracts)"
+description: "How to place CoW Protocol orders from custom smart contracts using ERC-1271 off-chain signatures — for vaults, DAOs, treasuries, and any non-EOA wallet."
+---
+
+# ERC-1271 Signing
+
+ERC-1271 allows smart contracts to verify off-chain signatures, enabling gasless order creation from contracts like vaults, DAOs, and protocol treasuries.
+
+## ERC-1271 vs PreSign
+
+| | ERC-1271 | PreSign |
+|---|---|---|
+| **Gas cost** | No gas for order creation | ~50,000-100,000 gas per order |
+| **How it works** | Contract implements `isValidSignature` | On-chain `setPreSignature` call |
+| **Best for** | High-frequency ordering from contracts | Simple one-off orders from contracts |
+| **Complexity** | Must implement interface in contract | Just call settlement contract |
+
+Use **ERC-1271** when your contract needs to place orders frequently (trading vaults, automated strategies). Use **[PreSign](/cow-sdk/guides/smart-contract-wallets)** when you need a simpler approach or can't modify the contract code.
+
+## Implementing `isValidSignature`
+
+Your contract must implement the [EIP-1271](https://eips.ethereum.org/EIPS/eip-1271) interface:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+interface IERC1271 {
+    function isValidSignature(
+        bytes32 hash,
+        bytes calldata signature
+    ) external view returns (bytes4 magicValue);
+}
+```
+
+The function must:
+- Be a `view` function (no state changes)
+- Return `0x1626ba7e` (the magic value) for valid signatures
+- Return any other value for invalid signatures
+
+### Example: Single-owner vault
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract TradingVault is IERC1271 {
+    address public owner;
+
+    bytes4 internal constant MAGIC_VALUE = 0x1626ba7e;
+
+    constructor(address _owner) {
+        owner = _owner;
+    }
+
+    /// @notice Validates that the signature was produced by the vault owner
+    function isValidSignature(
+        bytes32 hash,
+        bytes calldata signature
+    ) external view override returns (bytes4) {
+        // Recover signer from ECDSA signature
+        require(signature.length == 65, "Invalid signature length");
+
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly {
+            r := calldataload(signature.offset)
+            s := calldataload(add(signature.offset, 32))
+            v := byte(0, calldataload(add(signature.offset, 64)))
+        }
+
+        address recovered = ecrecover(hash, v, r, s);
+
+        if (recovered == owner) {
+            return MAGIC_VALUE;
+        }
+        return 0xffffffff;
+    }
+}
+```
+
+### Example: Multi-sig / threshold
+
+```solidity
+contract MultiSigVault is IERC1271 {
+    bytes4 internal constant MAGIC_VALUE = 0x1626ba7e;
+
+    mapping(address => bool) public signers;
+    uint256 public threshold;
+
+    function isValidSignature(
+        bytes32 hash,
+        bytes calldata signatures
+    ) external view override returns (bytes4) {
+        // Each signature is 65 bytes (r, s, v)
+        require(signatures.length >= threshold * 65, "Not enough signatures");
+
+        address lastSigner = address(0);
+        for (uint256 i = 0; i < threshold; i++) {
+            uint256 offset = i * 65;
+            bytes32 r;
+            bytes32 s;
+            uint8 v;
+            assembly {
+                r := calldataload(add(signatures.offset, offset))
+                s := calldataload(add(signatures.offset, add(offset, 32)))
+                v := byte(0, calldataload(add(signatures.offset, add(offset, 64))))
+            }
+
+            address recovered = ecrecover(hash, v, r, s);
+            require(signers[recovered], "Invalid signer");
+            require(recovered > lastSigner, "Signers not sorted");
+            lastSigner = recovered;
+        }
+
+        return MAGIC_VALUE;
+    }
+}
+```
+
+## Submitting ERC-1271 orders via SDK
+
+```typescript
+import {
+  TradingSdk,
+  SupportedChainId,
+  OrderKind,
+  TradeParameters,
+  SwapAdvancedSettings,
+} from '@cowprotocol/sdk-trading'
+import { SigningScheme } from '@cowprotocol/cow-sdk'
+
+const parameters: TradeParameters = {
+  kind: OrderKind.SELL,
+  sellToken: '0x...', // sell token
+  sellTokenDecimals: 18,
+  buyToken: '0x...', // buy token
+  buyTokenDecimals: 6,
+  amount: '1000000000000000000',
+}
+
+const advancedSettings: SwapAdvancedSettings = {
+  quoteRequest: {
+    from: '0xYourContractAddress', // MUST be the contract address
+    signingScheme: SigningScheme.EIP1271,
+  },
+}
+
+const orderId = await sdk.postSwapOrder(parameters, advancedSettings)
+```
+
+<Warning>
+The `from` field **must** be set to the smart contract address, not the EOA signing the order. The API cannot infer the owner from an ERC-1271 signature.
+</Warning>
+
+## Submitting via raw API
+
+If not using the SDK, submit to `POST /api/v1/orders` with:
+
+```json
+{
+  "sellToken": "0x...",
+  "buyToken": "0x...",
+  "sellAmount": "1000000000000000000",
+  "buyAmount": "950000",
+  "validTo": 1704067200,
+  "appData": "0x...",
+  "feeAmount": "0",
+  "kind": "sell",
+  "partiallyFillable": false,
+  "signingScheme": "eip1271",
+  "signature": "0x<the-ecdsa-signature>",
+  "from": "0xYourContractAddress"
+}
+```
+
+The `signature` field contains whatever bytes your contract's `isValidSignature` expects. The protocol will call `isValidSignature(orderDigest, signature)` on your contract to verify.
+
+## EIP-712 domain separator
+
+Your off-chain signer must produce the signature over the correct order digest. The EIP-712 domain is the same across all chains:
+
+```typescript
+const domain = {
+  name: 'Gnosis Protocol',
+  version: 'v2',
+  chainId: TARGET_CHAIN_ID,
+  verifyingContract: '0x9008D19f58AAbD9eD0D60971565AA8510560ab41'
+}
+```
+
+See the [signing schemes reference](/cow-protocol/reference/core/signing-schemes) for the full EIP-712 type definition and order struct.
+
+## Common errors
+
+| Error | Cause | Fix |
+|---|---|---|
+| `InvalidSignature` | `isValidSignature` didn't return `0x1626ba7e` | Check your contract's validation logic; verify the signer matches |
+| `WrongOwner` | `from` field doesn't match the contract that implements `isValidSignature` | Set `from` to the contract address, not the EOA |
+| Signature reverts | `isValidSignature` is not `view`, or has a bug | Ensure it's `view`; test with `eth_call` before submitting |
+| `InsufficientAllowance` | Contract hasn't approved VaultRelayer | Call `approve` on the sell token from your contract to `0xC92E8bdf79f0507f65a392b0ab4667716BFE0110` |
+| `InsufficientBalance` | Contract doesn't hold the sell token | Transfer tokens to the contract before placing orders |
+
+## Token approvals
+
+Your smart contract must approve the **VaultRelayer** (`0xC92E8bdf79f0507f65a392b0ab4667716BFE0110`) to spend the sell token. This approval must come from the contract itself (the order owner), not from an EOA.
+
+```solidity
+// In your contract
+function approveForTrading(address token) external onlyOwner {
+    IERC20(token).approve(
+        0xC92E8bdf79f0507f65a392b0ab4667716BFE0110, // VaultRelayer
+        type(uint256).max
+    );
+}
+```
+
+## Related resources
+
+- **[Signing Schemes Reference](/cow-protocol/reference/core/signing-schemes)** — All four signing schemes explained
+- **[Smart Contract Wallets (PreSign)](/cow-sdk/guides/smart-contract-wallets)** — Simpler alternative for contracts
+- **[Token Approvals](/cow-sdk/guides/token-approvals)** — Approval patterns for the VaultRelayer
+- **[Error Reference](/cow-protocol/reference/core/error-reference)** — Full error code reference

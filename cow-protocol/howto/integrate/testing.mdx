@@ -1,0 +1,103 @@
+---
+title: "Testing Your Integration"
+description: "How to test your CoW Protocol integration on Sepolia testnet, using the staging API, and common testing pitfalls to avoid."
+---
+
+## Testnet: Sepolia
+
+CoW Protocol is deployed on **Sepolia** for testing. All contracts share the same addresses as mainnet:
+
+| Contract | Address |
+|---|---|
+| GPv2Settlement | `0x9008D19f58AAbD9eD0D60971565AA8510560ab41` |
+| GPv2VaultRelayer | `0xC92E8bdf79f0507f65a392b0ab4667716BFE0110` |
+
+### API endpoint
+
+```
+https://api.cow.fi/sepolia/api/v1/
+```
+
+### SDK configuration
+
+```typescript
+import { SupportedChainId, TradingSdk } from '@cowprotocol/sdk-trading'
+
+const sdk = new TradingSdk({
+  chainId: SupportedChainId.SEPOLIA,
+  appCode: 'my-app-testing',
+}, {}, adapter)
+```
+
+## Important: Sepolia has limited solver participation
+
+<Warning>
+Many solvers **do not participate on Sepolia**. This means:
+- Orders may take longer to fill or expire unfilled
+- Liquidity is thin — not all token pairs are tradeable
+- Price quality is lower than mainnet
+
+This is normal testnet behavior, not a bug in your integration.
+</Warning>
+
+### Tips for successful testnet orders
+
+1. **Use wider limit prices** — set slippage to 5-10% instead of the typical 0.5-1%
+2. **Stick to common test pairs** — WETH, USDC, and COW token have the most testnet liquidity
+3. **Use longer validity** — set `validFor` to 1800+ seconds (30 min) to give solvers more batches
+4. **Check the explorer** — verify your order appears at `https://explorer.cow.fi/sepolia/orders/{uid}`
+
+### Getting test tokens
+
+- **Sepolia ETH**: Use a faucet like [sepoliafaucet.com](https://sepoliafaucet.com) or [Alchemy Sepolia Faucet](https://www.alchemy.com/faucets/ethereum-sepolia)
+- **Test ERC-20s**: Wrap ETH to WETH, then swap for test tokens on CoW Swap (Sepolia) or Uniswap (Sepolia)
+
+## Staging API (barn)
+
+For testing against **mainnet data** without affecting production, use the staging ("barn") API:
+
+```
+https://barn.api.cow.fi/mainnet/api/v1/
+```
+
+The barn API:
+- Runs the same code as production, deployed ahead of releases
+- Uses real mainnet tokens and liquidity
+- Has a separate solver competition (solvers may behave differently)
+- Is useful for testing mainnet integrations before going live
+
+<Note>
+Orders submitted to barn are **real orders** on mainnet. They use real tokens and will settle on-chain if filled. Use barn for integration testing with small amounts, not as a sandbox.
+</Note>
+
+### SDK with barn
+
+```typescript
+const parameters: TradeParameters = {
+  env: 'staging', // Uses barn API
+  kind: OrderKind.SELL,
+  // ... rest of parameters
+}
+```
+
+## Recommended testing workflow
+
+1. **Start on Sepolia** — verify your signing, order creation, and status polling logic works end-to-end
+2. **Move to barn (mainnet staging)** — test with real liquidity and solver competition using small amounts
+3. **Go to production** — switch to `api.cow.fi/mainnet` with production amounts
+
+## Common testnet issues
+
+| Issue | Cause | Fix |
+|---|---|---|
+| Order expires unfilled | Limited solvers on Sepolia | Widen slippage, use longer validity, try WETH/USDC pair |
+| `NoLiquidity` error | Token pair has no testnet pools | Use well-known test tokens (WETH, USDC) |
+| `SellAmountDoesNotCoverFee` | Gas costs high relative to small test amounts | Increase the sell amount |
+| Order shows `presignaturePending` | PreSign transaction not confirmed | Wait for Sepolia block confirmation, check tx hash |
+| Different results than mainnet | Different solver set and liquidity | Expected — use barn for mainnet-equivalent testing |
+
+## Related resources
+
+- **[API Integration Guide](/cow-protocol/howto/integrate/api)** — Full API integration walkthrough
+- **[Error Reference](/cow-protocol/reference/core/error-reference)** — All API error codes and fixes
+- **[Rate Limits](/cow-protocol/reference/core/rate-limits)** — Rate limits apply equally on testnet

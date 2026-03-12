@@ -168,3 +168,34 @@ State after the order's execution:
 
 * The flash loan provider is fully repaid (5,002.5 USDT).
 
+## Troubleshooting
+
+### `InvalidEip1271Signature`
+
+This error means the settlement contract's `isValidSignature` check failed during simulation. Common causes:
+
+| Cause | Fix |
+|---|---|
+| Safe not configured as the order owner | Set `from` to the Safe address in the quote request |
+| `signingScheme` mismatch | Use `SigningScheme.PRESIGN` for Safe-based flash loan orders |
+| `setPreSignature` not called | Submit the PreSign transaction before the order can be filled |
+| Wrong chain domain separator | Verify `chainId` matches the target network |
+
+### Order stuck / not filling
+
+Flash loan orders are complex and some solvers may skip them:
+
+- **Verify the order appears** in [CoW Explorer](https://explorer.cow.fi)
+- **Check the order status** via `GET /api/v1/orders/{uid}` — if `presignaturePending`, the PreSign tx hasn't confirmed
+- **Increase validity** — flash loan orders may need more batches to find a solver willing to execute them
+- **Check token approvals** — the Safe must approve VaultRelayer for the sell token (collateral)
+
+### Adapting the example to other networks
+
+The example uses Sepolia. When moving to mainnet or other chains:
+
+- Update the Aave pool address for the target network
+- Verify the [flash loan router is deployed](/flash-loan-router/operations/networks) on your target chain
+- Update token addresses (USDC, USDT addresses differ per chain)
+- The settlement contract and VaultRelayer addresses are the same on all chains
+
