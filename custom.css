@@ -1,0 +1,28 @@
+/*
+ * Fix: Search bar and Ask AI keyboard shortcut badges overflow
+ * on Windows/Linux where "Ctrl" is wider than the macOS "⌘" symbol.
+ * Mintlify sequoia theme uses fixed widths that don't accommodate
+ * the longer "Ctrl K" / "Ctrl I" text.
+ */
+
+/* Allow search bar to shrink gracefully instead of fixed w-64 */
+#search-bar-entry {
+  min-width: 0;
+  width: auto;
+  max-width: 16rem;
+}
+
+/* Ensure shortcut badge text doesn't wrap or overflow */
+#search-bar-entry > span:last-child,
+#assistant-entry > span:last-child {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Let the placeholder text truncate instead of the badge */
+#search-bar-entry > span:first-of-type {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
