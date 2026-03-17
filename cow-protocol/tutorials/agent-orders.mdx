@@ -88,6 +88,8 @@ def get_quote(sell_token, buy_token, sell_amount, sender):
         "receiver": sender,
         "validFor": 600,  # 10 minutes — shorter validity for agents
         "signingScheme": "eip712",
+        "appData": "{}",
+        "appDataHash": "0xb48d38f93eaa084033fc5970bf96e559c33c4cdc07d889ab00b4d63f9590739d",
     }
 
     resp = requests.post(f"{API_BASE}/quote", json=quote_request)
@@ -96,6 +98,7 @@ def get_quote(sell_token, buy_token, sell_amount, sender):
 
 quote_data = get_quote(SELL_TOKEN, BUY_TOKEN, 10**17, account.address)
 quote = quote_data["quote"]
+quote_id = quote_data["id"]
 
 print(f"Sell amount (after network costs): {quote['sellAmount']}")
 print(f"Buy amount (estimated):            {quote['buyAmount']}")
@@ -167,6 +170,7 @@ order_types = {
 
 # Build signed order from quote
 sell_amount_to_sign = int(quote["sellAmount"]) + int(quote["feeAmount"])
+app_data_hash = quote.get("appDataHash", quote["appData"])
 
 order_data = {
     "sellToken": quote["sellToken"],
@@ -175,7 +179,7 @@ order_data = {
     "sellAmount": sell_amount_to_sign,
     "buyAmount": min_buy_amount,
     "validTo": quote["validTo"],
-    "appData": bytes.fromhex(quote["appData"][2:]),
+    "appData": bytes.fromhex(app_data_hash[2:]),
     "feeAmount": 0,
     "kind": "sell",
     "partiallyFillable": False,
@@ -217,6 +221,8 @@ const types = {
   ],
 };
 
+const appDataHash = quote.appDataHash ?? quote.appData;
+
 const order = {
   sellToken: quote.sellToken,
   buyToken: quote.buyToken,
@@ -224,7 +230,7 @@ const order = {
   sellAmount: (BigInt(quote.sellAmount) + BigInt(quote.feeAmount)).toString(),
   buyAmount: minBuyAmount.toString(),
   validTo: quote.validTo,
-  appData: quote.appData,
+  appData: appDataHash,
   feeAmount: "0",
   kind: "sell",
   partiallyFillable: false,
@@ -243,7 +249,7 @@ const signature = await wallet.signTypedData(domain, types, order);
 Post the signed order to `POST /api/v1/orders`. The API returns an order UID.
 
 ```python
-def submit_order(quote, sell_amount, buy_amount, signature, sender):
+def submit_order(quote, quote_id, sell_amount, buy_amount, signature, sender):
     """Submit a signed order to the CoW Protocol order book."""
     body = {
         "sellToken": quote["sellToken"],
@@ -253,6 +259,7 @@ def submit_order(quote, sell_amount, buy_amount, signature, sender):
         "buyAmount": str(buy_amount),
         "validTo": quote["validTo"],
         "appData": quote["appData"],
+        "appDataHash": quote.get("appDataHash"),
         "feeAmount": "0",
         "kind": "sell",
         "partiallyFillable": False,
@@ -261,6 +268,7 @@ def submit_order(quote, sell_amount, buy_amount, signature, sender):
         "signingScheme": "eip712",
         "signature": "0x" + signature,
         "from": sender,
+        "quoteId": quote_id,
     }
 
     resp = requests.post(f"{API_BASE}/orders", json=body)
@@ -268,14 +276,14 @@ def submit_order(quote, sell_amount, buy_amount, signature, sender):
     return resp.json()  # returns the order UID string
 
 order_uid = submit_order(
-    quote, sell_amount_to_sign, min_buy_amount, signature, account.address
+    quote, quote_id, sell_amount_to_sign, min_buy_amount, signature, account.address
 )
 print(f"Order UID: {order_uid}")
 print(f"Explorer:  https://explorer.cow.fi/sepolia/orders/{order_uid}")
 ```
 
 <Note>
-**`appData` differs between endpoints.** `POST /api/v1/quote` accepts the full JSON metadata document as `appData` and its keccak256 hash as `appDataHash`. `POST /api/v1/orders` expects only the **bytes32 hash** as `appData`. The quote response returns `appData` already as the hash, so you can pass it through to the order submission unchanged (as shown above). If you construct `appData` yourself, make sure you submit the hash — not the raw JSON — when posting orders. See the [appData documentation](/cow-protocol/reference/core/intents/app-data) for details.
+**`appData` differs between signing and submission.** If the quote returns both `quote.appData` and `quote.appDataHash`, sign the hash and submit the JSON `appData` document together with `appDataHash`. If you requested a hash-only `appData`, use that hash value for both signing and submission. See the [appData documentation](/cow-protocol/reference/core/intents/app-data) for details.
 </Note>
 
 <Note>
@@ -343,9 +351,9 @@ Always implement exponential backoff with jitter for `429` responses. See the fu
 
 Quotes reflect current market conditions and expire. For agents:
 
-- Re-quote if more than **30 seconds** have passed since the last quote, even if the quote's `validTo` has not been reached. Market prices can shift significantly in that time.
-- CoW Protocol runs batch auctions roughly every **15 seconds**. Quoting more frequently than that provides no benefit.
-- Cache the quote response and only refresh when your agent's input parameters (token pair, amount) change or the 30-second window elapses.
+- Re-quote if the agent delays materially between quoting and submission, even if `validTo` has not been reached yet.
+- Re-quote whenever the agent changes any input that affects execution, such as the token pair, amount, or slippage settings.
+- Treat quote data as short-lived state: cache it only within the current decision loop and refresh it before signing if conditions have changed.
 
 ### Error recovery
 
@@ -354,7 +362,7 @@ Your agent should handle these HTTP responses:
 | Status code | Meaning | Agent action |
 |---|---|---|
 | `200` | Success | Proceed normally |
-| `400` | Bad request (invalid parameters, expired quote, insufficient balance) | Parse the error body, fix the issue, and retry. Common errors: `InsufficientBalance`, `InsufficientAllowance`, `ExpiredQuote`. |
+| `400` | Bad request (invalid parameters, stale quote, insufficient balance) | Parse the error body, fix the issue, and retry. Common errors: `InsufficientBalance`, `InsufficientAllowance`, `QuoteNotFound`, `InvalidQuote`. |
 | `429` | Rate limited | Read the `Retry-After` header, wait that duration plus random jitter, then retry. Max 3 retries. |
 | `403` | Cloudflare WAF block | Your IP has been flagged. Do not retry in a loop — this will make it worse. See [Rate Limits](/cow-protocol/reference/core/rate-limits#firewall-protection-cloudflare). |
 | `500` | Server error | Wait 5 seconds and retry. Max 3 retries. If persistent, back off longer. |
@@ -459,13 +467,18 @@ quote_resp = api_request("POST", f"{API_BASE}/quote", json={
     "receiver": account.address,
     "validFor": 600,
     "signingScheme": "eip712",
+    "appData": "{}",
+    "appDataHash": "0xb48d38f93eaa084033fc5970bf96e559c33c4cdc07d889ab00b4d63f9590739d",
 })
-quote = quote_resp.json()["quote"]
+quote_data = quote_resp.json()
+quote = quote_data["quote"]
+quote_id = quote_data["id"]
 print(f"Quote: sell {quote['sellAmount']}, buy ~{quote['buyAmount']}, fee {quote['feeAmount']}")
 
 # --------------- Step 2: Slippage ---------------
 min_buy = int(int(quote["buyAmount"]) * (10000 - SLIPPAGE_BPS) / 10000)
 sell_amount_to_sign = int(quote["sellAmount"]) + int(quote["feeAmount"])
+app_data_hash = quote.get("appDataHash", quote["appData"])
 
 # --------------- Step 3: Sign ---------------
 domain = {
@@ -499,7 +512,7 @@ order_data = {
     "sellAmount": sell_amount_to_sign,
     "buyAmount": min_buy,
     "validTo": quote["validTo"],
-    "appData": bytes.fromhex(quote["appData"][2:]),
+    "appData": bytes.fromhex(app_data_hash[2:]),
     "feeAmount": 0,
     "kind": "sell",
     "partiallyFillable": False,
@@ -521,6 +534,7 @@ submit_resp = api_request("POST", f"{API_BASE}/orders", json={
     "buyAmount": str(min_buy),
     "validTo": quote["validTo"],
     "appData": quote["appData"],
+    "appDataHash": quote.get("appDataHash"),
     "feeAmount": "0",
     "kind": "sell",
     "partiallyFillable": False,
@@ -529,6 +543,7 @@ submit_resp = api_request("POST", f"{API_BASE}/orders", json={
     "signingScheme": "eip712",
     "signature": "0x" + signature,
     "from": account.address,
+    "quoteId": quote_id,
 })
 order_uid = submit_resp.json()
 print(f"Order UID: {order_uid}")

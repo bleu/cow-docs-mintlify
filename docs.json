@@ -275,6 +275,62 @@
             "icon": "square-terminal",
             "pages": [
               "cow-protocol/reference/apis/orderbook",
+              {
+                "group": "Orderbook Endpoints",
+                "openapi": "/cow-protocol/reference/apis/openapi/orderbook.yml",
+                "pages": [
+                  {
+                    "group": "Quotes",
+                    "pages": [
+                      "POST /api/v1/quote"
+                    ]
+                  },
+                  {
+                    "group": "Orders",
+                    "pages": [
+                      "POST /api/v1/orders",
+                      "DELETE /api/v1/orders",
+                      "POST /api/v1/orders/by_uids",
+                      "GET /api/v1/orders/{UID}",
+                      "DELETE /api/v1/orders/{UID}",
+                      "GET /api/v1/orders/{UID}/status",
+                      "GET /api/v1/account/{owner}/orders",
+                      "GET /api/v1/transactions/{txHash}/orders"
+                    ]
+                  },
+                  {
+                    "group": "Trades",
+                    "pages": [
+                      "GET /api/v2/trades",
+                      "GET /api/v1/trades"
+                    ]
+                  },
+                  {
+                    "group": "Auctions",
+                    "pages": [
+                      "GET /api/v1/auction",
+                      "GET /api/v1/solver_competition/{auction_id}",
+                      "GET /api/v1/solver_competition/by_tx_hash/{tx_hash}",
+                      "GET /api/v1/solver_competition/latest",
+                      "GET /api/v2/solver_competition/{auction_id}",
+                      "GET /api/v2/solver_competition/by_tx_hash/{tx_hash}",
+                      "GET /api/v2/solver_competition/latest"
+                    ]
+                  },
+                  {
+                    "group": "Utilities",
+                    "pages": [
+                      "GET /api/v1/version",
+                      "GET /api/v1/token/{token}/native_price",
+                      "GET /api/v1/app_data/{app_data_hash}",
+                      "PUT /api/v1/app_data/{app_data_hash}",
+                      "PUT /api/v1/app_data",
+                      "GET /api/v1/users/{address}/total_surplus",
+                      "GET /api/v1/debug/order/{uid}"
+                    ]
+                  }
+                ]
+              },
               "cow-protocol/reference/apis/solver",
               "cow-protocol/reference/apis/driver"
             ]

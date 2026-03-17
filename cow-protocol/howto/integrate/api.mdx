@@ -1,222 +1,714 @@
 ---
-title: "API Integration"
-description: "The CoW Protocol API provides direct access to the protocol's functionality through RESTful endpoints. This approach offers maximum flexibility and control for backend integrations and custom implementations."
+title: "API Integration Guide"
+description: "Step-by-step guide to integrating with the CoW Protocol orderbook API — from requesting a quote, to computing signing amounts, to creating and monitoring orders."
 ---
+
+import { InlineResource } from '/snippets/resource-actions.jsx'
 
 ## Overview
 
-The API integration allows you to interact with CoW Protocol at the lowest level, giving you complete control over order management, quote fetching, and trade execution. This is ideal for advanced integrations, backend services, and custom trading logic.
+This guide walks through integrating with the CoW Protocol orderbook API — from requesting a quote, to computing the amounts you need to sign, to creating and monitoring orders.
 
-## Key APIs
+An intent in CoW Protocol is a signed message that represents a user's wish to trade. It doesn't execute a trade directly — instead, it delegates execution to solvers who find the optimal path.
 
-### Order Book API
+<Warning>
+**This document explains the anatomy of intents and interaction with the API at a low level.** For practical use of the protocol, it is recommended to use high-level tools such as the **[TypeScript SDK](/cow-sdk/quickstart)** or **[Python SDK](/cow-py/quickstart)**.
+</Warning>
 
-The primary API for creating and managing orders on CoW Protocol.
+## Base URLs
 
-* **Base URL**: `https://api.cow.fi/`
-* **Purpose**: Quote generation, order submission, order management
-* **Authentication**: No API key required for basic operations
+The base URL depends on the chain:
 
-### Key Endpoints
-
-* `POST /api/v1/quote` - Get trading quotes
-* `POST /api/v1/orders` - Submit signed orders
-* `GET /api/v1/orders/{uid}` - Get order details
-* `DELETE /api/v1/orders/{uid}` - Cancel orders
-* `GET /api/v1/trades` - Get trade history
-
-## Quick Start Example
-
-### 1. Get a Quote
-
-```bash
-curl -X POST "https://api.cow.fi/mainnet/api/v1/quote" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sellToken": "0xA0b86a33E6411Ec5d0b9dd2E7dC15A9CAA6C1F8e",
-    "buyToken": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-    "sellAmountBeforeFee": "1000000",
-    "kind": "sell",
-    "from": "0xYourWalletAddress"
-  }'
-```
-
-### 2. Sign and Submit Order
-
-```typescript
-// After getting a quote, sign the order
-const order = {
-  ...quoteResponse,
-  signature: await signOrder(quoteResponse, signer),
-  signingScheme: "eip712",
-}
-
-// Submit the signed order
-const response = await fetch('https://api.cow.fi/mainnet/api/v1/orders', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(order),
-})
-const orderId = await response.text()
-```
-
-### 3. Monitor Order Status
-
-```typescript
-// Check order status
-const orderResponse = await fetch(
-  `https://api.cow.fi/mainnet/api/v1/orders/${orderId}`
-)
-const orderDetails = await orderResponse.json()
-console.log('Order status:', orderDetails.status)
-```
-
-## Network Endpoints
-
-CoW Protocol APIs are available on all [supported networks](/cow-protocol/reference/contracts/core):
-
-| Network | Production | Staging |
+| Chain | Production | Staging |
 |---|---|---|
-| **Ethereum** | `https://api.cow.fi/mainnet/api/v1/` | `https://barn.api.cow.fi/mainnet/api/v1/` |
-| **Gnosis Chain** | `https://api.cow.fi/xdai/api/v1/` | `https://barn.api.cow.fi/xdai/api/v1/` |
-| **Arbitrum One** | `https://api.cow.fi/arbitrum_one/api/v1/` | `https://barn.api.cow.fi/arbitrum_one/api/v1/` |
-| **Base** | `https://api.cow.fi/base/api/v1/` | `https://barn.api.cow.fi/base/api/v1/` |
-| **Avalanche** | `https://api.cow.fi/avalanche/api/v1/` | `https://barn.api.cow.fi/avalanche/api/v1/` |
-| **Polygon** | `https://api.cow.fi/polygon/api/v1/` | `https://barn.api.cow.fi/polygon/api/v1/` |
-| **Lens** | `https://api.cow.fi/lens/api/v1/` | `https://barn.api.cow.fi/lens/api/v1/` |
-| **BNB** | `https://api.cow.fi/bnb/api/v1/` | `https://barn.api.cow.fi/bnb/api/v1/` |
-| **Linea** | `https://api.cow.fi/linea/api/v1/` | `https://barn.api.cow.fi/linea/api/v1/` |
-| **Plasma** | `https://api.cow.fi/plasma/api/v1/` | `https://barn.api.cow.fi/plasma/api/v1/` |
-| **Ink** | `https://api.cow.fi/ink/api/v1/` | `https://barn.api.cow.fi/ink/api/v1/` |
-| **Sepolia** | `https://api.cow.fi/sepolia/api/v1/` | `https://barn.api.cow.fi/sepolia/api/v1/` |
+| **Ethereum** | <InlineResource value="https://api.cow.fi/mainnet" href="https://api.cow.fi/mainnet" /> | <InlineResource value="https://barn.api.cow.fi/mainnet" href="https://barn.api.cow.fi/mainnet" /> |
+| **Gnosis Chain** | <InlineResource value="https://api.cow.fi/xdai" href="https://api.cow.fi/xdai" /> | <InlineResource value="https://barn.api.cow.fi/xdai" href="https://barn.api.cow.fi/xdai" /> |
+| **Arbitrum One** | <InlineResource value="https://api.cow.fi/arbitrum_one" href="https://api.cow.fi/arbitrum_one" /> | <InlineResource value="https://barn.api.cow.fi/arbitrum_one" href="https://barn.api.cow.fi/arbitrum_one" /> |
+| **Base** | <InlineResource value="https://api.cow.fi/base" href="https://api.cow.fi/base" /> | <InlineResource value="https://barn.api.cow.fi/base" href="https://barn.api.cow.fi/base" /> |
+| **Avalanche** | <InlineResource value="https://api.cow.fi/avalanche" href="https://api.cow.fi/avalanche" /> | <InlineResource value="https://barn.api.cow.fi/avalanche" href="https://barn.api.cow.fi/avalanche" /> |
+| **Polygon** | <InlineResource value="https://api.cow.fi/polygon" href="https://api.cow.fi/polygon" /> | <InlineResource value="https://barn.api.cow.fi/polygon" href="https://barn.api.cow.fi/polygon" /> |
+| **Lens** | <InlineResource value="https://api.cow.fi/lens" href="https://api.cow.fi/lens" /> | <InlineResource value="https://barn.api.cow.fi/lens" href="https://barn.api.cow.fi/lens" /> |
+| **Linea** | <InlineResource value="https://api.cow.fi/linea" href="https://api.cow.fi/linea" /> | <InlineResource value="https://barn.api.cow.fi/linea" href="https://barn.api.cow.fi/linea" /> |
+| **BNB** | <InlineResource value="https://api.cow.fi/bnb" href="https://api.cow.fi/bnb" /> | <InlineResource value="https://barn.api.cow.fi/bnb" href="https://barn.api.cow.fi/bnb" /> |
+| **Plasma** | <InlineResource value="https://api.cow.fi/plasma" href="https://api.cow.fi/plasma" /> | <InlineResource value="https://barn.api.cow.fi/plasma" href="https://barn.api.cow.fi/plasma" /> |
+| **Ink** | <InlineResource value="https://api.cow.fi/ink" href="https://api.cow.fi/ink" /> | <InlineResource value="https://barn.api.cow.fi/ink" href="https://barn.api.cow.fi/ink" /> |
+| **Sepolia** | <InlineResource value="https://api.cow.fi/sepolia" href="https://api.cow.fi/sepolia" /> | <InlineResource value="https://barn.api.cow.fi/sepolia" href="https://barn.api.cow.fi/sepolia" /> |
 
 <Tip>
-  **Staging** (barn) endpoints run the latest pre-release version and are useful for testing. Use **production** endpoints for live integrations.
+Use **staging** (barn) for testing. Use **production** for real trades.
 </Tip>
 
-## Order Signing
+Interactive endpoint docs: [Order Book API Reference](/cow-protocol/reference/apis/orderbook)
 
-Orders must be cryptographically signed before submission. The signing process involves:
+## Step 1: Request a Quote
 
-1. **EIP-712 Domain**: Chain-specific domain separator
-2. **Order Struct**: Structured order data
-3. **Signature**: ECDSA signature or pre-signed order
+Send your trading intention to the `/quote` endpoint:
+
+```
+POST https://api.cow.fi/mainnet/api/v1/quote
+```
+
+The request body describes what the user wants:
+
+```json
+{
+  "kind": "sell",
+  "sellToken": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+  "buyToken": "0xbe72E441BF55620febc26715db68d3494213D8Cb",
+  "sellAmountBeforeFee": "1000000000000000000",
+  "from": "0xfb3c7eb936cAA12B5A884d612393969A557d4307",
+  "receiver": "0xfb3c7eb936cAA12B5A884d612393969A557d4307",
+  "validFor": 1800,
+  "signingScheme": "eip712",
+  "priceQuality": "optimal",
+  "appData": "{}",
+  "appDataHash": "0xb48d38f93eaa084033fc5970bf96e559c33c4cdc07d889ab00b4d63f9590739d"
+}
+```
+
+| Field | Description |
+|---|---|
+| `kind` | `"sell"` or `"buy"` — whether you're fixing the sell or buy amount |
+| `sellToken` | Token address you're selling |
+| `buyToken` | Token address you're buying |
+| `sellAmountBeforeFee` | How much you want to sell (for `sell` orders). Alternatively use `sellAmountAfterFee` or `buyAmountAfterFee`. |
+| `from` | Address of the trader |
+| `receiver` | Address that receives the bought tokens (often same as `from`) |
+| `validFor` | Order validity period in seconds (alternatively use `validTo` for absolute timestamp) |
+| `signingScheme` | `"eip712"` (default), `"ethsign"`, `"presign"`, or `"eip1271"` |
+| `priceQuality` | `"fast"`, `"optimal"`, or `"verified"` (default: `"verified"`) |
+
+<Note>
+For more details on quoting strategies and timing, see [Quote Selection](/cow-protocol/explanation/how-it-works/quote-selection). For the full API reference, see [Order Book API](/cow-protocol/reference/apis/orderbook).
+</Note>
+
+<Note>
+If you send a full JSON `appData` document in the quote request, the quote response includes both `quote.appData` and `quote.appDataHash`. Sign the hash, not the JSON string. When you create the order, submit the JSON in `appData` and include `appDataHash` for easier debugging.
+</Note>
+
+## Step 2: Understand the Quote Response
+
+The `/quote` response provides the price information needed to build the order, including fee breakdowns.
+
+### Sell order response
+
+```json
+{
+  "from": "0xfb3c7eb936cAA12B5A884d612393969A557d4307",
+  "expiration": "2026-03-16T22:49:13.099169293Z",
+  "id": 1372865,
+  "verified": true,
+  "protocolFeeBps": "2",
+  "quote": {
+    "sellToken": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+    "buyToken": "0xbe72E441BF55620febc26715db68d3494213D8Cb",
+    "receiver": "0xfb3c7eb936cAA12B5A884d612393969A557d4307",
+    "buyAmount": "190120203",
+    "feeAmount": "378307495942172",
+    "sellAmount": "99621692504057828",
+    "validTo": 1773703033,
+    "appData": "{}",
+    "appDataHash": "0xb48d38f93eaa084033fc5970bf96e559c33c4cdc07d889ab00b4d63f9590739d",
+    "kind": "sell",
+    "partiallyFillable": false,
+    "sellTokenBalance": "erc20",
+    "buyTokenBalance": "erc20",
+    "signingScheme": "eip712"
+  }
+}
+```
+
+| Field | Description |
+|---|---|
+| `protocolFeeBps` | Protocol fee in basis points |
+| `quote.sellAmount` | Sell amount **after** network costs have been deducted |
+| `quote.feeAmount` | Network costs, in **sell token** units |
+| `quote.buyAmount` | Buy amount **after** network costs and protocol fee have been deducted |
+| `quote.validTo` | The Unix timestamp you will sign into the order |
+| `quote.appData` | The app data document you submit when creating the order |
+| `quote.appDataHash` | The `bytes32` app data hash you sign into the order |
+| `expiration` | Quote freshness deadline. Sign and submit before this ISO-8601 timestamp. |
+| `id` | Quote ID to pass later as `quoteId` on order creation |
+
+### Buy order response
+
+```json
+{
+  "protocolFeeBps": "2",
+  "quote": {
+    "buyAmount": "200000000",
+    "feeAmount": "320201733871320",
+    "sellAmount": "104979314628720568",
+    "kind": "buy"
+  }
+}
+```
+
+For buy orders, `sellAmount` is **after** the protocol fee, and the `feeAmount` (network costs) is **not yet included** in the sell amount — it must be added separately.
+
+## Step 3: Compute the Amounts to Sign
+
+The `quote` object is the base order returned by the backend. If you sign it exactly as returned, you are using the server-quoted amounts.
+
+Many integrations apply additional client-side slippage tolerance and optional partner fees before signing. The amount-stage vocabulary below explains how to do that safely.
+
+The quote response and order construction use a shared vocabulary of **amount stages** — each representing the token amount at a specific point in the fee pipeline. Understanding these terms is essential for interpreting quote values and building orders correctly.
+
+| Term | Description |
+|---|---|
+| **`beforeAllFees`** (= spot price) | The raw exchange rate with no fees applied. This is the theoretical "perfect world" price. It serves as the reference point for calculating partner fees. |
+| **`afterProtocolFees`** | Amount after CoW Protocol's own fee (`protocolFeeBps`) has been applied. |
+| **`afterNetworkCosts`** | Amount after gas costs (network costs) have been applied. Network costs are always denominated in the **sell token**, but may be converted to buy token units when applied to the buy side. |
+| **`afterPartnerFees`** | Amount after the integrator/partner fee has been deducted. |
+| **`afterSlippage`** | The final amount after the user's slippage tolerance has been applied. **This is the value signed into the order** — it is the minimum the user will receive (sell orders) or the maximum they will pay (buy orders). |
+
+### Fee types
+
+Several layers of fees transform the raw spot price into the final amounts signed in the order:
+
+| Fee | Description | Token |
+|---|---|---|
+| **Network costs** | Gas fees for on-chain execution, estimated by the protocol | Sell token |
+| **Protocol fee** | CoW Protocol's fee, expressed in basis points (`protocolFeeBps`) | Buy token (sell orders) / Sell token (buy orders) |
+| **Partner fee** | Optional fee added by integrators (e.g. widget providers) | Buy token (sell orders) / Sell token (buy orders) |
+| **Slippage** | Tolerance buffer to account for price movements | Buy token (sell orders) / Sell token (buy orders) |
+
+### Protocol fee
+
+The protocol fee is expressed as basis points (`protocolFeeBps`) in the quote response.
+
+**Sell orders** (buy token units) — `quote.buyAmount` is already after the protocol fee has been deducted:
+
+```
+protocolFeeAmount = quote.buyAmount × (protocolFeeBps / 10000) / (1 − protocolFeeBps / 10000)
+```
+
+**Buy orders** (sell token units) — the protocol fee is applied to the sum of sell amount and network costs:
+
+```
+protocolFeeAmount = (quote.sellAmount + quote.feeAmount) × (protocolFeeBps / 10000) / (1 + protocolFeeBps / 10000)
+```
+
+### Partner fee
+
+The partner (integrator) fee is calculated as a percentage of the **spot price** (`beforeAllFees`), not the post-fee amounts.
+
+**Sell orders** (buy token units):
+
+```
+partnerFeeAmount = beforeAllFees.buyAmount × partnerFeeBps / 10000
+```
+
+**Buy orders** (sell token units): same formula, but using `beforeAllFees.sellAmount`.
+
+### Slippage
+
+Slippage tolerance is applied to the `afterPartnerFees` amount (not the spot price):
+
+```
+slippageAmount = afterPartnerFees × slippageBps / 10000
+```
+
+### Flow for sell orders
+
+> The code below is simplified. See the full working code in [CoW SDK `getQuoteAmountsAndCosts`](https://github.com/cowprotocol/cow-sdk/blob/main/packages/order-book/src/quoteAmountsAndCosts/getQuoteAmountsAndCosts.ts).
+
+The `/quote` response maps directly to `afterNetworkCosts`. `beforeAllFees` is reconstructed from it for partner fee calculations:
+
+```ts
+// /quote response maps to afterNetworkCosts
+const afterNetworkCosts = {
+  sellAmount: quote.sellAmount,
+  buyAmount:  quote.buyAmount,
+}
+
+// reconstruct beforeAllFees (spot price) — used as the base for partner fee calculation
+const networkCostAmountInBuyCurrency = (quote.buyAmount * quote.feeAmount) / quote.sellAmount
+const beforeAllFees = {
+  sellAmount: quote.sellAmount + quote.feeAmount,
+  buyAmount:  quote.buyAmount + networkCostAmountInBuyCurrency + protocolFeeAmount,
+}
+
+// partner fee is deducted from buy amount, relative to spot price
+const afterPartnerFees = {
+  sellAmount: afterNetworkCosts.sellAmount,
+  buyAmount:  afterNetworkCosts.buyAmount - partnerFeeAmount,
+}
+// partnerFeeAmount = beforeAllFees.buyAmount * partnerFeeBps / 10000
+
+// slippage reduces buy amount (user accepts receiving less)
+const afterSlippage = {
+  sellAmount: afterPartnerFees.sellAmount,
+  buyAmount:  afterPartnerFees.buyAmount - slippageAmount,
+}
+// slippageAmount = afterPartnerFees.buyAmount * slippageBps / 10000
+
+// sell is set to spot price — settlement contract deducts network costs itself
+const amountsToSign = {
+  sellAmount: beforeAllFees.sellAmount,  // = quote.sellAmount + quote.feeAmount
+  buyAmount:  afterSlippage.buyAmount,   // minimum to receive
+}
+```
+
+### Flow for buy orders
+
+> The code below is simplified. See the full working code in [CoW SDK `getQuoteAmountsAndCosts`](https://github.com/cowprotocol/cow-sdk/blob/main/packages/order-book/src/quoteAmountsAndCosts/getQuoteAmountsAndCosts.ts).
+
+The `/quote` sell amount maps to `afterProtocolFees`. The buy amount is fixed and maps to `beforeAllFees`:
+
+```ts
+// /quote response: sell maps to afterProtocolFees, buy is fixed (= beforeAllFees)
+const afterProtocolFees = {
+  sellAmount: quote.sellAmount,
+  buyAmount:  quote.buyAmount,
+}
+
+// reconstruct beforeAllFees (spot price) — used as the base for partner fee calculation
+const beforeAllFees = {
+  sellAmount: quote.sellAmount - protocolFeeAmount,
+  buyAmount:  quote.buyAmount,
+}
+
+// add network costs to sell amount
+const afterNetworkCosts = {
+  sellAmount: quote.sellAmount + quote.feeAmount,
+  buyAmount:  quote.buyAmount,
+}
+
+// partner fee is added to sell amount, relative to spot price
+const afterPartnerFees = {
+  sellAmount: afterNetworkCosts.sellAmount + partnerFeeAmount,
+  buyAmount:  afterNetworkCosts.buyAmount,
+  // partnerFeeAmount = beforeAllFees.sellAmount * partnerFeeBps / 10000
+}
+
+// slippage increases sell amount (user accepts paying more)
+const afterSlippage = {
+  sellAmount: afterPartnerFees.sellAmount + slippageAmount,
+  buyAmount:  afterPartnerFees.buyAmount,
+  // slippageAmount = afterPartnerFees.sellAmount * slippageBps / 10000
+}
+
+// buy is fixed (exact amount to receive), sell includes all fees and slippage
+const amountsToSign = {
+  sellAmount: afterSlippage.sellAmount,  // maximum to pay
+  buyAmount:  beforeAllFees.buyAmount,   // = quote.buyAmount
+}
+```
+
+### All formulas at a glance
+
+Below is every stage computation in one place. All values are in token atoms (integers). `protocolFeeBps` is in basis points (e.g. `"2"` = 2 bps = 0.02%).
+
+**Sell order — full computation:**
+
+````
+── Protocol Fee Amount (buy token units) ──────────────────────────────────────
+protocolFeeAmount = quote.buyAmount × (protocolFeeBps / 10000)
+                    / (1 − protocolFeeBps / 10000)
+
+── Network Costs in Buy Token ─────────────────────────────────────────────────
+networkCostInBuyToken = (quote.buyAmount × quote.feeAmount) / quote.sellAmount
+
+── beforeAllFees (Spot Price) ─────────────────────────────────────────────────
+sellAmount = quote.sellAmount + quote.feeAmount
+buyAmount  = quote.buyAmount + networkCostInBuyToken + protocolFeeAmount
+
+── afterProtocolFees ──────────────────────────────────────────────────────────
+sellAmount = beforeAllFees.sellAmount
+buyAmount  = beforeAllFees.buyAmount − protocolFeeAmount
+
+── afterNetworkCosts (= /quote response) ──────────────────────────────────────
+sellAmount = quote.sellAmount
+buyAmount  = quote.buyAmount
+
+── afterPartnerFees ───────────────────────────────────────────────────────────
+partnerFeeAmount = beforeAllFees.buyAmount × partnerFeeBps / 10000
+
+sellAmount = afterNetworkCosts.sellAmount
+buyAmount  = afterNetworkCosts.buyAmount − partnerFeeAmount
+
+── afterSlippage ──────────────────────────────────────────────────────────────
+slippageAmount = afterPartnerFees.buyAmount × slippageBps / 10000
+
+sellAmount = afterPartnerFees.sellAmount
+buyAmount  = afterPartnerFees.buyAmount − slippageAmount
+
+── Amounts to Sign ────────────────────────────────────────────────────────────
+sellAmount = beforeAllFees.sellAmount      (= quote.sellAmount + quote.feeAmount)
+buyAmount  = afterSlippage.buyAmount       (minimum to receive)
+````
+
+**Buy order — full computation:**
+
+````
+── Protocol Fee Amount (sell token units) ─────────────────────────────────────
+protocolFeeAmount = (quote.sellAmount + quote.feeAmount) × (protocolFeeBps / 10000)
+                    / (1 + protocolFeeBps / 10000)
+
+── beforeAllFees (Spot Price) ─────────────────────────────────────────────────
+sellAmount = quote.sellAmount − protocolFeeAmount
+buyAmount  = quote.buyAmount
+
+── afterProtocolFees (= /quote sellAmount) ────────────────────────────────────
+sellAmount = quote.sellAmount
+buyAmount  = quote.buyAmount
+
+── afterNetworkCosts ──────────────────────────────────────────────────────────
+sellAmount = quote.sellAmount + quote.feeAmount
+buyAmount  = quote.buyAmount
+
+── afterPartnerFees ───────────────────────────────────────────────────────────
+partnerFeeAmount = beforeAllFees.sellAmount × partnerFeeBps / 10000
+
+sellAmount = afterNetworkCosts.sellAmount + partnerFeeAmount
+buyAmount  = afterNetworkCosts.buyAmount
+
+── afterSlippage ──────────────────────────────────────────────────────────────
+slippageAmount = afterPartnerFees.sellAmount × slippageBps / 10000
+
+sellAmount = afterPartnerFees.sellAmount + slippageAmount
+buyAmount  = afterPartnerFees.buyAmount
+
+── Amounts to Sign ────────────────────────────────────────────────────────────
+sellAmount = afterSlippage.sellAmount      (maximum to pay)
+buyAmount  = beforeAllFees.buyAmount       (= quote.buyAmount)
+````
+
+## Step 4: Construct the Final Order
+
+The signed order combines the quote API response with UI/integrator settings:
+
+| Source | Fields |
+|---|---|
+| `/quote` API response | `sellAmount`, `buyAmount`, `feeAmount`, `protocolFeeBps`, `validTo`, `appData`, `appDataHash`, `id`, `expiration` |
+| UI / integrator settings | `partnerFee`, `slippage` |
+
+The resulting order contains the `afterSlippage` buy amount (for sell orders) or sell amount (for buy orders), which the protocol guarantees as the minimum the user will receive (or maximum they'll pay). The fixed amount (`sellAmount` for sell orders, `buyAmount` for buy orders), meanwhile, corresponds to the spot price amount.
+
+**Sell order:**
+
+```ts
+const orderToSign = {
+  sellAmount: beforeAllFees.sellAmount,  // = quote.sellAmount + quote.feeAmount
+  buyAmount:  afterSlippage.buyAmount,   // minimum to receive
+}
+```
+
+**Buy order:**
+
+```ts
+const orderToSign = {
+  sellAmount: afterSlippage.sellAmount,  // maximum to pay
+  buyAmount:  beforeAllFees.buyAmount,   // = quote.buyAmount
+}
+```
+
+## Step 5: Sign the Order
+
+Sign the order using the amounts from Step 4, with the order parameters from the quote. The signing process depends on your `signingScheme`:
+
+| Scheme | Method |
+|---|---|
+| `eip712` | Standard EIP-712 typed data signing (most common for EOAs) |
+| `ethsign` | `eth_sign` with an EIP-191 prefix |
+| `presign` | On-chain pre-signature via the settlement contract |
+| `eip1271` | Smart contract signature via `isValidSignature` (for smart contract wallets) |
+
+The EIP-712 domain and struct types are defined by the CoW Protocol settlement contract. Sign the **computed amounts** (not the raw quote amounts) along with the other order parameters.
+
+If the quote response includes a full JSON `quote.appData`, sign `quote.appDataHash`. If you requested a hash-only `appData`, sign that hash value directly.
+
+### EIP-712 signing example (TypeScript)
 
 ```typescript
-import { ethers } from 'ethers'
+import { ethers } from "ethers";
 
-// Example order signing with ethers.js
 const domain = {
-  name: 'Gnosis Protocol',
-  version: 'v2',
-  chainId: 1,
-  verifyingContract: '0x9008D19f58AAbD9eD0D60971565AA8510560ab41',
-}
+  name: "Gnosis Protocol",
+  version: "v2",
+  chainId: 1, // use 11155111 for Sepolia
+  verifyingContract: "0x9008D19f58AAbD9eD0D60971565AA8510560ab41",
+};
 
 const types = {
   Order: [
-    { name: 'sellToken', type: 'address' },
-    { name: 'buyToken', type: 'address' },
-    { name: 'receiver', type: 'address' },
-    // ... other order fields
+    { name: "sellToken", type: "address" },
+    { name: "buyToken", type: "address" },
+    { name: "receiver", type: "address" },
+    { name: "sellAmount", type: "uint256" },
+    { name: "buyAmount", type: "uint256" },
+    { name: "validTo", type: "uint32" },
+    { name: "appData", type: "bytes32" },
+    { name: "feeAmount", type: "uint256" },
+    { name: "kind", type: "string" },
+    { name: "partiallyFillable", type: "bool" },
+    { name: "sellTokenBalance", type: "string" },
+    { name: "buyTokenBalance", type: "string" },
   ],
-}
+};
 
-const signature = await signer._signTypedData(domain, types, orderData)
+const appDataHash = quote.appDataHash ?? quote.appData;
+
+// Use the computed amounts from Step 4, NOT the raw quote values
+const order = {
+  sellToken: quote.sellToken,
+  buyToken: quote.buyToken,
+  receiver: quote.receiver,
+  sellAmount: amountsToSign.sellAmount.toString(),
+  buyAmount: amountsToSign.buyAmount.toString(),
+  validTo: quote.validTo,
+  appData: appDataHash,
+  feeAmount: "0", // must be "0" — solvers compute fees at execution time
+  kind: quote.kind,
+  partiallyFillable: false,
+  sellTokenBalance: "erc20",
+  buyTokenBalance: "erc20",
+};
+
+const wallet = new ethers.Wallet("0xYOUR_PRIVATE_KEY");
+const signature = await wallet.signTypedData(domain, types, order);
 ```
+
+<Warning>
+Sign the **computed** `sellAmount` and `buyAmount` from Step 4 — not the raw values from the quote response. Set `feeAmount` to `"0"`.
+</Warning>
+
+For additional signing examples (Foundry `cast`, Python `eth_account`), see the **[Quickstart: Raw API (cURL)](/cow-protocol/tutorials/quickstart-curl#sign-the-order)**. For all four signing schemes in depth, see **[Signing Schemes](/cow-protocol/reference/core/signing-schemes)**.
+
+## Step 6: Submit the Order
+
+**Endpoint:** `POST /api/v1/orders`
+
+```json
+{
+  "sellToken": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+  "buyToken": "0xbe72E441BF55620febc26715db68d3494213D8Cb",
+  "receiver": "0xfb3c7eb936cAA12B5A884d612393969A557d4307",
+  "sellAmount": "<beforeAllFees.sellAmount for sell orders, afterSlippage.sellAmount for buy orders>",
+  "buyAmount": "<afterSlippage.buyAmount for sell orders, beforeAllFees.buyAmount for buy orders>",
+  "validTo": 1773703033,
+  "appData": "{}",
+  "appDataHash": "0xb48d38f93eaa084033fc5970bf96e559c33c4cdc07d889ab00b4d63f9590739d",
+  "feeAmount": "0",
+  "kind": "sell",
+  "partiallyFillable": false,
+  "sellTokenBalance": "erc20",
+  "buyTokenBalance": "erc20",
+  "signingScheme": "eip712",
+  "signature": "0xYourSignatureHere...",
+  "from": "0xfb3c7eb936cAA12B5A884d612393969A557d4307",
+  "quoteId": 1372865
+}
+```
+
+<Warning>
+**Important fields to get right:**
+
+- **`feeAmount`** must be `"0"` — Fees are computed dynamically by solvers at execution time. The quote's `feeAmount` is informational only.
+- **`sellAmount`** and **`buyAmount`** — Use the computed values from Step 4, **NOT** the raw `quote.sellAmount` / `quote.buyAmount`.
+- **`appData`** vs **`appDataHash`** — Sign the hash (`quote.appDataHash` when present), but submit the JSON `appData` document and include `appDataHash` alongside it.
+- **`quoteId`** — Pass the `id` from the quote response to link the order for slippage analysis.
+- **`from`** — Recommended. The backend verifies the signer matches this address, catching signature encoding errors early.
+</Warning>
+
+Submit the order before the quote response `expiration` timestamp. `expiration` is not part of the signed order payload, but it still determines whether the backend will accept the quoted fee data.
+
+### Responses
+
+| Code | Meaning |
+|---|---|
+| `201` | Order accepted. Returns the order UID. |
+| `400` | Validation error (insufficient balance, invalid signature, etc.) |
+| `403` | Account is deny-listed. |
+| `404` | No route found for the order. |
+| `429` | Rate limited — too many order placements. |
+
+## Step 7: Monitor the Order
+
+### Get order details
+
+**Endpoint:** `GET /api/v1/orders/{UID}`
+
+Returns the full order object including execution status.
+
+| Field | What it tells you |
+|---|---|
+| `status` | `open`, `fulfilled`, `cancelled`, `expired`, or `presignaturePending` |
+| `executedSellAmount` | Total sell tokens transferred so far |
+| `executedBuyAmount` | Total buy tokens received so far |
+| `executedFee` | Total fee charged (network + protocol fees combined) |
+| `executedFeeToken` | Which token the fee was taken in |
+
+### Get auction status
+
+**Endpoint:** `GET /api/v1/orders/{UID}/status`
+
+Returns the order's position in the auction lifecycle:
+
+```json
+{
+  "type": "active",
+  "value": [
+    {
+      "solver": "SolverName",
+      "executedAmounts": {
+        "sell": "998000000",
+        "buy": "455000000000000000"
+      }
+    }
+  ]
+}
+```
+
+| `type` value | Meaning |
+|---|---|
+| `open` | Order is in the book but not yet in an auction |
+| `scheduled` | Order is scheduled for the next auction |
+| `active` | Order is in a live auction |
+| `solved` | A solver has proposed a solution including this order |
+| `executing` | The winning solution is being submitted on-chain |
+| `traded` | Order has been settled on-chain |
+| `cancelled` | Order was cancelled |
+
+The `value` array lists solvers that proposed solutions for the order, with their proposed execution amounts. If the array is empty or absent, no solver included the order in their solution.
+
+### Get trades
+
+**Endpoint:** `GET /api/v2/trades?orderUid={UID}`
+
+Returns executed trade data once the order has been settled:
+
+| Field | Description |
+|---|---|
+| `sellAmount` | Actual sell amount transferred (including fees) |
+| `sellAmountBeforeFees` | Sell amount without the fee component |
+| `buyAmount` | Actual buy amount received |
+| `txHash` | Settlement transaction hash |
+| `blockNumber` | Block the trade was included in |
+
+## Step 8: List Orders for an Account
+
+**Endpoint:** `GET /api/v1/account/{owner}/orders`
+
+Returns all orders for an address, sorted newest-first.
+
+| Parameter | Description |
+|---|---|
+| `offset` | Pagination offset (default: 0) |
+| `limit` | Page size (default: 10, max: 1000) |
+
+There are no server-side filters for status or token. To get only open orders or orders for a specific asset, you must paginate through results and filter client-side. Since orders are sorted by creation date descending, open orders will be near the top — you can stop paginating once you encounter orders with `validTo` in the past.
 
 ## Error Handling
 
-The API returns standard HTTP status codes:
+### Quote errors (`POST /api/v1/quote`)
 
-* **200**: Success
-* **400**: Bad Request (invalid parameters)
-* **404**: Order not found
-* **429**: Rate limited
-* **500**: Internal server error
+| Error type | Meaning |
+|---|---|
+| `QuoteNotVerified` | The quote could not be verified via simulation |
+| `UnsupportedToken` | One of the tokens is not supported |
+| `NoLiquidity` | No liquidity found for this pair |
+| `UnsupportedOrderType` | The order configuration is not supported |
 
-```typescript
-try {
-  const response = await fetch(apiUrl, requestOptions)
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(`API Error: ${error.description}`)
-  }
-  return await response.json()
-} catch (error) {
-  console.error('Order submission failed:', error)
-}
+### Order creation errors (`POST /api/v1/orders`)
+
+| Error type | Meaning |
+|---|---|
+| `InsufficientBalance` | Trader doesn't have enough sell token |
+| `InsufficientAllowance` | Sell token not approved to the vault relayer |
+| `InvalidSignature` | Signature doesn't match the order data |
+| `DuplicatedOrder` | An identical order already exists |
+| `MissingFrom` | `from` field required but not provided |
+| `WrongOwner` | `from` address doesn't match the signature's signer |
+| `IncompatibleSigningScheme` | Signing scheme doesn't match the order type |
+| `TooManyLimitOrders` | Rate limit on limit orders per account |
+
+For a comprehensive list of every API error code with root causes and fixes, see the **[Error Reference](/cow-protocol/reference/core/error-reference)**.
+
+## Pre-Flight Checklist
+
+Before placing an order, walk through these checks. Most failed orders come down to one of these issues.
+
+### 1. Token allowance to the Vault Relayer
+
+The trader's wallet must have approved the CoW Protocol Vault Relayer contract (`0xC92E8bdf79f0507f65a392b0ab4667716BFE0110`) to spend the sell token **before placing the order** (not before getting the quote — quotes don't require allowance). If the allowance is insufficient, the order will be accepted by the API but solvers will not be able to execute it, and you'll see an `InsufficientAllowance` error if the backend checks balances at submission time.
+
+Make sure the approval amount covers at least the signed `sellAmount` of the order.
+
+### 2. Sufficient balance at order placement
+
+The trader's address must hold enough sell token to cover the full signed `sellAmount` at the time the order is placed — not just at the time of quoting. Quotes are informational and don't check balances.
+
+For buy orders, remember that the signed sell amount includes protocol fees, network costs, partner fees, and slippage on top of the spot price — so the required balance is significantly higher than what you'd calculate from the raw exchange rate alone.
+
+### 3. Quote amounts ≠ signing amounts
+
+If your integration applies partner fees or client-side slippage, the `sellAmount` and `buyAmount` from the `/quote` response are not yet your final signing amounts. They do **not** include partner fees or slippage. Compute the adjusted amounts first (see [Step 3](#step-3-compute-the-amounts-to-sign)) before signing. Signing the raw quote amounts in that case will result in an order with no slippage protection and missing partner fee revenue.
+
+### 4. Set `feeAmount` to `"0"` on order creation
+
+The quote response returns a non-zero `feeAmount` for informational purposes (showing the estimated network cost in sell token terms). When submitting the order, the `feeAmount` field **must** be `"0"`. Solvers compute fees dynamically at execution time.
+
+### 5. `signingScheme` must match your signature
+
+The `signingScheme` you pass in the quote request determines the structure of the returned order, which in turn affects the order UID. If you request a quote with `signingScheme: "eip712"` but then sign with `ethsign`, the signature won't match and the order will fail with `InvalidSignature`.
+
+### 6. Quote expiration
+
+Quotes have an `expiration` timestamp in ISO-8601 format. If you sign and submit after this time, the backend may reject the order. Get the quote, compute amounts, sign, and submit promptly.
+
+### 7. `validTo` must be reasonable
+
+Orders with `validTo` too close to the current time may expire before solvers can act. Orders with `validTo` too far in the future will be rejected with `ExcessiveValidTo`. If you used `validFor` in the quote request, the response calculates an appropriate `validTo` for you.
+
+### 8. Pass the `quoteId` and `from`
+
+Include `quoteId` (from the quote's `id` field) for slippage analysis. Include `from` so the backend can verify the signer matches the expected address — without it, a malformed signature might silently resolve to a wrong address.
+
+## Common Failure Scenarios
+
+| Symptom | Likely cause |
+|---|---|
+| `InsufficientAllowance` error on order creation | Sell token not approved to Vault Relayer |
+| `InsufficientBalance` error on order creation | Wallet doesn't hold enough sell token for the signed sell amount |
+| `InvalidSignature` error on order creation | `signingScheme` mismatch, wrong amounts signed, or encoding error |
+| Order accepted but never executed | Allowance or balance dropped after placement, or price moved past limit |
+| Order accepted but status stays `open` | No solver found a profitable route — could be low liquidity or tight slippage |
+| `DuplicatedOrder` error | Identical order (same params + signature) already exists |
+| `ExcessiveValidTo` error | `validTo` timestamp is too far in the future |
+| User receives less than expected | Signed the raw quote `buyAmount` without applying partner fees and slippage |
+
+## Quick Reference: Full Flow
+
 ```
-
-## When to Use the API
-
-* **Backend integration**: Server-side order management
-* **Custom trading logic**: Advanced order types and strategies
-* **High-frequency trading**: Programmatic order placement
-* **Multi-chain applications**: Cross-chain arbitrage and liquidity
-* **Analytics platforms**: Order and trade data analysis
+1. Approve sell token to Vault Relayer (if not already done)
+2. POST /api/v1/quote              → Get pricing and fee estimates
+3. Compute amount stages            → beforeAllFees, afterNetworkCosts,
+                                      afterPartnerFees, afterSlippage
+4. Determine signing amounts         → Sell order: sign(beforeAllFees.sell, afterSlippage.buy)
+                                      → Buy order:  sign(afterSlippage.sell, beforeAllFees.buy)
+5. Sign the order                    → Using your chosen signingScheme
+6. POST /api/v1/orders              → Submit signed order (feeAmount = "0", include quoteId)
+7. GET /api/v1/orders/{UID}         → Poll for status changes
+8. GET /api/v2/trades?orderUid=     → Get execution details once traded
+```
 
 ## Rate Limits
 
-* **Quote requests**: 10 requests/second
-* **Order submission**: 5 requests/second
-* **General endpoints**: 100 requests/minute
+- **Quote requests**: 10 requests/second
+- **Order submission**: 5 requests/second
+- **General endpoints**: 100 requests/minute
 
 For per-endpoint limits, backoff strategies, Cloudflare WAF details, and troubleshooting, see the **[Rate Limits & Quotas](/cow-protocol/reference/core/rate-limits)** reference.
 
-## Error Handling
-
-For a comprehensive list of every API error code with root causes and fixes, see the **[Error Reference](/cow-protocol/reference/core/error-reference)**. Key errors to handle:
-
-| Error | When | Quick fix |
-|---|---|---|
-| `SellAmountDoesNotCoverFee` | Quote request | Increase sell amount |
-| `NoLiquidity` | Quote request | Check token addresses and liquidity |
-| `InvalidSignature` | Order submission | Verify EIP-712 domain and signer match |
-| `InsufficientAllowance` | Order submission | Approve VaultRelayer (`0xC92E8bdf79f0507f65a392b0ab4667716BFE0110`) |
-| `InsufficientBalance` | Order submission | Check sell token balance covers amount |
-
-### `sellAmountBeforeFee` vs `sellAmount`
-
-A common source of confusion:
-
-- **`sellAmountBeforeFee`** — used in the **quote request**. This is the total amount you want to sell, before any fees.
-- **`sellAmount`** in the **quote response** — the sell amount **after** network costs have been deducted.
-- **`feeAmount`** in the response — the network cost, in sell token units.
-
-The relationship: `sellAmountBeforeFee = response.sellAmount + response.feeAmount`
-
-For the full fee pipeline (how protocol fees, partner fees, and slippage transform these amounts), see the **[Fee Model](/cow-protocol/explanation/fee-model)**.
-
-## Understanding Quotes and Fees
-
-The quote response contains fee breakdowns and amount stages that are essential for building correct orders:
-
-* **[Quote Selection](/cow-protocol/explanation/how-it-works/quote-selection)** — `priceQuality` options (fast/optimal/verified), timing between quote and order, freshness best practices
-* **[How Intents Are Formed](/cow-protocol/explanation/how-it-works/how-intents-are-formed)** — detailed breakdown of `feeAmount`, `sellAmount`, `buyAmount`, the full fee pipeline (network costs → protocol fee → partner fee → slippage), and how to construct the final signed order
-
-## Market Orders vs Limit Orders
-
-The API supports both order types. The difference is in how you construct the order, not which endpoint you call:
-
-* **Market (swap) orders** — Fetch a quote first, then sign with the quoted amounts and a slippage tolerance. See [Creating Swap Orders](/cow-sdk/guides/creating-swap-orders).
-* **Limit orders** — You specify both `sellAmount` and `buyAmount` directly (no quote needed). The order fills when the market reaches your price. See [Creating Limit Orders](/cow-sdk/guides/creating-limit-orders).
-
-Both order types are submitted to the same `POST /api/v1/orders` endpoint.
-
-## Next Steps
-
-* **[Quickstart: Raw API (cURL)](/cow-protocol/tutorials/quickstart-curl)** — End-to-end walkthrough: quote → sign → submit → monitor
-* **[Order Book API Reference](/cow-protocol/reference/apis/orderbook)** — Complete endpoint documentation with all parameters and response schemas
-* **[API Explorer](https://api.cow.fi/docs/)** — Interactive API documentation
-
 ## Resources
 
-* **[Order Book API Reference](/cow-protocol/reference/apis/orderbook)** — Detailed API documentation
-* **[API Explorer](https://api.cow.fi/docs/)** — Interactive documentation
-* **[Rate Limits & Quotas](/cow-protocol/reference/core/rate-limits)** — Per-endpoint limits, backoff code, and troubleshooting
-* **[Quote Selection](/cow-protocol/explanation/how-it-works/quote-selection)** — Quoting strategies and timing
-* **[How Intents Are Formed](/cow-protocol/explanation/how-it-works/how-intents-are-formed)** — Fee pipeline and order construction
-* **[Order Signing Guide](/cow-protocol/reference/core/signing-schemes)** — Cryptographic signing details
-* **[GitHub Examples](https://github.com/cowprotocol/cow-sdk/tree/main/examples)** — Code examples
-
+- **[Quickstart: Raw API (cURL)](/cow-protocol/tutorials/quickstart-curl)** — End-to-end walkthrough with signing examples
+- **[How Intents Are Formed](/cow-protocol/explanation/how-it-works/how-intents-are-formed)** — Full fee pipeline with diagrams, code, and formula reference
+- **[Fee Model](/cow-protocol/explanation/fee-model)** — How fees work and how to retrieve fee data for accounting
+- **[Order Book API Reference](/cow-protocol/reference/apis/orderbook)** — Complete endpoint documentation
+- **[Order Book API Reference](/cow-protocol/reference/apis/orderbook)** — Interactive endpoint docs and playground
+- **[Signing Schemes](/cow-protocol/reference/core/signing-schemes)** — All four supported signing methods
+- **[Error Reference](/cow-protocol/reference/core/error-reference)** — Every API error code with root causes and fixes
+- **[CoW SDK `getQuoteAmountsAndCosts`](https://github.com/cowprotocol/cow-sdk/blob/main/packages/order-book/src/quoteAmountsAndCosts/getQuoteAmountsAndCosts.ts)** — Production implementation of the amount computation logic

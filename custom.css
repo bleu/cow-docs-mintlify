@@ -26,3 +26,43 @@
   white-space: nowrap;
   min-width: 0;
 }
+
+/*
+ * Polish: horizontal overflow regions such as tables, code blocks, and API tab
+ * lists should not inherit harsh default browser scrollbars.
+ */
+:where(.mdx-content, .api-section, main) :is(.overflow-x-auto, [data-component-part="tabs-list"]) {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(1, 47, 122, 0.28) transparent;
+}
+
+:where(.mdx-content, .api-section, main) :is(.overflow-x-auto, [data-component-part="tabs-list"])::-webkit-scrollbar {
+  height: 10px;
+}
+
+:where(.mdx-content, .api-section, main) :is(.overflow-x-auto, [data-component-part="tabs-list"])::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:where(.mdx-content, .api-section, main) :is(.overflow-x-auto, [data-component-part="tabs-list"])::-webkit-scrollbar-thumb {
+  background-color: rgba(1, 47, 122, 0.28);
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background-clip: padding-box;
+}
+
+:where(.mdx-content, .api-section, main) :is(.overflow-x-auto, [data-component-part="tabs-list"])::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(1, 47, 122, 0.4);
+}
+
+.dark :where(.mdx-content, .api-section, main) :is(.overflow-x-auto, [data-component-part="tabs-list"]) {
+  scrollbar-color: rgba(63, 128, 255, 0.42) transparent;
+}
+
+.dark :where(.mdx-content, .api-section, main) :is(.overflow-x-auto, [data-component-part="tabs-list"])::-webkit-scrollbar-thumb {
+  background-color: rgba(63, 128, 255, 0.42);
+}
+
+.dark :where(.mdx-content, .api-section, main) :is(.overflow-x-auto, [data-component-part="tabs-list"])::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(63, 128, 255, 0.56);
+}

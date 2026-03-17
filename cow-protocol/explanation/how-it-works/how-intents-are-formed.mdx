@@ -6,9 +6,9 @@ description: "An intent in CoW Protocol is a signed message that represents a us
 An [_intent_](/cow-protocol/explanation/introduction/intents) in CoW Protocol is a signed message that represents a user's wish to trade. It doesn't execute a trade directly — instead, it delegates execution to [solvers](/cow-protocol/explanation/introduction/solvers) who find the optimal path.
 
 <Warning>
-**This document explains the anatomy of intents and interaction with the API at a low level.**
+**This document explains the anatomy of intents at a conceptual level.**
 
-For practical use of the protocol, it is recommended to use high-level tools such as the **[TypeScript SDK](/cow-sdk/quickstart)** or the **[Python SDK](/cow-py/quickstart)**.
+For a step-by-step integration walkthrough, see the **[API Integration Guide](/cow-protocol/howto/integrate/api)**. For higher-level tools, use the **[TypeScript SDK](/cow-sdk/quickstart)** or the **[Python SDK](/cow-py/quickstart)**.
 </Warning>
 
 Forming an intent follows three stages:
@@ -277,6 +277,85 @@ Slippage tolerance uses the same calculation as the partner fee, but it is appli
 ```
 slippageAmount = afterPartnerFees × slippagePercent / 100
 ```
+
+## All Formulas at a Glance
+
+Below is every stage computation in one place. All values are in token atoms (integers). `protocolFeeBps` is in basis points (e.g. `"2"` = 2 bps = 0.02%).
+
+### Sell order — full computation
+
+````
+── Protocol Fee Amount (buy token units) ──────────────────────────────────────
+protocolFeeAmount = quote.buyAmount × (protocolFeeBps / 10000)
+                    / (1 − protocolFeeBps / 10000)
+
+── Network Costs in Buy Token ─────────────────────────────────────────────────
+networkCostInBuyToken = (quote.buyAmount × quote.feeAmount) / quote.sellAmount
+
+── beforeAllFees (Spot Price) ─────────────────────────────────────────────────
+sellAmount = quote.sellAmount + quote.feeAmount
+buyAmount  = quote.buyAmount + networkCostInBuyToken + protocolFeeAmount
+
+── afterProtocolFees ──────────────────────────────────────────────────────────
+sellAmount = beforeAllFees.sellAmount
+buyAmount  = beforeAllFees.buyAmount − protocolFeeAmount
+
+── afterNetworkCosts (= /quote response) ──────────────────────────────────────
+sellAmount = quote.sellAmount
+buyAmount  = quote.buyAmount
+
+── afterPartnerFees ───────────────────────────────────────────────────────────
+partnerFeeAmount = beforeAllFees.buyAmount × partnerFeeBps / 10000
+
+sellAmount = afterNetworkCosts.sellAmount
+buyAmount  = afterNetworkCosts.buyAmount − partnerFeeAmount
+
+── afterSlippage ──────────────────────────────────────────────────────────────
+slippageAmount = afterPartnerFees.buyAmount × slippageBps / 10000
+
+sellAmount = afterPartnerFees.sellAmount
+buyAmount  = afterPartnerFees.buyAmount − slippageAmount
+
+── Amounts to Sign ────────────────────────────────────────────────────────────
+sellAmount = beforeAllFees.sellAmount      (= quote.sellAmount + quote.feeAmount)
+buyAmount  = afterSlippage.buyAmount       (minimum to receive)
+````
+
+### Buy order — full computation
+
+````
+── Protocol Fee Amount (sell token units) ─────────────────────────────────────
+protocolFeeAmount = (quote.sellAmount + quote.feeAmount) × (protocolFeeBps / 10000)
+                    / (1 + protocolFeeBps / 10000)
+
+── beforeAllFees (Spot Price) ─────────────────────────────────────────────────
+sellAmount = quote.sellAmount − protocolFeeAmount
+buyAmount  = quote.buyAmount
+
+── afterProtocolFees (= /quote sellAmount) ────────────────────────────────────
+sellAmount = quote.sellAmount
+buyAmount  = quote.buyAmount
+
+── afterNetworkCosts ──────────────────────────────────────────────────────────
+sellAmount = quote.sellAmount + quote.feeAmount
+buyAmount  = quote.buyAmount
+
+── afterPartnerFees ───────────────────────────────────────────────────────────
+partnerFeeAmount = beforeAllFees.sellAmount × partnerFeeBps / 10000
+
+sellAmount = afterNetworkCosts.sellAmount + partnerFeeAmount
+buyAmount  = afterNetworkCosts.buyAmount
+
+── afterSlippage ──────────────────────────────────────────────────────────────
+slippageAmount = afterPartnerFees.sellAmount × slippageBps / 10000
+
+sellAmount = afterPartnerFees.sellAmount + slippageAmount
+buyAmount  = afterPartnerFees.buyAmount
+
+── Amounts to Sign ────────────────────────────────────────────────────────────
+sellAmount = afterSlippage.sellAmount      (maximum to pay)
+buyAmount  = beforeAllFees.buyAmount       (= quote.buyAmount)
+````
 
 ## Forming the Final Order
 

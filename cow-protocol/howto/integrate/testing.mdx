@@ -1,22 +1,28 @@
 ---
 title: "Testing Your Integration"
-description: "How to test your CoW Protocol integration on Sepolia testnet, using the staging API, and common testing pitfalls to avoid."
+description: "Step-by-step guide to testing your CoW Protocol integration — from getting test tokens on Sepolia to verifying orders settle, then graduating to mainnet."
 ---
 
-## Testnet: Sepolia
+import { InlineResource } from '/snippets/resource-actions.jsx'
 
-CoW Protocol is deployed on **Sepolia** for testing. All contracts share the same addresses as mainnet:
+## Overview
+
+This guide walks you through testing a CoW Protocol integration end-to-end. You'll place a real order on the Sepolia testnet, verify it settles, and then move to production.
+
+## Step 1: Set Up Your Test Environment
+
+### Contract addresses
+
+CoW Protocol is deployed on **Sepolia** with the same addresses as mainnet:
 
 | Contract | Address |
 |---|---|
-| GPv2Settlement | `0x9008D19f58AAbD9eD0D60971565AA8510560ab41` |
-| GPv2VaultRelayer | `0xC92E8bdf79f0507f65a392b0ab4667716BFE0110` |
+| GPv2Settlement | <InlineResource value="0x9008D19f58AAbD9eD0D60971565AA8510560ab41" chain="sepolia" showExplorer /> |
+| GPv2VaultRelayer | <InlineResource value="0xC92E8bdf79f0507f65a392b0ab4667716BFE0110" chain="sepolia" showExplorer /> |
 
 ### API endpoint
 
-```
-https://api.cow.fi/sepolia/api/v1/
-```
+Sepolia API base URL: <InlineResource value="https://api.cow.fi/sepolia/api/v1/" href="https://api.cow.fi/sepolia/api/v1/" />
 
 ### SDK configuration
 
@@ -29,48 +35,181 @@ const sdk = new TradingSdk({
 }, {}, adapter)
 ```
 
-## Important: Sepolia has limited solver participation
+## Step 2: Get Test Tokens
 
-<Warning>
-Many solvers **do not participate on Sepolia**. This means:
-- Orders may take longer to fill or expire unfilled
-- Liquidity is thin — not all token pairs are tradeable
-- Price quality is lower than mainnet
+You need Sepolia ETH and ERC-20 tokens to test with.
 
-This is normal testnet behavior, not a bug in your integration.
-</Warning>
+### Get Sepolia ETH
 
-### Tips for successful testnet orders
+Use a faucet:
+- [sepoliafaucet.com](https://sepoliafaucet.com)
+- [Alchemy Sepolia Faucet](https://www.alchemy.com/faucets/ethereum-sepolia)
 
-1. **Use wider limit prices** — set slippage to 5-10% instead of the typical 0.5-1%
-2. **Stick to common test pairs** — WETH, USDC, and COW token have the most testnet liquidity
-3. **Use longer validity** — set `validFor` to 1800+ seconds (30 min) to give solvers more batches
-4. **Check the explorer** — verify your order appears at `https://explorer.cow.fi/sepolia/orders/{uid}`
+### Get test ERC-20s
 
-### Getting test tokens
+1. **Wrap ETH to WETH**: Send ETH to the WETH contract (`0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14`) or use CoW Swap on Sepolia
+2. **Swap for test tokens**: Use CoW Swap (Sepolia) or Uniswap (Sepolia) to swap WETH for COW or USDC
 
-- **Sepolia ETH**: Use a faucet like [sepoliafaucet.com](https://sepoliafaucet.com) or [Alchemy Sepolia Faucet](https://www.alchemy.com/faucets/ethereum-sepolia)
-- **Test ERC-20s**: Wrap ETH to WETH, then swap for test tokens on CoW Swap (Sepolia) or Uniswap (Sepolia)
+### Example token addresses
 
-## Staging API (barn)
+These are the Sepolia token addresses used in the examples below:
 
-For testing against **mainnet data** without affecting production, use the staging ("barn") API:
+| Token | Sepolia Address |
+|---|---|
+| WETH | <InlineResource value="0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14" chain="sepolia" showExplorer /> |
+| COW | <InlineResource value="0xbe72E441BF55620febc26715db68d3494213D8Cb" chain="sepolia" showExplorer /> |
 
+## Step 3: Approve the Vault Relayer
+
+Before placing orders, approve the GPv2VaultRelayer to spend your sell token. This is a one-time step per token.
+
+**With Foundry:**
+
+```bash
+cast send 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14 \
+  "approve(address,uint256)" \
+  0xC92E8bdf79f0507f65a392b0ab4667716BFE0110 \
+  115792089237316195423570985008687907853269984665640564039457584007913129639935 \
+  --rpc-url https://rpc.sepolia.org \
+  --private-key $PRIVATE_KEY
 ```
-https://barn.api.cow.fi/mainnet/api/v1/
+
+**With the SDK:**
+
+```typescript
+import { maxUint256 } from 'viem'
+
+const txHash = await sdk.approveCowProtocol({
+  tokenAddress: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14',
+  amount: maxUint256,
+})
 ```
 
-The barn API:
-- Runs the same code as production, deployed ahead of releases
-- Uses real mainnet tokens and liquidity
-- Has a separate solver competition (solvers may behave differently)
-- Is useful for testing mainnet integrations before going live
+**Verify it worked:**
 
-<Note>
-Orders submitted to barn are **real orders** on mainnet. They use real tokens and will settle on-chain if filled. Use barn for integration testing with small amounts, not as a sandbox.
-</Note>
+```bash
+cast call 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14 \
+  "allowance(address,address)(uint256)" \
+  $YOUR_ADDRESS \
+  0xC92E8bdf79f0507f65a392b0ab4667716BFE0110 \
+  --rpc-url https://rpc.sepolia.org
+```
 
-### SDK with barn
+The output should be a large number (max uint256 if you used infinite approval).
+
+## Step 4: Place a Test Order
+
+### Using the API
+
+```bash
+# 1. Get a quote
+curl -X POST "https://api.cow.fi/sepolia/api/v1/quote" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sellToken": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+    "buyToken": "0xbe72E441BF55620febc26715db68d3494213D8Cb",
+    "sellAmountBeforeFee": "100000000000000000",
+    "kind": "sell",
+    "from": "YOUR_ADDRESS",
+    "receiver": "YOUR_ADDRESS",
+    "validFor": 1800,
+    "signingScheme": "eip712",
+    "appData": "{}",
+    "appDataHash": "0xb48d38f93eaa084033fc5970bf96e559c33c4cdc07d889ab00b4d63f9590739d"
+  }'
+```
+
+The quote response includes:
+
+- `quote.appData` and `quote.appDataHash` — sign the hash, submit the JSON `appData`
+- `id` — pass it later as `quoteId`
+- `expiration` — submit before this timestamp
+
+Then complete the happy path with [Step 5: Sign the Order](/cow-protocol/howto/integrate/api#step-5-sign-the-order) and [Step 6: Submit the Order](/cow-protocol/howto/integrate/api#step-6-submit-the-order).
+
+### Using the SDK
+
+```typescript
+import { OrderKind } from '@cowprotocol/sdk-trading'
+
+const { orderId } = await sdk.postSwapOrder({
+  kind: OrderKind.SELL,
+  sellToken: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14',
+  sellTokenDecimals: 18,
+  buyToken: '0xbe72E441BF55620febc26715db68d3494213D8Cb',
+  buyTokenDecimals: 18,
+  amount: '100000000000000000', // 0.1 WETH
+  slippageBps: 500, // 5% — use wide slippage on testnet
+  validFor: 1800,   // 30 minutes
+})
+
+console.log('Order UID:', orderId)
+```
+
+## Step 5: Verify the Order
+
+### Check order status
+
+```bash
+curl "https://api.cow.fi/sepolia/api/v1/orders/ORDER_UID"
+```
+
+Or with the SDK:
+
+```typescript
+const order = await sdk.getOrder({ orderUid: orderId })
+console.log('Status:', order.status)
+```
+
+### Check the Explorer
+
+Open `https://explorer.cow.fi/sepolia/orders/{ORDER_UID}` in your browser. You should see your order with its current status.
+
+### Expected behavior
+
+| Status | What it means | What to do |
+|---|---|---|
+| `open` | Order is in the book, waiting for solvers | Wait — Sepolia may take several minutes |
+| `fulfilled` | Order settled on-chain | Success — check `executedBuyAmount` |
+| `expired` | Order timed out | See troubleshooting below |
+| `cancelled` | You cancelled it | Expected if you called cancel |
+
+### Verify the trade
+
+Once status is `fulfilled`:
+
+```bash
+curl "https://api.cow.fi/sepolia/api/v2/trades?orderUid=ORDER_UID"
+```
+
+Check that `txHash` is present and the `buyAmount` is reasonable.
+
+## Step 6: Test Edge Cases
+
+Before going to production, verify these scenarios:
+
+| Test | What to verify |
+|---|---|
+| **Buy order** | Change `kind` to `"buy"` and use `buyAmountAfterFee` instead of `sellAmountBeforeFee` |
+| **Cancellation** | Create an order with long `validFor`, then cancel it with `DELETE /api/v1/orders/{UID}` or `sdk.offChainCancelOrder()` |
+| **Insufficient balance** | Try placing an order with more tokens than you hold — should get `InsufficientBalance` error |
+| **Insufficient allowance** | Revoke approval, then try placing an order — should get `InsufficientAllowance` error |
+| **Expired quote** | Wait for the quote to expire, then try submitting — should get a rejection |
+| **Status polling** | Set up a loop that checks order status every 10 seconds until `fulfilled` or `expired` |
+
+## Step 7: Graduate to Production
+
+### Recommended progression
+
+1. **Sepolia** — verify signing, order creation, and status polling work end-to-end
+2. **Barn (mainnet staging)** — test with real liquidity using small amounts
+3. **Production** — switch to `api.cow.fi/mainnet` with production amounts
+
+### Using barn (mainnet staging)
+
+Barn is the staging endpoint for mainnet: <InlineResource value="https://barn.api.cow.fi/mainnet/api/v1/" href="https://barn.api.cow.fi/mainnet/api/v1/" />
+
+With the SDK:
 
 ```typescript
 const parameters: TradeParameters = {
@@ -80,24 +219,55 @@ const parameters: TradeParameters = {
 }
 ```
 
-## Recommended testing workflow
+<Warning>
+**Barn targets mainnet.** Orders placed there use mainnet assets and can settle on-chain if filled, so test with small amounts.
+</Warning>
 
-1. **Start on Sepolia** — verify your signing, order creation, and status polling logic works end-to-end
-2. **Move to barn (mainnet staging)** — test with real liquidity and solver competition using small amounts
-3. **Go to production** — switch to `api.cow.fi/mainnet` with production amounts
+### Production checklist
 
-## Common testnet issues
+Before going live:
+
+- [ ] Orders create and settle correctly on Sepolia
+- [ ] Signing works with your chosen `signingScheme`
+- [ ] Status polling correctly detects `fulfilled`, `expired`, and `cancelled`
+- [ ] Error handling catches `InsufficientBalance`, `InsufficientAllowance`, `InvalidSignature`
+- [ ] Cancellation flow works
+- [ ] (Optional) Tested on barn with small mainnet amounts
+
+### Switching to production
+
+Change the API base URL to <InlineResource value="https://api.cow.fi/mainnet/api/v1/" href="https://api.cow.fi/mainnet/api/v1/" />.
+
+Or with the SDK, remove the `env: 'staging'` parameter (production is the default).
+
+## Sepolia Notes
+
+<Warning>
+Sepolia is useful for verifying your integration flow, but quote quality and fill behavior can differ from mainnet. If you need mainnet conditions, test on barn with small amounts.
+</Warning>
+
+### Practical testing tips
+
+1. Use the token addresses listed above so your quote and signing examples match the guide.
+2. If a quote expires before submission, request a fresh quote and retry immediately.
+3. If an order stays `open` until `validTo`, retry with adjusted order parameters or continue testing on barn.
+4. Keep test amounts small when moving from Sepolia to barn or mainnet.
+
+## Troubleshooting
 
 | Issue | Cause | Fix |
 |---|---|---|
-| Order expires unfilled | Limited solvers on Sepolia | Widen slippage, use longer validity, try WETH/USDC pair |
-| `NoLiquidity` error | Token pair has no testnet pools | Use well-known test tokens (WETH, USDC) |
+| Order expires unfilled | The order did not settle before `validTo` | Re-quote and retry, or adjust the order parameters |
+| `NoLiquidity` error | The requested pair could not be quoted on Sepolia | Try a different supported pair |
 | `SellAmountDoesNotCoverFee` | Gas costs high relative to small test amounts | Increase the sell amount |
+| `InvalidSignature` error | EIP-712 domain or struct mismatch | Verify `chainId: 11155111` for Sepolia, check order fields exactly match |
 | Order shows `presignaturePending` | PreSign transaction not confirmed | Wait for Sepolia block confirmation, check tx hash |
-| Different results than mainnet | Different solver set and liquidity | Expected — use barn for mainnet-equivalent testing |
+| Different results than mainnet | Testnet conditions differ from mainnet | Expected — use barn for mainnet testing |
+| `InsufficientAllowance` on barn | Forgot to approve on mainnet | Approve the Vault Relayer on mainnet (same address) |
 
-## Related resources
+## Resources
 
 - **[API Integration Guide](/cow-protocol/howto/integrate/api)** — Full API integration walkthrough
+- **[Quickstart: Raw API (cURL)](/cow-protocol/tutorials/quickstart-curl)** — End-to-end cURL walkthrough on Sepolia
 - **[Error Reference](/cow-protocol/reference/core/error-reference)** — All API error codes and fixes
 - **[Rate Limits](/cow-protocol/reference/core/rate-limits)** — Rate limits apply equally on testnet

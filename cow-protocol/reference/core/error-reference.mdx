@@ -231,12 +231,12 @@ These errors are returned by `POST /api/v1/orders` when submitting a signed orde
 
 </Accordion>
 
-<Accordion title="400 — DuplicateOrder">
+<Accordion title="400 — DuplicatedOrder">
 
 | Field | Value |
 |---|---|
 | **HTTP Status** | `400 Bad Request` |
-| **Error Code** | `DuplicateOrder` |
+| **Error Code** | `DuplicatedOrder` |
 | **Root Cause** | An order with the same UID already exists in the orderbook. Order UIDs are deterministic based on order parameters and the owner address. |
 
 **Fix:**
@@ -430,7 +430,13 @@ These are not API error responses. They occur **after** an order has been accept
 
 ### Recommended Retry Strategy
 
-For transient errors (`429`, `500`), use exponential backoff with jitter:
+If you are calling the API directly, use exponential backoff with jitter for transient errors (`429`, `500`).
+
+<Note>
+If you are using an official SDK, prefer the SDK's built-in rate limiting and retry handling instead of reimplementing it here. See [Rate Limits & Quotas](/cow-protocol/reference/core/rate-limits) for the SDK-specific guidance, and [OrderBookApi](/cow-sdk/api/order-book-api) for the TypeScript SDK configuration surface.
+</Note>
+
+For raw HTTP integrations, a simple retry loop looks like this:
 
 ```typescript
 async function fetchWithRetry(

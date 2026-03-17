@@ -3,6 +3,8 @@ title: "Quickstart: Raw API (cURL)"
 description: "Place your first CoW Protocol order using only cURL and the REST API — from quote to confirmed trade in under 10 minutes."
 ---
 
+import { InlineResource } from '/snippets/resource-actions.jsx'
+
 This guide walks you through placing an order on CoW Protocol using nothing but `cURL` and the REST API. No SDK, no framework -- just raw HTTP requests against the Sepolia testnet.
 
 By the end you will have:
@@ -18,12 +20,12 @@ Before you start, make sure you have:
 
 - **cURL** installed (ships with macOS and most Linux distributions)
 - **An Ethereum wallet** with some WETH on the **Sepolia** testnet
-  - Sepolia WETH: `0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14`
-  - Sepolia COW (buy token in this guide): `0xbe72E441BF55620febc26715db68d3494213D8Cb`
+  - Sepolia WETH: <InlineResource value="0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14" chain="sepolia" showExplorer />
+  - Sepolia COW (buy token in this guide): <InlineResource value="0xbe72E441BF55620febc26715db68d3494213D8Cb" chain="sepolia" showExplorer />
 - **Token approval** for the GPv2VaultRelayer contract so it can spend your sell token
 
 <Warning>
-You must approve the **GPv2VaultRelayer** (`0xC92E8bdf79f0507f65a392b0ab4667716BFE0110`) to spend your sell token **before** submitting an order. Without this approval the order will revert on settlement.
+You must approve the **GPv2VaultRelayer** (<InlineResource value="0xC92E8bdf79f0507f65a392b0ab4667716BFE0110" chain="sepolia" showExplorer />) to spend your sell token **before** submitting an order. Without this approval the order will revert on settlement.
 
 You can do this via Etherscan's "Write Contract" tab, or with Foundry:
 
@@ -38,7 +40,7 @@ cast send 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14 \
 </Warning>
 
 <Note>
-All examples in this guide target the **Sepolia testnet** (`https://api.cow.fi/sepolia/api/v1`). Replace `sepolia` with `mainnet`, `xdai`, `arbitrum_one`, or `base` for other networks.
+All examples in this guide target the **Sepolia testnet** (<InlineResource value="https://api.cow.fi/sepolia/api/v1" href="https://api.cow.fi/sepolia/api/v1" />). Replace `sepolia` with `mainnet`, `xdai`, `arbitrum_one`, or `base` for other networks.
 </Note>
 
 ## Walkthrough
@@ -60,7 +62,9 @@ curl -X POST "https://api.cow.fi/sepolia/api/v1/quote" \
     "from": "0xYOUR_ADDRESS",
     "receiver": "0xYOUR_ADDRESS",
     "validFor": 1800,
-    "signingScheme": "eip712"
+    "signingScheme": "eip712",
+    "appData": "{}",
+    "appDataHash": "0xb48d38f93eaa084033fc5970bf96e559c33c4cdc07d889ab00b4d63f9590739d"
   }'
 ```
 
@@ -79,7 +83,7 @@ Replace `0xYOUR_ADDRESS` with your wallet address on Sepolia.
 
 ### Understand the Response
 
-The API returns a JSON object containing the quote details. Here is a sample response (trimmed for clarity):
+The API returns a JSON object containing the quote details. Here is an illustrative sample response (trimmed for clarity):
 
 ```json
 {
@@ -92,11 +96,12 @@ The API returns a JSON object containing the quote details. Here is a sample res
     "kind": "sell",
     "validTo": 1741700000,
     "receiver": "0xYOUR_ADDRESS",
-    "appData": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "appData": "{}",
+    "appDataHash": "0xb48d38f93eaa084033fc5970bf96e559c33c4cdc07d889ab00b4d63f9590739d",
     "partiallyFillable": false
   },
   "from": "0xYOUR_ADDRESS",
-  "expiration": "2026-03-11T12:30:00.000Z",
+  "expiration": "2025-03-11T13:33:20Z",
   "id": 12345,
   "verified": true
 }
@@ -110,6 +115,9 @@ Key fields inside `quote`:
 | `buyAmount` | Estimated amount you will receive, **after** network costs and protocol fee |
 | `feeAmount` | Network costs in **sell token** units (gas estimation) |
 | `validTo` | Unix timestamp after which the order expires |
+| `appDataHash` | The `bytes32` hash you sign into the order when the quote returns full JSON `appData` |
+| `expiration` | The deadline for submitting the quoted order data |
+| `id` | Quote ID to pass later as `quoteId` when creating the order |
 
 <Note>
 For a deep dive into how these amounts relate to each other through the fee pipeline (network costs, protocol fee, partner fee, slippage), see [How Intents Are Formed](/cow-protocol/explanation/how-it-works/how-intents-are-formed).
@@ -127,7 +135,7 @@ Using the quote response, build the order struct that must be signed. For a **se
 - **`buyAmount`**: `quote.buyAmount` with your slippage tolerance applied (e.g. subtract 0.5%)
 - **`feeAmount`**: `"0"` (fees are handled internally by the protocol at settlement)
 
-All other fields come directly from the quote response.
+All other fields come directly from the quote response. If the quote returns both `appData` and `appDataHash`, sign the hash.
 
 ```json
 {
@@ -142,7 +150,7 @@ All other fields come directly from the quote response.
   "partiallyFillable": false,
   "sellTokenBalance": "erc20",
   "buyTokenBalance": "erc20",
-  "appData": "0x0000000000000000000000000000000000000000000000000000000000000000"
+  "appData": "0xb48d38f93eaa084033fc5970bf96e559c33c4cdc07d889ab00b4d63f9590739d"
 }
 ```
 
@@ -225,7 +233,7 @@ order_typed_data = {
         "buyAmount": 190224099,
         "validTo": 1741700000,
         "appData": bytes.fromhex(
-            "0000000000000000000000000000000000000000000000000000000000000000"
+            "b48d38f93eaa084033fc5970bf96e559c33c4cdc07d889ab00b4d63f9590739d"
         ),
         "feeAmount": 0,
         "kind": "sell",
@@ -279,7 +287,7 @@ const order = {
   buyAmount: "190224099",
   validTo: 1741700000,
   appData:
-    "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "0xb48d38f93eaa084033fc5970bf96e559c33c4cdc07d889ab00b4d63f9590739d",
   feeAmount: "0",
   kind: "sell",
   partiallyFillable: false,
@@ -312,7 +320,9 @@ curl -X POST "https://api.cow.fi/sepolia/api/v1/orders" \
     "partiallyFillable": false,
     "receiver": "0xYOUR_ADDRESS",
     "from": "0xYOUR_ADDRESS",
-    "appData": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "appData": "{}",
+    "appDataHash": "0xb48d38f93eaa084033fc5970bf96e559c33c4cdc07d889ab00b4d63f9590739d",
+    "quoteId": 12345,
     "signingScheme": "eip712",
     "signature": "0xYOUR_SIGNATURE",
     "sellTokenBalance": "erc20",
@@ -350,7 +360,7 @@ To check whether any trades have been executed for your order:
 
 ```bash
 # Check trades for this order
-curl "https://api.cow.fi/sepolia/api/v1/trades?orderUid=ORDER_UID"
+curl "https://api.cow.fi/sepolia/api/v2/trades?orderUid=ORDER_UID"
 ```
 
 This returns an array of trade objects. Each trade includes the on-chain `txHash`, the actual `sellAmount` and `buyAmount` that were settled, and the block number.
@@ -376,6 +386,10 @@ Cancellation is best-effort. If a solver has already included your order in a so
 
 </Steps>
 
+<Note>
+Before placing orders in production, review the **[Pre-Flight Checklist](/cow-protocol/howto/integrate/api#pre-flight-checklist)** to avoid the most common integration mistakes.
+</Note>
+
 ## Troubleshooting
 
 Common errors you may encounter:
@@ -385,7 +399,7 @@ Common errors you may encounter:
 | `InsufficientBalance` | Your wallet does not hold enough sell token | Fund your wallet with more tokens on Sepolia |
 | `InsufficientAllowance` | The VaultRelayer has not been approved to spend your token | Approve `0xC92E8bdf79f0507f65a392b0ab4667716BFE0110` for the sell token |
 | `InvalidSignature` | The signature does not match the order data or signer | Ensure the EIP-712 domain, types, and order values match exactly |
-| `DuplicateOrder` | An identical order already exists | Change `validTo` or amounts slightly |
+| `DuplicatedOrder` | An identical order already exists | Change `validTo` or amounts slightly |
 | `SellAmountDoesNotCoverFee` | The sell amount is too small to cover network costs | Increase your sell amount |
 | `QuoteNotFound` / `NoLiquidity` | No solver can fill this trade pair | Try a different token pair or larger amount |
 
@@ -400,4 +414,5 @@ Now that you know how the raw API works, explore these resources:
 - **[Signing Schemes](/cow-protocol/reference/core/signing-schemes)** -- all four supported signing methods (EIP-712, eth_sign, ERC-1271, PreSign)
 - **[Limit Orders](/cow-swap/tutorials/limit)** -- place limit orders through CoW Swap
 - **[TWAP Orders](/cow-swap/tutorials/twap)** -- time-weighted average price orders
-- **[API Integration Guide](/cow-protocol/howto/integrate/api)** -- complete API integration reference
+- **[API Integration Guide](/cow-protocol/howto/integrate/api)** -- complete step-by-step API reference with fee formulas and pre-flight checklist
+- **[Testing Guide](/cow-protocol/howto/integrate/testing)** -- how to test on Sepolia and graduate to production

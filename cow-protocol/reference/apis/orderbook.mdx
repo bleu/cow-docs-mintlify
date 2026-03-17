@@ -3,30 +3,36 @@ title: "Orderbook API"
 description: "REST API for interacting with the CoW Protocol orderbook — quotes, order submission, retrieval, and cancellation"
 ---
 
+import { InlineResource } from '/snippets/resource-actions.jsx'
+
 The Orderbook API is the primary interface for interacting with CoW Protocol's order management system.
 
 ## Base URLs
 
 | Network | Production | Staging |
 |---|---|---|
-| **Ethereum** | `https://api.cow.fi/mainnet` | `https://barn.api.cow.fi/mainnet` |
-| **Gnosis Chain** | `https://api.cow.fi/xdai` | `https://barn.api.cow.fi/xdai` |
-| **Arbitrum One** | `https://api.cow.fi/arbitrum_one` | `https://barn.api.cow.fi/arbitrum_one` |
-| **Base** | `https://api.cow.fi/base` | `https://barn.api.cow.fi/base` |
-| **Avalanche** | `https://api.cow.fi/avalanche` | `https://barn.api.cow.fi/avalanche` |
-| **Polygon** | `https://api.cow.fi/polygon` | `https://barn.api.cow.fi/polygon` |
-| **Lens** | `https://api.cow.fi/lens` | `https://barn.api.cow.fi/lens` |
-| **BNB** | `https://api.cow.fi/bnb` | `https://barn.api.cow.fi/bnb` |
-| **Linea** | `https://api.cow.fi/linea` | `https://barn.api.cow.fi/linea` |
-| **Plasma** | `https://api.cow.fi/plasma` | `https://barn.api.cow.fi/plasma` |
-| **Ink** | `https://api.cow.fi/ink` | `https://barn.api.cow.fi/ink` |
-| **Sepolia** | `https://api.cow.fi/sepolia` | `https://barn.api.cow.fi/sepolia` |
+| **Ethereum** | <InlineResource value="https://api.cow.fi/mainnet" href="https://api.cow.fi/mainnet" /> | <InlineResource value="https://barn.api.cow.fi/mainnet" href="https://barn.api.cow.fi/mainnet" /> |
+| **Gnosis Chain** | <InlineResource value="https://api.cow.fi/xdai" href="https://api.cow.fi/xdai" /> | <InlineResource value="https://barn.api.cow.fi/xdai" href="https://barn.api.cow.fi/xdai" /> |
+| **Arbitrum One** | <InlineResource value="https://api.cow.fi/arbitrum_one" href="https://api.cow.fi/arbitrum_one" /> | <InlineResource value="https://barn.api.cow.fi/arbitrum_one" href="https://barn.api.cow.fi/arbitrum_one" /> |
+| **Base** | <InlineResource value="https://api.cow.fi/base" href="https://api.cow.fi/base" /> | <InlineResource value="https://barn.api.cow.fi/base" href="https://barn.api.cow.fi/base" /> |
+| **Avalanche** | <InlineResource value="https://api.cow.fi/avalanche" href="https://api.cow.fi/avalanche" /> | <InlineResource value="https://barn.api.cow.fi/avalanche" href="https://barn.api.cow.fi/avalanche" /> |
+| **Polygon** | <InlineResource value="https://api.cow.fi/polygon" href="https://api.cow.fi/polygon" /> | <InlineResource value="https://barn.api.cow.fi/polygon" href="https://barn.api.cow.fi/polygon" /> |
+| **Lens** | <InlineResource value="https://api.cow.fi/lens" href="https://api.cow.fi/lens" /> | <InlineResource value="https://barn.api.cow.fi/lens" href="https://barn.api.cow.fi/lens" /> |
+| **BNB** | <InlineResource value="https://api.cow.fi/bnb" href="https://api.cow.fi/bnb" /> | <InlineResource value="https://barn.api.cow.fi/bnb" href="https://barn.api.cow.fi/bnb" /> |
+| **Linea** | <InlineResource value="https://api.cow.fi/linea" href="https://api.cow.fi/linea" /> | <InlineResource value="https://barn.api.cow.fi/linea" href="https://barn.api.cow.fi/linea" /> |
+| **Plasma** | <InlineResource value="https://api.cow.fi/plasma" href="https://api.cow.fi/plasma" /> | <InlineResource value="https://barn.api.cow.fi/plasma" href="https://barn.api.cow.fi/plasma" /> |
+| **Ink** | <InlineResource value="https://api.cow.fi/ink" href="https://api.cow.fi/ink" /> | <InlineResource value="https://barn.api.cow.fi/ink" href="https://barn.api.cow.fi/ink" /> |
+| **Sepolia** | <InlineResource value="https://api.cow.fi/sepolia" href="https://api.cow.fi/sepolia" /> | <InlineResource value="https://barn.api.cow.fi/sepolia" href="https://barn.api.cow.fi/sepolia" /> |
 
 ## Key Endpoints
 
 ### Quotes
 
 - `POST /api/v1/quote` — Get a price quote for a trade
+
+<Note>
+`POST /api/v1/quote` returns the base order parameters in `quote`, plus quote metadata such as `expiration` and `id`. If your integration applies client-side slippage or partner fees before signing, see the [API Integration Guide](/cow-protocol/howto/integrate/api) for the full amount-adjustment flow.
+</Note>
 
 ### Orders
 
@@ -37,17 +43,25 @@ The Orderbook API is the primary interface for interacting with CoW Protocol's o
 
 ### Trades
 
-- `GET /api/v1/trades` — Get trades (filter by `owner` or `orderUid`)
+- `GET /api/v2/trades` — Get paginated trades (preferred; filter by `owner` or `orderUid`)
+- `GET /api/v1/trades` — Deprecated trades endpoint
 
 ### Auction
 
 - `GET /api/v1/auction` — Get the current batch auction
 - `GET /api/v1/solver_competition/{auction_id}` — Get solver competition results
 
-## Interactive Documentation
+## Interactive Reference
 
-Explore the full API specification at [api.cow.fi/docs](https://api.cow.fi/docs).
+Browse the interactive Orderbook endpoint docs directly in this site under **Orderbook Endpoints** in the left navigation. Those pages are generated from the upstream OpenAPI specification, so users can inspect parameters, schemas, and playground requests without leaving `docs.cow.bleu.builders`.
+
+If you need the upstream spec directly, use <InlineResource value="https://raw.githubusercontent.com/cowprotocol/services/main/crates/orderbook/openapi.yml" href="https://raw.githubusercontent.com/cowprotocol/services/main/crates/orderbook/openapi.yml" />.
 
 ## SDK Access
 
-For programmatic access via TypeScript, use the [OrderBookApi](/cow-sdk/api/order-book-api) from the TypeScript SDK.
+For programmatic access, you can use either SDK instead of calling the HTTP API directly:
+
+- [TypeScript `OrderBookApi`](/cow-sdk/api/order-book-api) for quotes, orders, trades, and app-data endpoints
+- [Python `OrderBookApi`](/cow-py/api/order-book) for the same Orderbook workflows in `cow-py`
+
+For the raw HTTP flow, start with the [API Integration Guide](/cow-protocol/howto/integrate/api).

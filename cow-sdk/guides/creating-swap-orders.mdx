@@ -7,6 +7,30 @@ description: "How to create market orders using the CoW Protocol SDK's postSwapO
 
 Swap orders are market orders that automatically fetch a quote and create an order in one step. The SDK handles all the complexity of parameters, calculations, and signing.
 
+## Prerequisites
+
+Before creating a swap order, make sure the following conditions are met:
+
+- **Token approval**: The sell token must be approved to the CoW Protocol Vault Relayer contract before the order can settle. Without approval, solvers cannot pull tokens from your wallet. See [Token Approvals](/cow-sdk/guides/token-approvals) for full details.
+- **Sufficient balance**: Your wallet must hold enough of the sell token to cover the trade amount.
+- **Buy order amounts**: For buy orders, the actual sell amount will be higher than the raw exchange rate because it includes protocol fees and slippage tolerance. Always check the quote's `amountsAndCosts` to see the real cost.
+
+Use the check-and-approve pattern before posting an order:
+
+```typescript
+// Check current allowance
+const allowance = await sdk.getCowProtocolAllowance({ tokenAddress: sellToken, owner })
+
+// Approve if needed
+if (allowance < requiredAmount) {
+  await sdk.approveCowProtocol({ tokenAddress: sellToken, amount: requiredAmount })
+}
+```
+
+<Warning>
+  If you skip the approval step, the order will be created successfully but solvers will not be able to settle it. The order will eventually expire unfilled.
+</Warning>
+
 ## Basic Flow
 
 The basic trading flow consists of three steps:
@@ -271,6 +295,99 @@ The SDK supports two order kinds:
     You'll pay at most the quoted sell amount (plus slippage).
   </Tab>
 </Tabs>
+
+## After Order Creation
+
+Once `postSwapOrder` returns successfully, the order has been signed and submitted to the CoW Protocol order book. Here is what happens next:
+
+1. **Solvers compete**: The order enters the CoW Protocol auction where solvers compete to find the best execution path for your trade.
+2. **Settlement**: The winning solver settles the order on-chain, transferring tokens between parties.
+3. **Surplus**: If solvers find a better price than your limit, the surplus goes back to you.
+
+### Checking Order Status
+
+Use the order UID returned by `postSwapOrder` to check the current status:
+
+```typescript
+const order = await sdk.getOrder({ orderUid: orderId })
+
+console.log('Status:', order.status)
+```
+
+Order status values:
+
+| Status                 | Meaning                                                        |
+| ---------------------- | -------------------------------------------------------------- |
+| `open`                 | Order is in the order book, waiting to be filled               |
+| `fulfilled`            | Order has been fully executed on-chain                         |
+| `cancelled`            | Order was cancelled by the owner                               |
+| `expired`              | Order passed its `validTo` timestamp without being filled      |
+| `presignaturePending`  | Order requires an on-chain pre-signature (smart contract flow) |
+
+### Polling for Completion
+
+If you need to wait for the order to fill:
+
+```typescript
+const { orderId } = await sdk.postSwapOrder(parameters)
+
+const pollInterval = 5000 // 5 seconds
+
+const checkOrder = async () => {
+  const order = await sdk.getOrder({ orderUid: orderId })
+
+  if (order.status === 'fulfilled') {
+    console.log('Order filled! TX hash:', order.executedTransactionHash)
+    return
+  }
+
+  if (order.status === 'cancelled' || order.status === 'expired') {
+    console.log('Order did not fill. Status:', order.status)
+    return
+  }
+
+  console.log('Order still open, checking again...')
+  setTimeout(checkOrder, pollInterval)
+}
+
+checkOrder()
+```
+
+### Cancelling an Order
+
+If you need to cancel a pending order, use off-chain cancellation:
+
+```typescript
+await sdk.offChainCancelOrder({ orderUid: orderId })
+
+console.log('Order cancelled')
+```
+
+<Note>
+  Off-chain cancellation asks solvers to stop filling the order. It takes effect almost immediately but is not enforced on-chain. For guaranteed cancellation of smart contract orders, see [Order Management](/cow-sdk/guides/order-management).
+</Note>
+
+## Pre-Flight Checklist
+
+Before calling `postSwapOrder`, verify:
+
+- Sell token approved to the Vault Relayer contract
+- Wallet has sufficient sell token balance
+- Token addresses are correct for the target chain
+- Amount is in the token's smallest unit (atoms, e.g. wei for 18-decimal tokens)
+- `slippageBps` is set appropriately (default 50 = 0.5%)
+
+## Troubleshooting
+
+Common issues when creating swap orders:
+
+| Problem | Likely Cause | Fix |
+| --- | --- | --- |
+| `InsufficientAllowance` error | Sell token not approved to Vault Relayer | Call `sdk.approveCowProtocol()` before posting the order |
+| `InsufficientBalance` error | Wallet doesn't hold enough sell token | Check balance before posting |
+| Order created but never fills | Low liquidity or tight slippage tolerance | Increase `slippageBps`, try more common token pairs |
+| Order expires immediately | `validFor` too short | Use at least 300 seconds (5 minutes) |
+| Quote fails with `NoLiquidity` | Token pair not supported or no available pools | Verify token addresses are correct, try larger amounts |
 
 ## Next Steps
 

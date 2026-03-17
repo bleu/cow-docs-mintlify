@@ -252,6 +252,49 @@ class CompletedOrder:
   </Step>
 </Steps>
 
+## After the Swap
+
+When `swap_tokens` returns a `CompletedOrder`, the order has been submitted to the CoW Protocol orderbook. Solvers now compete in batch auctions to find the best execution path for your trade.
+
+### Monitoring Order Status
+
+You can poll the order status using the `OrderBookApi`:
+
+```python
+from cowdao_cowpy.order_book.api import OrderBookApi
+from cowdao_cowpy.order_book.config import OrderBookAPIConfigFactory
+from cowdao_cowpy.common.config import SupportedChainId
+
+api = OrderBookApi(
+    OrderBookAPIConfigFactory.get_config("prod", SupportedChainId.MAINNET)
+)
+
+order = await api.get_order_by_uid(completed_order.uid)
+print(f"Status: {order.status}")  # open, fulfilled, cancelled, expired
+```
+
+### Order Status Values
+
+| Status | Description |
+|--------|-------------|
+| `open` | Order is active and waiting for solvers to fill it |
+| `fulfilled` | Order has been fully executed |
+| `cancelled` | Order was cancelled by the user |
+| `expired` | Order reached its `valid_to` timestamp without being filled |
+| `presignaturePending` | Safe/multisig order awaiting on-chain pre-signature |
+
+### Cancelling an Order
+
+If your order has not yet been filled, you can request cancellation:
+
+```python
+await api.delete_order(completed_order.uid, signature, signing_scheme)
+```
+
+<Note>
+  For a complete guide on querying, tracking, and cancelling orders, see [Managing Orders](/cow-py/guides/managing-orders).
+</Note>
+
 ## Supported Chains
 
 The SDK supports swapping on the following networks:
@@ -294,17 +337,14 @@ asyncio.run(safe_swap())
 
 ## Common Issues
 
-<Warning>
-  **Insufficient Allowance**: If you get an error during swap execution, verify that the Vault Relayer has sufficient token allowance.
-</Warning>
-
-<Note>
-  **Fee Handling**: CoW Protocol charges zero protocol fees. The `fee_amount` is set to `"0"` in the order. You only pay network fees when the order settles.
-</Note>
-
-<Tip>
-  **Slippage vs. Price**: The `buy_amount` in the order is calculated as `quote.buyAmount * (1 - slippage_tolerance)`. This ensures you receive at least your expected minimum.
-</Tip>
+| Problem | Likely Cause | Fix |
+|---------|-------------|-----|
+| `InsufficientAllowance` error | Vault Relayer not approved | Run the token approval flow first |
+| `InsufficientBalance` error | Not enough sell token | Check balance before calling `swap_tokens` |
+| Order created but never fills | Low liquidity or tight slippage | Increase `slippage_tolerance`, try common pairs |
+| `NoLiquidity` error | Token pair not supported | Verify token addresses, try larger amounts |
+| `UnexpectedResponseError` | API issue or invalid params | Check token addresses are checksummed, amount > 0 |
+| Order expires | Solvers couldn't fill in time | Use longer `valid_to`, wider slippage |
 
 ## Next Steps
 

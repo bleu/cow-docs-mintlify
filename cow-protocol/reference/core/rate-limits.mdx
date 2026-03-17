@@ -24,7 +24,8 @@ The CoW Protocol API enforces rate limits to ensure fair access and protect infr
 | `/api/v1/orders` | POST | 5 req/s | Per second | Order submission |
 | `/api/v1/orders/{uid}` | GET | 100 req/min | Per minute | Order status polling |
 | `/api/v1/orders/{uid}` | DELETE | 5 req/s | Per second | Order cancellation |
-| `/api/v1/trades` | GET | 100 req/min | Per minute | Trade history |
+| `/api/v2/trades` | GET | 100 req/min | Per minute | Trade history (preferred, paginated) |
+| `/api/v1/trades` | GET | 100 req/min | Per minute | Deprecated trade history endpoint |
 | `/api/v1/auction` | GET | 30 req/min | Per minute | Auction data |
 | General read endpoints | GET | 100 req/min | Per minute | Default for other GET endpoints |
 
@@ -184,6 +185,6 @@ When reporting an issue, include your **public IP address** and the **HTTP statu
 
 - [API Integration Guide](/cow-protocol/howto/integrate/api) — Getting started with the CoW Protocol API
 - [Order Book API Reference](/cow-protocol/reference/apis/orderbook) — Complete endpoint documentation
-- [Interactive API Explorer](https://api.cow.fi/docs/) — Test endpoints directly
+- [Order Book API Reference](/cow-protocol/reference/apis/orderbook) — Interactive endpoint docs and playground
 - [TypeScript SDK](/cow-sdk/introduction) — built-in rate limiting
 - [cow-py](/cow-py/introduction) — Python SDK with built-in backoff strategies

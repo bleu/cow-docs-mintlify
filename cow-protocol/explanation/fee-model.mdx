@@ -3,6 +3,10 @@ title: "Fee Model"
 description: "How fees work in CoW Protocol — from the quote response to on-chain settlement. Everything you need to understand protocol fees, network costs, partner fees, and how to retrieve fee data for accounting."
 ---
 
+<Note>
+**Building an integration?** The **[API Integration Guide](/cow-protocol/howto/integrate/api#step-3-compute-the-amounts-to-sign)** has the complete step-by-step fee computation with code examples. This page explains the concepts behind the fee model.
+</Note>
+
 ## How fees work
 
 CoW Protocol does **not** charge fees as a separate transaction. Instead, fees are embedded in the trade itself — deducted from the amounts you're already swapping. This means:

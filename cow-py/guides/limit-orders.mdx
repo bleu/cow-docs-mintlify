@@ -256,6 +256,48 @@ order = Order(
   Partially fillable orders may execute in multiple transactions over time. Use the [OrderBookApi](/cow-py/api/order-book) to track fill progress.
 </Warning>
 
+## When Will My Order Fill?
+
+Limit orders fill when the market price reaches your specified rate or better. Unlike [`swap_tokens`](/cow-py/guides/swapping-tokens) which executes immediately at the current market price, limit orders may take hours, days, or never fill if the market doesn't reach your target.
+
+Behind the scenes, solvers continuously check whether your order is profitable to execute. Once the on-chain price moves to meet (or beat) your limit, a solver will include your order in a batch and settle it.
+
+<Tip>
+  Fetch a market quote with `api.post_quote()` to see the current price before placing your limit order. This helps you set a realistic limit relative to where the market is right now. See [Using a Quote as Price Reference](#using-a-quote-as-price-reference) above.
+</Tip>
+
+## Monitoring Your Order
+
+After submitting a limit order, you can check its status at any time:
+
+```python
+order = await api.get_order_by_uid(order_uid)
+print(f"Status: {order.status}")
+```
+
+The `status` field will be one of:
+
+- **`open`** — the order is active and waiting to be filled
+- **`fulfilled`** — the order has been completely filled
+- **`cancelled`** — the order was cancelled by the owner
+- **`expired`** — the order passed its `valid_to` timestamp without being filled
+
+For partially fillable orders, inspect `executedSellAmount` and `executedBuyAmount` to see how much has been filled so far:
+
+```python
+order = await api.get_order_by_uid(order_uid)
+print(f"Executed sell: {order.executedSellAmount}")
+print(f"Executed buy: {order.executedBuyAmount}")
+```
+
+To cancel an open order:
+
+```python
+await api.delete_order(order_uid, cancel_signature, signing_scheme)
+```
+
+For the full set of order management operations, see [Managing Orders](/cow-py/guides/managing-orders).
+
 ## Custom App Data
 
 Add metadata to identify your application or configure partner fees:
@@ -292,6 +334,16 @@ See the [App Data guide](/cow-py/guides/app-data) for advanced metadata options 
 3. **Consider partial fills** — for large orders, partial fills improve execution
 4. **Monitor order status** — check if your order has been filled or partially filled using [Managing Orders](/cow-py/guides/managing-orders)
 5. **Token approvals** — ensure the Vault Relayer has sufficient allowance before submitting
+
+## Troubleshooting
+
+| Problem | Likely cause | Fix |
+|---|---|---|
+| `InsufficientAllowance` error | Vault Relayer not approved | Approve the sell token first (see [Token Approval Flow](/cow-py/guides/swapping-tokens#token-approval-flow)) |
+| `InsufficientBalance` error | Not enough sell token | Ensure balance covers `sell_amount` |
+| Order never fills | Limit price too far from market | Fetch a quote to check current market price |
+| Order fills at better price than limit | Solvers found surplus | Expected — CoW Protocol gives you price improvement |
+| `TooManyLimitOrders` error | Rate limit on open orders | Cancel old orders first |
 
 ## Next Steps
 

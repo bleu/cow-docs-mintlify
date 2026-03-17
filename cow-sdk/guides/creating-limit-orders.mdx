@@ -15,6 +15,39 @@ Unlike swap orders that execute at market price, limit orders give you precise c
   Limit orders are "good-til-cancelled" by default and remain in the order book until filled or cancelled.
 </Note>
 
+## Prerequisites
+
+Before creating a limit order, make sure:
+
+1. **Token approval**: The sell token must be approved to the CoW Protocol Vault Relayer contract. Without this, the protocol cannot move your tokens when the order fills. See [Token Approvals](/cow-sdk/guides/token-approvals) for full details.
+
+2. **Sufficient balance**: Your wallet must hold enough of the sell token to cover the `sellAmount`. The order will fail at submission if balance is insufficient.
+
+3. **For buy limit orders**: The `sellAmount` you specify is the _maximum_ you will pay. You may end up paying less if solvers find a better route.
+
+### Check and Set Approval
+
+```typescript
+// Check current allowance
+const allowance = await sdk.getCowProtocolAllowance({ tokenAddress: sellToken, owner })
+
+// Approve if needed
+if (allowance < BigInt(sellAmount)) {
+  await sdk.approveCowProtocol({ tokenAddress: sellToken, amount: BigInt(sellAmount) })
+}
+```
+
+### Pre-Flight Checklist
+
+Before submitting your limit order, verify:
+
+- Sell token approved to Vault Relayer
+- Wallet has sufficient sell token balance
+- Token addresses are correct for the target chain
+- Amounts are in token atoms (smallest unit) — watch decimal differences (USDC = 6 decimals, WETH = 18 decimals)
+- Limit price is reasonable relative to the current market
+- `validTo` gives enough time for the market to reach your price
+
 ## Using postLimitOrder
 
 The `postLimitOrder` method creates a limit order with your specified amounts.
@@ -284,6 +317,55 @@ const { orderId } = await sdk.postLimitOrder(limitOrderParameters)
   Partially fillable orders may be executed in multiple transactions over time. Monitor the order status to track fills.
 </Warning>
 
+## When Will My Order Fill?
+
+Limit orders fill when the market price reaches your specified rate or better. Unlike swap orders that execute immediately, limit orders may take hours, days, or never fill depending on market conditions.
+
+Here is what happens after you submit:
+
+1. **Your order enters the order book.** CoW Protocol solvers continuously scan the book for profitable orders to execute.
+2. **Solvers evaluate your order each batch.** If your limit price is at or better than the current market price, solvers will include it in the next settlement.
+3. **If your price is far from market**, the order sits in the book waiting for the market to move to your price.
+4. **When conditions are met**, a solver executes your order on-chain. You may even receive surplus (a better price than you specified).
+
+<Note>
+  Use `sdk.getQuote()` to check the current market price before setting your limit. This helps you understand how far your limit is from the market and set realistic expectations for fill time.
+</Note>
+
+## Monitoring Your Order
+
+After creating a limit order, you will want to track its status.
+
+### Check Order Status
+
+```typescript
+const order = await sdk.getOrder({ orderUid: orderId })
+
+console.log('Status:', order.status)
+// Possible values: open, fulfilled, cancelled, expired, presignaturePending
+```
+
+### Track Partial Fill Progress
+
+For partially fillable orders, inspect how much has been executed so far:
+
+```typescript
+const order = await sdk.getOrder({ orderUid: orderId })
+
+console.log('Executed sell amount:', order.executedSellAmount)
+console.log('Executed buy amount:', order.executedBuyAmount)
+```
+
+### Cancel an Order
+
+If you want to cancel an open limit order:
+
+```typescript
+await sdk.offChainCancelOrder({ orderUid: orderId })
+```
+
+For full details on querying, cancelling, and managing orders, see [Order Management](/cow-sdk/guides/order-management).
+
 ## Comparing Swap vs Limit Orders
 
 | Feature       | Swap Orders                     | Limit Orders                 |
@@ -301,6 +383,17 @@ const { orderId } = await sdk.postLimitOrder(limitOrderParameters)
 3. **Consider partial fills**: For large orders, partial fills can improve execution
 4. **Monitor order status**: Check if your order has been filled or partially filled
 5. **Handle slippage**: Limit orders typically use 0 slippage since price is explicit
+
+## Troubleshooting
+
+| Problem | Likely Cause | Fix |
+| --- | --- | --- |
+| `InsufficientAllowance` error | Sell token not approved to Vault Relayer | Call `sdk.approveCowProtocol()` before placing the order |
+| `InsufficientBalance` error | Wallet does not hold enough sell token | Verify your balance covers `sellAmount` |
+| Order never fills | Limit price is too far from the current market | Check current market price with `sdk.getQuote()` and adjust |
+| Order fills at a different price than expected | Solvers found a better execution route | This is expected — CoW Protocol gives you surplus (better than your limit) |
+| `TooManyLimitOrders` error | Too many open limit orders | Cancel old or stale orders first |
+| Partial fill stuck at partial | Remaining amount is too small for solvers to profitably execute | Cancel the order and create a new one for the remainder |
 
 ## Next Steps
 

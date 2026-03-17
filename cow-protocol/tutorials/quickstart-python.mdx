@@ -3,6 +3,8 @@ title: "Quickstart: Python"
 description: "Place your first CoW Protocol order using Python — from quote to confirmed trade in under 10 minutes."
 ---
 
+import { InlineResource } from '/snippets/resource-actions.jsx'
+
 This guide walks you through placing a real order on CoW Protocol using Python and the REST API directly. By the end, you will have submitted a signed intent on the Sepolia testnet and watched it get filled.
 
 <Note>
@@ -20,6 +22,14 @@ Before starting, ensure you have:
 <Warning>
 This guide uses the **Sepolia testnet**. Never hardcode private keys in production code. Use environment variables or a secrets manager.
 </Warning>
+
+Sepolia API base URL: <InlineResource value="https://api.cow.fi/sepolia/api/v1" href="https://api.cow.fi/sepolia/api/v1" />
+
+Sepolia RPC: <InlineResource value="https://rpc.sepolia.org" href="https://rpc.sepolia.org" />
+
+Settlement contract: <InlineResource value="0x9008D19f58AAbD9eD0D60971565AA8510560ab41" chain="sepolia" showExplorer />
+
+GPv2VaultRelayer: <InlineResource value="0xC92E8bdf79f0507f65a392b0ab4667716BFE0110" chain="sepolia" showExplorer />
 
 ## Installation
 
@@ -131,6 +141,8 @@ quote_request = {
     "receiver": account.address,
     "validFor": 1800,  # 30 minutes
     "signingScheme": "eip712",
+    "appData": "{}",
+    "appDataHash": "0xb48d38f93eaa084033fc5970bf96e559c33c4cdc07d889ab00b4d63f9590739d",
 }
 
 response = requests.post(f"{API_BASE}/quote", json=quote_request)
@@ -138,14 +150,16 @@ response.raise_for_status()
 quote_data = response.json()
 
 quote = quote_data["quote"]
+quote_id = quote_data["id"]
 print(f"Sell amount (after network costs): {quote['sellAmount']}")
 print(f"Buy amount (estimated):            {quote['buyAmount']}")
 print(f"Fee amount (network costs):        {quote['feeAmount']}")
 print(f"Valid until:                        {quote['validTo']}")
+print(f"Quote expires at:                   {quote_data['expiration']}")
 ```
 
 <Note>
-The quote is valid for a limited time (controlled by `validFor`). You must sign and submit the order before it expires. If you get an `ExpiredQuote` error later, simply request a fresh quote.
+The quote is valid for a limited time (controlled by `validFor`). Sign and submit the order before `quote_data["expiration"]`. If the backend later rejects the quote as stale or no longer valid, request a fresh quote and retry.
 </Note>
 
 ### Sign the order (EIP-712)
@@ -182,6 +196,8 @@ order_types = {
 # Build the order data from the quote
 # For sell orders: sellAmount = quote.sellAmount + quote.feeAmount (spot price)
 #                  buyAmount  = quote.buyAmount (minimum to receive)
+app_data_hash = quote.get("appDataHash", quote["appData"])
+
 order_data = {
     "sellToken": quote["sellToken"],
     "buyToken": quote["buyToken"],
@@ -189,7 +205,7 @@ order_data = {
     "sellAmount": int(quote["sellAmount"]) + int(quote["feeAmount"]),
     "buyAmount": int(quote["buyAmount"]),
     "validTo": quote["validTo"],
-    "appData": bytes.fromhex(quote["appData"][2:]),
+    "appData": bytes.fromhex(app_data_hash[2:]),
     "feeAmount": 0,
     "kind": "sell",
     "partiallyFillable": False,
@@ -223,6 +239,7 @@ submit_body = {
     "buyAmount": quote["buyAmount"],
     "validTo": quote["validTo"],
     "appData": quote["appData"],
+    "appDataHash": app_data_hash,
     "feeAmount": "0",
     "kind": "sell",
     "partiallyFillable": False,
@@ -231,6 +248,7 @@ submit_body = {
     "signingScheme": "eip712",
     "signature": "0x" + signature,
     "from": account.address,
+    "quoteId": quote_id,
 }
 
 response = requests.post(f"{API_BASE}/orders", json=submit_body)
@@ -268,13 +286,17 @@ else:
 
 </Steps>
 
+<Note>
+Before placing orders in production, review the **[Pre-Flight Checklist](/cow-protocol/howto/integrate/api#pre-flight-checklist)** to avoid the most common integration mistakes.
+</Note>
+
 ## Troubleshooting
 
 | Error | Cause | Fix |
 |---|---|---|
 | `InsufficientAllowance` | The vault relayer is not approved to spend your sell token | Run the approval step (Step 2) |
 | `InvalidSignature` | EIP-712 domain or type definitions do not match the contract | Verify `domain_data` and `order_types` match exactly as shown above |
-| `ExpiredQuote` | The quote validity period has elapsed | Request a fresh quote and sign/submit immediately |
+| `QuoteNotFound` / `InvalidQuote` | The quote is no longer valid for order creation | Request a fresh quote and sign/submit immediately |
 | `InsufficientBalance` | Your wallet does not hold enough sell token | Get test tokens from a Sepolia faucet and wrap ETH to WETH |
 | `SellAmountDoesNotCoverFee` | Trade amount is too small to cover network costs | Increase the `sellAmountBeforeFee` in your quote request |
 
@@ -290,6 +312,7 @@ Now that you have placed your first order, explore more of CoW Protocol:
 - **[TypeScript SDK Quickstart](/cow-sdk/quickstart)** — Use the official TypeScript SDK for frontend/Node.js integrations
 - **[Limit Orders](/cow-swap/tutorials/limit)** — Place limit orders that execute at your target price
 - **[TWAP Orders](/cow-swap/tutorials/twap)** — Split large orders over time with Time-Weighted Average Price
-- **[API Integration Guide](/cow-protocol/howto/integrate/api)** — Deep dive into the REST API, including rate limits and all endpoints
+- **[API Integration Guide](/cow-protocol/howto/integrate/api)** — Complete step-by-step API reference with fee formulas and pre-flight checklist
+- **[Testing Guide](/cow-protocol/howto/integrate/testing)** — How to test on Sepolia and graduate to production
 - **[How Intents Are Formed](/cow-protocol/explanation/how-it-works/how-intents-are-formed)** — Understand the fee pipeline and amount calculations
 - **[Signing Schemes](/cow-protocol/reference/core/signing-schemes)** — Learn about EIP-712, `ethSign`, and pre-signed orders

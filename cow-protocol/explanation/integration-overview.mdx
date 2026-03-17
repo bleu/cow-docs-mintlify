@@ -1,21 +1,40 @@
 ---
 title: "Integrate CoW Protocol"
-description: "CoW Protocol offers three integration approaches — from drop-in widget to full API control. Choose the path that fits your project."
+description: "CoW Protocol offers four integration approaches — from drop-in widget to full API control. Choose the path that fits your project."
 ---
 
 <div style={{ background: 'linear-gradient(135deg, #012F7A 0%, #3F80FF 100%)', borderRadius: '12px', padding: '2rem', marginBottom: '2rem', color: 'white' }}>
-  <h2 style={{ color: 'white', marginTop: 0 }}>Three ways to integrate</h2>
+  <h2 style={{ color: 'white', marginTop: 0 }}>Four ways to integrate</h2>
   <p style={{ opacity: 0.9, color: 'white' }}>Whether you need a quick drop-in solution or full control over the trading stack, there's an integration path for you.</p>
 </div>
 
+## Which approach should I use?
+
+**Start here.** Answer the first question that applies:
+
+| If you... | Use | Time to integrate |
+|---|---|---|
+| Want to add a swap UI to a web app with minimal code | **[Widget](#widget-integration)** | Minutes |
+| Are building a custom trading UI in TypeScript/JavaScript | **[TypeScript SDK](#sdk-integration)** | Hours |
+| Are building a trading bot, automation, or data pipeline in Python | **[Python SDK](#python-sdk)** | Hours |
+| Need full control from a backend service, use a language other than TS/Python, or need to understand the protocol at the lowest level | **[REST API](#api-integration)** | Days |
+
+<Note>
+**Not sure?** Start with the **Widget** if you just need a swap interface. Use the **TypeScript SDK** if you need programmatic control from a frontend or Node.js app. Use the **API** only if the SDKs don't cover your use case.
+</Note>
+
 ## Compare approaches
 
-| Approach | Best For | Language | Setup | Customization |
+| | Widget | SDK (TS) | SDK (Py) | API |
 |---|---|---|---|---|
-| **Widget** | Quick integration | JS | Minutes | Styling & config |
-| **SDK (TS)** | Custom UIs | TypeScript | Hours | Full UI control |
-| **SDK (Py)** | Bots & automation | Python | Hours | Programmatic |
-| **API** | Backend services | Any | Days | Maximum |
+| **Setup time** | Minutes | Hours | Hours | Days |
+| **Language** | JS (embed) | TypeScript | Python | Any |
+| **Custom UI** | Theming only | Full control | N/A (backend) | Full control |
+| **Signing handled** | Automatic | Automatic | Automatic | Manual |
+| **Fee computation** | Automatic | Automatic | Automatic | Manual |
+| **Order monitoring** | Built-in | SDK methods | SDK methods | Poll API |
+| **Order types** | Swap, Limit, TWAP | Swap, Limit, TWAP, Programmatic | Swap, Limit, TWAP | All |
+| **Smart contract wallets** | Supported | Supported | Supported | Manual |
 
 ## Widget Integration
 
@@ -45,17 +64,19 @@ const params: CowSwapWidgetParams = {
 <CowSwapWidget params={params} />
 ```
 
+**Best for:** dApps that want a swap feature without building trading logic. DeFi dashboards, portfolio apps, NFT marketplaces.
+
 ## SDK Integration
 
 <Card title="TypeScript SDK" icon="code" href="/cow-sdk/quickstart">
   TypeScript SDK with multiple levels of abstraction
 </Card>
 
-For developers who want full control over the trading UI while leveraging CoW Protocol's features programmatically.
+For developers who want full control over the trading UI while leveraging CoW Protocol's features programmatically. The SDK handles signing, fee computation, and order construction for you.
 
-- **Multiple abstraction levels** — from high-level trading functions to low-level API access
+- **Multiple abstraction levels** — from high-level `postSwapOrder()` to low-level `OrderBookApi`
 - **Adapter support** — works with Viem, Ethers v5, and Ethers v6
-- **Order management** — create, sign, submit, and cancel orders
+- **Order management** — create, sign, submit, cancel, and monitor orders
 - **All order types** — market, limit, TWAP, and programmatic orders
 
 ```bash
@@ -63,11 +84,27 @@ npm install @cowprotocol/cow-sdk
 ```
 
 ```typescript
-import { OrderBookApi, SupportedChainId } from '@cowprotocol/cow-sdk'
+import { TradingSdk, OrderKind } from '@cowprotocol/sdk-trading'
 
-const orderBookApi = new OrderBookApi({ chainId: SupportedChainId.MAINNET })
-const quote = await orderBookApi.getQuote(quoteRequest)
+const sdk = new TradingSdk({ chainId: 1, appCode: 'my-app' }, {}, adapter)
+
+const { orderId } = await sdk.postSwapOrder({
+  kind: OrderKind.SELL,
+  sellToken: WETH,
+  sellTokenDecimals: 18,
+  buyToken: USDC,
+  buyTokenDecimals: 6,
+  amount: '1000000000000000000', // 1 WETH
+})
 ```
+
+**Best for:** custom trading UIs, frontend dApps that need programmatic order control, Node.js backend services in TypeScript.
+
+**Key guides:**
+- [Creating Swap Orders](/cow-sdk/guides/creating-swap-orders) — market orders with automatic quoting
+- [Creating Limit Orders](/cow-sdk/guides/creating-limit-orders) — price-specific orders
+- [Token Approvals](/cow-sdk/guides/token-approvals) — managing ERC-20 approvals
+- [Order Management](/cow-sdk/guides/order-management) — tracking and cancelling orders
 
 <Accordion title="When to use the SDK vs Widget">
   Use the **SDK** when you need to:
@@ -82,7 +119,7 @@ const quote = await orderBookApi.getQuote(quoteRequest)
   - Minimize maintenance burden
 </Accordion>
 
-## Python SDK (cow-py)
+## Python SDK
 
 <Card title="cow-py" icon="python" href="/cow-py/quickstart">
   Python SDK for trading bots, data analysis, and automation
@@ -114,21 +151,42 @@ result = await swap_tokens(
 print(f"Order: {result.uid}")
 ```
 
+**Best for:** trading bots, automated strategies, data pipelines, backend services in Python.
+
 ## API Integration
 
 <Card title="REST API" icon="square-terminal" href="/cow-protocol/howto/integrate/api">
   Direct HTTP access to the Orderbook API
 </Card>
 
-Maximum flexibility for backend services, trading bots, and advanced integrations that need full control over every aspect of the trading flow.
+Maximum flexibility for integrations that need full control over every aspect of the trading flow. You handle signing, fee computation, and order construction yourself.
 
 - **Full control** — manage the entire order lifecycle via REST
 - **Language agnostic** — works with any programming language
 - **Real-time data** — access to orderbook state, auction data, and trade history
 
-<Note>
-  The API requires handling order signing, fee estimation, and settlement monitoring yourself. For most use cases, the [SDK](/cow-sdk/quickstart) provides a more ergonomic experience while still giving you full control.
-</Note>
+```bash
+# Get a quote
+curl -X POST "https://api.cow.fi/mainnet/api/v1/quote" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sellToken": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    "buyToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "sellAmountBeforeFee": "1000000000000000000",
+    "kind": "sell",
+    "from": "0xYourAddress"
+  }'
+```
+
+**Best for:** backend services in languages other than TS/Python, custom order types, integrations that need protocol-level control.
+
+<Warning>
+The API requires handling order signing, fee computation, and settlement monitoring yourself. The [API Integration Guide](/cow-protocol/howto/integrate/api) covers the complete flow step-by-step. For most use cases, the SDKs provide a faster path to production.
+</Warning>
+
+## Testing your integration
+
+All integration paths should be tested on Sepolia before going to production. See the **[Testing Guide](/cow-protocol/howto/integrate/testing)** for the step-by-step process: get test tokens, approve, place a test order, verify settlement, then graduate to mainnet.
 
 ---
 
@@ -144,7 +202,7 @@ Maximum flexibility for backend services, trading bots, and advanced integration
   <Card title="Python SDK" icon="python" href="/cow-py/quickstart">
     Swap tokens with one function call
   </Card>
-  <Card title="API reference" icon="square-terminal" href="/cow-protocol/reference/apis/orderbook">
-    Full Orderbook API docs
+  <Card title="API Integration Guide" icon="square-terminal" href="/cow-protocol/howto/integrate/api">
+    Full step-by-step API guide
   </Card>
 </CardGroup>
