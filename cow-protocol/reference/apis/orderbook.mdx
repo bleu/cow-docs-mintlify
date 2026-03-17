@@ -7,6 +7,15 @@ import { InlineResource } from '/snippets/resource-actions.jsx'
 
 The Orderbook API is the primary interface for interacting with CoW Protocol's order management system.
 
+## Start Here
+
+If you are integrating rather than just looking up a schema:
+
+- [API Integration Guide](/cow-protocol/howto/integrate/api) — the full quote → sign → submit → monitor flow
+- [Quickstart: Raw API (cURL)](/cow-protocol/tutorials/quickstart-curl) — the most copy-pasteable raw HTTP walkthrough
+- [Testing Your Integration](/cow-protocol/howto/integrate/testing) — Sepolia to barn to production rollout
+- [TypeScript `OrderBookApi`](/cow-sdk/api/order-book-api) and [Python `OrderBookApi`](/cow-py/api/order-book) — SDK access to the same Orderbook workflows
+
 ## Base URLs
 
 | Network | Production | Staging |
@@ -28,7 +37,7 @@ The Orderbook API is the primary interface for interacting with CoW Protocol's o
 
 ### Quotes
 
-- `POST /api/v1/quote` — Get a price quote for a trade
+- [`POST /api/v1/quote`](/api-reference/quote-a-price-and-fee-for-the-specified-order-parameters) — Get a price quote for a trade
 
 <Note>
 `POST /api/v1/quote` returns the base order parameters in `quote`, plus quote metadata such as `expiration` and `id`. If your integration applies client-side slippage or partner fees before signing, see the [API Integration Guide](/cow-protocol/howto/integrate/api) for the full amount-adjustment flow.
@@ -36,24 +45,26 @@ The Orderbook API is the primary interface for interacting with CoW Protocol's o
 
 ### Orders
 
-- `POST /api/v1/orders` — Submit a signed order
-- `GET /api/v1/orders/{UID}` — Get order by UID
-- `DELETE /api/v1/orders/{UID}` — Cancel an order
-- `GET /api/v1/account/{owner}/orders` — Get orders for an account
+- [`POST /api/v1/orders`](/api-reference/create-a-new-order) — Submit a signed order
+- [`GET /api/v1/orders/{UID}`](/api-reference/get-existing-order-from-uid) — Get order by UID
+- [`DELETE /api/v1/orders/{UID}`](/api-reference/cancel-an-order-by-marking-it-invalid-with-a-timestamp) — Cancel an order
+- [`GET /api/v1/account/{owner}/orders`](/api-reference/get-orders-of-one-user-paginated) — Get orders for an account
 
 ### Trades
 
-- `GET /api/v2/trades` — Get paginated trades (preferred; filter by `owner` or `orderUid`)
-- `GET /api/v1/trades` — Deprecated trades endpoint
+- [`GET /api/v2/trades`](/api-reference/get-existing-trades-paginated) — Get paginated trades (preferred; filter by `owner` or `orderUid`)
+- [`GET /api/v1/trades`](/api-reference/get-existing-trades-unpaginated) — Deprecated trades endpoint
 
 ### Auction
 
-- `GET /api/v1/auction` — Get the current batch auction
-- `GET /api/v1/solver_competition/{auction_id}` — Get solver competition results
+- [`GET /api/v1/auction`](/api-reference/get-the-current-batch-auction) — Get the current batch auction
+- [`GET /api/v1/solver_competition/{auction_id}`](/api-reference/get-information-about-a-solver-competition) — Get solver competition results
 
 ## Interactive Reference
 
 Browse the interactive Orderbook endpoint docs directly in this site under **Orderbook Endpoints** in the left navigation. Those pages are generated from the upstream OpenAPI specification, so users can inspect parameters, schemas, and playground requests without leaving `docs.cow.bleu.builders`.
+
+If you want the most common raw API references directly, start with [`POST /api/v1/quote`](/api-reference/quote-a-price-and-fee-for-the-specified-order-parameters), [`POST /api/v1/orders`](/api-reference/create-a-new-order), [`GET /api/v1/orders/{UID}`](/api-reference/get-existing-order-from-uid), and [`GET /api/v2/trades`](/api-reference/get-existing-trades-paginated).
 
 If you need the upstream spec directly, use <InlineResource value="https://raw.githubusercontent.com/cowprotocol/services/main/crates/orderbook/openapi.yml" href="https://raw.githubusercontent.com/cowprotocol/services/main/crates/orderbook/openapi.yml" />.
 

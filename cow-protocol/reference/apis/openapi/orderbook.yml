@@ -58,17 +58,22 @@ paths:
     post:
       operationId: createOrder
       summary: Create a new order.
-      description: >-
-        In order to replace an existing order with a new one, the appData must
-        contain a [valid replacement order
+      description: |-
+        Submit a signed order to the Orderbook.
+
+        In order to replace an existing order with a new one, the `appData`
+        must contain a [valid replacement order
         UID](https://github.com/cowprotocol/app-data/blob/main/src/schemas/v1.1.0.json#L62),
-        then the indicated order is cancelled, and a new one placed.
+        then the indicated order is cancelled, and a new one placed. This
+        allows an old order to be cancelled and a new one to be created in one
+        atomic operation with a single signature.
 
-        This allows an old order to be cancelled AND a new order to be created
-        in an atomic operation with a single signature.
-
-        This may be useful for replacing orders when on-chain prices move
-        outside of the original order's limit price.
+        Related docs:
+        - [Orderbook API overview](/cow-protocol/reference/apis/orderbook)
+        - [API Integration Guide](/cow-protocol/howto/integrate/api)
+        - [Quickstart: Raw API (cURL)](/cow-protocol/tutorials/quickstart-curl)
+        - [Signing Schemes](/cow-protocol/reference/core/signing-schemes)
+        - [Error Reference](/cow-protocol/reference/core/error-reference)
       responses:
         "201":
           description: Order has been accepted.
@@ -188,6 +193,17 @@ paths:
     get:
       operationId: getOrder
       summary: Get existing order from UID.
+      description: |-
+        Fetch a single stored order by UID.
+
+        Use this together with the status and trades endpoints when monitoring
+        whether an order is still open, partially filled, or settled.
+
+        Related docs:
+        - [Orderbook API overview](/cow-protocol/reference/apis/orderbook)
+        - [Quickstart: Raw API (cURL)](/cow-protocol/tutorials/quickstart-curl)
+        - [Testing Your Integration](/cow-protocol/howto/integrate/testing)
+        - [GET /api/v2/trades](/api-reference/get-existing-trades-paginated)
       parameters:
         - in: path
           name: UID
@@ -299,6 +315,10 @@ paths:
         Results are sorted by block number and log index descending (newest trades first).
 
         **Note:** This endpoint returns all matching trades without pagination. For paginated results, use `/api/v2/trades`.
+
+        Related docs:
+        - [Orderbook API overview](/cow-protocol/reference/apis/orderbook)
+        - [GET /api/v2/trades](/api-reference/get-existing-trades-paginated)
       parameters:
         - name: owner
           in: query
@@ -340,6 +360,12 @@ paths:
         To enumerate all trades start with `offset` 0 and keep increasing the
         `offset` by the total number of returned results. When a response
         contains less than `limit` the last page has been reached.
+
+        Related docs:
+        - [Orderbook API overview](/cow-protocol/reference/apis/orderbook)
+        - [Quickstart: Raw API (cURL)](/cow-protocol/tutorials/quickstart-curl)
+        - [Testing Your Integration](/cow-protocol/howto/integrate/testing)
+        - [Solver Reward Accounting](/cow-protocol/reference/core/auctions/accounting)
       parameters:
         - name: owner
           in: query
@@ -417,6 +443,11 @@ paths:
         To enumerate all orders start with `offset` 0 and keep increasing the
         `offset` by the total number of returned results. When a response
         contains less than `limit` the last page has been reached.
+
+        Related docs:
+        - [Orderbook API overview](/cow-protocol/reference/apis/orderbook)
+        - [GET /api/v1/orders/{UID}](/api-reference/get-existing-order-from-uid)
+        - [GET /api/v2/trades](/api-reference/get-existing-trades-paginated)
       parameters:
         - name: owner
           in: path
@@ -481,13 +512,21 @@ paths:
     post:
       operationId: quote
       summary: Quote a price and fee for the specified order parameters.
-      description: >
+      description: |-
         Given a partial order compute the minimum fee and a price estimate for
         the order. The response includes base order parameters in `quote`, plus
         quote metadata such as `expiration` and `id`.
 
         If your integration applies client-side slippage or partner fees before
         signing, recompute the signing amounts before you create the order.
+
+        Related docs:
+        - [Orderbook API overview](/cow-protocol/reference/apis/orderbook)
+        - [API Integration Guide](/cow-protocol/howto/integrate/api)
+        - [Quickstart: Raw API (cURL)](/cow-protocol/tutorials/quickstart-curl)
+        - [TypeScript `OrderBookApi`](/cow-sdk/api/order-book-api)
+        - [Python `OrderBookApi`](/cow-py/api/order-book)
+        - [POST /api/v1/orders](/api-reference/create-a-new-order)
       requestBody:
         description: The order parameters to compute a quote for.
         required: true

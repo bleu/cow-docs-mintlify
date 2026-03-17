@@ -31,38 +31,211 @@
  * Polish: horizontal overflow regions such as tables, code blocks, and API tab
  * lists should not inherit harsh default browser scrollbars.
  */
-:where(.mdx-content, .api-section, main) :is(.overflow-x-auto, [data-component-part="tabs-list"]) {
+:where(.mdx-content, .api-section, main) :is(
+  .overflow-x-auto,
+  [data-component-part="tabs-list"],
+  [data-component-part="code-block-root"],
+  .code-block-background
+) {
   scrollbar-width: thin;
   scrollbar-color: rgba(1, 47, 122, 0.28) transparent;
 }
 
-:where(.mdx-content, .api-section, main) :is(.overflow-x-auto, [data-component-part="tabs-list"])::-webkit-scrollbar {
+:where(.mdx-content, .api-section, main) :is(
+  .overflow-x-auto,
+  [data-component-part="tabs-list"],
+  [data-component-part="code-block-root"],
+  .code-block-background
+)::-webkit-scrollbar {
   height: 10px;
 }
 
-:where(.mdx-content, .api-section, main) :is(.overflow-x-auto, [data-component-part="tabs-list"])::-webkit-scrollbar-track {
+:where(.mdx-content, .api-section, main) :is(
+  .overflow-x-auto,
+  [data-component-part="tabs-list"],
+  [data-component-part="code-block-root"],
+  .code-block-background
+)::-webkit-scrollbar-track {
   background: transparent;
 }
 
-:where(.mdx-content, .api-section, main) :is(.overflow-x-auto, [data-component-part="tabs-list"])::-webkit-scrollbar-thumb {
+:where(.mdx-content, .api-section, main) :is(
+  .overflow-x-auto,
+  [data-component-part="tabs-list"],
+  [data-component-part="code-block-root"],
+  .code-block-background
+)::-webkit-scrollbar-thumb {
   background-color: rgba(1, 47, 122, 0.28);
   border: 2px solid transparent;
   border-radius: 9999px;
   background-clip: padding-box;
 }
 
-:where(.mdx-content, .api-section, main) :is(.overflow-x-auto, [data-component-part="tabs-list"])::-webkit-scrollbar-thumb:hover {
+:where(.mdx-content, .api-section, main) :is(
+  .overflow-x-auto,
+  [data-component-part="tabs-list"],
+  [data-component-part="code-block-root"],
+  .code-block-background
+)::-webkit-scrollbar-thumb:hover {
   background-color: rgba(1, 47, 122, 0.4);
 }
 
-.dark :where(.mdx-content, .api-section, main) :is(.overflow-x-auto, [data-component-part="tabs-list"]) {
+.dark :where(.mdx-content, .api-section, main) :is(
+  .overflow-x-auto,
+  [data-component-part="tabs-list"],
+  [data-component-part="code-block-root"],
+  .code-block-background
+) {
   scrollbar-color: rgba(63, 128, 255, 0.42) transparent;
 }
 
-.dark :where(.mdx-content, .api-section, main) :is(.overflow-x-auto, [data-component-part="tabs-list"])::-webkit-scrollbar-thumb {
+.dark :where(.mdx-content, .api-section, main) :is(
+  .overflow-x-auto,
+  [data-component-part="tabs-list"],
+  [data-component-part="code-block-root"],
+  .code-block-background
+)::-webkit-scrollbar-thumb {
   background-color: rgba(63, 128, 255, 0.42);
 }
 
-.dark :where(.mdx-content, .api-section, main) :is(.overflow-x-auto, [data-component-part="tabs-list"])::-webkit-scrollbar-thumb:hover {
+.dark :where(.mdx-content, .api-section, main) :is(
+  .overflow-x-auto,
+  [data-component-part="tabs-list"],
+  [data-component-part="code-block-root"],
+  .code-block-background
+)::-webkit-scrollbar-thumb:hover {
   background-color: rgba(63, 128, 255, 0.56);
+}
+
+/*
+ * Mintlify/Shiki emits light-theme inline styles and exposes the dark values
+ * through CSS variables. In dark mode, force code blocks to consume those
+ * variables so every language block renders consistently.
+ */
+.dark :where(.mdx-content, .api-section, main) pre.shiki,
+.dark :where(.mdx-content, .api-section, main) pre.shiki code,
+.dark :where(.mdx-content, .api-section, main) pre.shiki span,
+.dark :where(.mdx-content, .api-section, main) [data-component-part="code-block-root"] {
+  background-color: var(--shiki-dark-bg, #0b0c0e) !important;
+}
+
+.dark :where(.mdx-content, .api-section, main) pre.shiki,
+.dark :where(.mdx-content, .api-section, main) pre.shiki code,
+.dark :where(.mdx-content, .api-section, main) pre.shiki span {
+  color: var(--shiki-dark, inherit) !important;
+  font-style: var(--shiki-dark-font-style, inherit) !important;
+  font-weight: var(--shiki-dark-font-weight, inherit) !important;
+  text-decoration: var(--shiki-dark-text-decoration, inherit) !important;
+}
+
+.inline-resource {
+  align-items: center;
+  column-gap: 0.28rem;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  min-width: 0;
+  vertical-align: middle;
+}
+
+.inline-resource__link {
+  color: inherit;
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.inline-resource__value {
+  display: inline-block;
+  line-height: 1.45;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  vertical-align: middle;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.inline-resource__value--compact {
+  max-width: 34ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inline-resource__actions {
+  align-items: center;
+  column-gap: 0.2rem;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.inline-resource__action {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 9999px;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  height: 1.35rem;
+  justify-content: center;
+  opacity: 0.54;
+  padding: 0;
+  text-decoration: none;
+  transition:
+    opacity 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease,
+    color 160ms ease;
+  width: 1.35rem;
+}
+
+.inline-resource__action:hover,
+.inline-resource__action:focus-visible {
+  background: rgba(127, 127, 127, 0.08);
+  opacity: 1;
+  outline: none;
+}
+
+.inline-resource__icon {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+}
+
+.inline-resource__icon--check {
+  display: none;
+}
+
+.inline-resource__action[data-state="copied"] {
+  color: #116329;
+  opacity: 1;
+}
+
+.inline-resource__action[data-state="copied"] .inline-resource__icon--copy {
+  display: none;
+}
+
+.inline-resource__action[data-state="copied"] .inline-resource__icon--check {
+  display: inline-flex;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .inline-resource__actions {
+    opacity: 0;
+    transform: translateX(-0.1rem);
+    transition:
+      opacity 160ms ease,
+      transform 160ms ease;
+  }
+
+  .inline-resource:hover .inline-resource__actions,
+  .inline-resource:focus-within .inline-resource__actions {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.dark .inline-resource__action[data-state="copied"] {
+  color: #9ce89f;
 }
