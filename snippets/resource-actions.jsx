@@ -70,7 +70,6 @@ export const InlineResource = ({
     ethereum: "https://etherscan.io",
     gnosis: "https://gnosisscan.io",
     ink: "https://explorer.inkonchain.com",
-    lens: "https://explorer.lens.xyz",
     linea: "https://lineascan.build",
     mainnet: "https://etherscan.io",
     optimism: "https://optimistic.etherscan.io",

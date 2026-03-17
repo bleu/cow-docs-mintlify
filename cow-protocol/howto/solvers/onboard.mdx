@@ -48,7 +48,7 @@ If you would like to secure your solver, you can set up a firewall and only acce
 
 ### Exposed Endpoint
 
-The exposed endpoint provided must be of the following format: \{base\_url}/$\{envName}/$\{network} - for example: [https://api.mysolver.io/staging/mainnet](https://api.mysolver.io/staging/mainnet) envName values: shadow, staging, prod supported networks: arbitrum-one, avalanche, base, bnb, lens, linea, mainnet, polygon, xdai (gnosis) and more are coming out!
+The exposed endpoint provided must be of the following format: \{base\_url}/$\{envName}/$\{network} - for example: [https://api.mysolver.io/staging/mainnet](https://api.mysolver.io/staging/mainnet) envName values: shadow, staging, prod supported networks: arbitrum-one, avalanche, base, bnb, linea, mainnet, polygon, xdai (gnosis) and more are coming out!
 
 <Note>
   The request body received by your `/solve` endpoint is quite large. If you are using Nginx, the default request size limit will be too small and prevent you from receiving any auctions. Add the following directive to your Nginx `http`, `server`, or `location` block:
