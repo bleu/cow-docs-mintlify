@@ -105,11 +105,17 @@ class CompletedOrder(BaseModel):
 | Field | Type | Description |
 |-------|------|-------------|
 | `uid` | `UID` | Unique order identifier (56 bytes) |
-| `url` | `str` | CoW Explorer URL for tracking |
+| `url` | `str` | OrderBook API URL for the order |
 
-### Explorer URLs
+### Order URL
 
-The URL points to CoW Explorer based on the chain:
+The `url` field contains the OrderBook API endpoint for the order:
+
+```
+https://api.cow.fi/mainnet/api/v1/orders/{uid}
+```
+
+To get the CoW Explorer URL for user-facing tracking, construct it manually:
 
 - Mainnet: `https://explorer.cow.fi/ethereum/orders/{uid}`
 - Gnosis Chain: `https://explorer.cow.fi/gc/orders/{uid}`
