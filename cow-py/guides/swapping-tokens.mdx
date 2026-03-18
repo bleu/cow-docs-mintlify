@@ -229,10 +229,9 @@ completed_order = await swap_tokens(
 The function returns a `CompletedOrder` object with:
 
 ```python
-@dataclass
-class CompletedOrder:
+class CompletedOrder(BaseModel):
     uid: UID  # Unique order identifier
-    url: str  # CoW Explorer URL for tracking
+    url: str  # OrderBook API URL for the order
 ```
 
 ## How It Works
@@ -288,7 +287,14 @@ print(f"Status: {order.status}")  # open, fulfilled, cancelled, expired
 If your order has not yet been filled, you can request cancellation:
 
 ```python
-await api.delete_order(completed_order.uid, signature, signing_scheme)
+from cowdao_cowpy.order_book.generated.model import OrderCancellations
+
+cancellation = OrderCancellations(
+    orderUids=[completed_order.uid],
+    signature=signature,
+    signingScheme=signing_scheme,
+)
+await api.delete_order(cancellation)
 ```
 
 <Note>
@@ -303,6 +309,9 @@ The SDK supports swapping on the following networks:
 - **Gnosis Chain** -- `Chain.GNOSIS`
 - **Arbitrum One** -- `Chain.ARBITRUM_ONE`
 - **Base** -- `Chain.BASE`
+- **Polygon** -- `Chain.POLYGON`
+- **Avalanche** -- `Chain.AVALANCHE`
+- **BNB Smart Chain** -- `Chain.BNB`
 - **Sepolia Testnet** -- `Chain.SEPOLIA`
 
 <Tip>
