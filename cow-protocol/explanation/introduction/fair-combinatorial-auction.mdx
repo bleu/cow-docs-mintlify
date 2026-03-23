@@ -1,6 +1,7 @@
 ---
 title: "Fair Combinatorial Batch Auction"
-description: "CoW Protocol collects and aggregates intents off-chain and auctions them off to solvers. The auction is a Fair Combinatorial Batch Auction (FCBA) because each solver can submit multiple bids. A solver can submit multiple bids on individual orders, in which case each \"bid\" represents the best price this solver can provide to an individual order. However, a solver can also submit \"batched\" bids, that is, bids on groups of orders."
+sidebarTitle: "Batch auctions"
+description: "How CoW Protocol's Fair Combinatorial Batch Auction (FCBA) aggregates intents and selects winning solver bids to maximize user surplus."
 ---
 
 The protocol filters out \`\`unfair'' batched bids, which are those delivering less to an order than some available "non-batched" bids. It then selects the combination of winning bids that maximizes the surplus received by the orders that are part of the auction (subject to some computational constraints due to the combinatorial nature of the problem).
