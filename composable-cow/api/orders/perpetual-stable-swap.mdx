@@ -24,7 +24,7 @@ The `getTradeableOrder` function executes the following workflow:
 2. Identifies which token has greater value
 3. Creates a sell order for the entire balance of the higher-value token
 4. Applies the spread formula:
-   ```
+   ```text
    buyAmount = convertedAmount * (10000 + halfSpreadBps) / 10000
    ```
 5. Returns tokens to the owner automatically (`receiver = address(0)`)

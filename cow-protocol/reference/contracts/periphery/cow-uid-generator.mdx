@@ -18,7 +18,7 @@ This contract is a simple helper contract that:
 
 An interface for the [CoW Protocol settlement contract](/cow-protocol/reference/contracts/core/settlement).
 
-```
+```solidity
 interface GPv2SettlementContract {    function domainSeparator() external view returns (bytes32);}
 ```
 
@@ -32,7 +32,7 @@ Constructs an order, determines if it is a sell or buy order, then computes the 
   Note: The digest being returned is only the order digest, not the actual order uid. In order to get the order uid this must be concatenated with the address of the order owner and the timestamp until which the order is valid ([reference](/cow-protocol/reference/contracts/core/settlement#orderuid)).
 </Check>
 
-```
+```solidity
 getUid(    address sellToken,    address buyToken,    address receiver,    uint256 sellAmount,    uint256 buyAmount,    uint32 validTo,    bytes32 appData,    uint256 feeAmount,    bool isSell,    bool partiallyFillable)public view returns (bytes32 hash,  bytes memory encoded)
 ```
 

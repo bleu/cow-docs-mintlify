@@ -9,7 +9,7 @@ This contract manages all flash-loan requests and is eventually responsible for 
 
 ### Data Types and Storage
 
-```
+```solidity
 interface IFlashLoanRouter {    function flashLoanAndSettle(Loan.Data[] calldata loans, bytes calldata settlement) external;    function borrowerCallBack(bytes calldata encodedLoansWithSettlement) external;    function settlementContract() external returns (ICowSettlement);    function settlementAuthentication() external returns (ICowAuthentication);}
 ```
 
@@ -19,7 +19,7 @@ interface IFlashLoanRouter {    function flashLoanAndSettle(Loan.Data[] calldata
 
 Request all flash loan specified in the input and, after that, executes the specified settlement.
 
-```
+```solidity
 flashLoanAndSettle(Loan.Data[] calldata loans, bytes calldata settlement) external;
 ```
 
@@ -32,7 +32,7 @@ flashLoanAndSettle(Loan.Data[] calldata loans, bytes calldata settlement) extern
 
 Once a borrower has received the proceeds of a flash loan, it calls back the router through this function.
 
-```
+```solidity
 borrowerCallBack(bytes calldata encodedLoansWithSettlement) external;
 ```
 
@@ -44,7 +44,7 @@ borrowerCallBack(bytes calldata encodedLoansWithSettlement) external;
 
 The settlement contract supported by this router. This is the contract that will be called when the settlement is executed.
 
-```
+```solidity
 settlementContract() external returns (ICowSettlement);
 ```
 
@@ -52,7 +52,7 @@ settlementContract() external returns (ICowSettlement);
 
 The settlement authenticator contract for CoW Protocol. This contract determines whether CoW protocol considers an address an eligible solver.
 
-```
+```solidity
 settlementAuthentication() external returns (ICowAuthentication);
 ```
 
@@ -62,7 +62,7 @@ IBorrower is an abstraction around specific flash-loan providers. Each provider 
 
 ### Data Types and Storage
 
-```
+```solidity
 interface IBorrower {    function flashLoanAndCallBack(address lender, IERC20 token, uint256 amount, bytes calldata callBackData) external;    function approve(IERC20 token, address target, uint256 amount) external;    function settlementContract() external view returns (ICowSettlement);    function router() external view returns (IFlashLoanRouter);}
 ```
 
@@ -72,7 +72,7 @@ interface IBorrower {    function flashLoanAndCallBack(address lender, IERC20 to
 
 Requests a flash loan with the specified parameters from the lender and, once the funds have been received, call back the router while passing through the specified custom data. The flash-loan repayment is expected to take place during the final settlement in the router.
 
-```
+```solidity
 flashLoanAndCallBack(address lender, IERC20 token, uint256 amount, bytes calldata callBackData) external;
 ```
 
@@ -87,7 +87,7 @@ flashLoanAndCallBack(address lender, IERC20 token, uint256 amount, bytes calldat
 
 Approves the target address to spend the specified token on behalf of the Borrower up to the specified amount.
 
-```
+```solidity
 approve(IERC20 token, address target, uint256 amount) external;
 ```
 
@@ -101,7 +101,7 @@ approve(IERC20 token, address target, uint256 amount) external;
 
 The settlement contract supported by this contract.
 
-```
+```solidity
 settlementContract() external view returns (ICowSettlement);
 ```
 
@@ -109,7 +109,7 @@ settlementContract() external view returns (ICowSettlement);
 
 The router contract that manages this borrower contract. It will be called back once the flash-loan proceeds are received and is the only address that can trigger a flash loan request.
 
-```
+```solidity
 router() external view returns (IFlashLoanRouter);
 ```
 

@@ -39,11 +39,11 @@ This key lists all tokens that appear in some order or AMM in the batch auction 
 
 We now share two example token entries corresponding to [WETH](https://etherscan.io/address/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2) and [USDC](https://etherscan.io/token/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48):
 
-```
+```json
 "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2": {    "decimals": 18,    "symbol": "WETH",    "referencePrice": "1000000000000000000",    "availableBalance": "590308372204674634",    "trusted": true}
 ```
 
-```
+```json
 "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48": {    "decimals": 6,    "symbol": "USDC",    "referencePrice": "449666048539228625975640064",    "availableBalance": "2625685411",    "trusted": true}
 ```
 
@@ -105,7 +105,7 @@ This key maps to a list containing the set of orders in the batch. Each entry in
 
 An example Fill-or-Kill user limit buy order that sells 1000 [COW](https://etherscan.io/token/0xdef1ca1fb7fbcdc777520aa7f396b4e015f497ab) for at least 284.138335 USDC [USDC](https://etherscan.io/token/0xba100000625a3754423978a60c9317c58a424e3d) is given below:
 
-```
+```json
 {    "uid": "0xaa4eb7b4da14b93ce42963ac4085fd8eee4a04170b36454f9f8b91b91f69705387a04752e516548b0d5d4df97384c0b22b64917965a801c1",    "sellToken": "0xdef1ca1fb7fbcdc777520aa7f396b4e015f497ab",    "buyToken": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",    "sellAmount": "1000000000000000000000",    "buyAmount": "284138335",    "feeAmount": "0",    "kind": "sell",    "partiallyFillable": false,    "class": "limit"}
 ```
 
@@ -119,7 +119,7 @@ This key is a single entry that is a string corresponding to a time stamp. This 
 
 The response of a solver engine is a dictionary that contains all the information that is needed to execute the proposed solution. There is a single key, "solutions", that maps to a list of proposed solutions; this means that a solver can propose multiple solutions. The simplest possible response is the *empty solution*, which corresponds to the case where no orders are executed, and is described by the empty list as follows:
 
-```
+```json
 {"solutions":    []}
 ```
 
@@ -135,7 +135,7 @@ This key specifies the uniform clearing price vector (UCP) that governs the prop
 
 An example containing the computed prices of [USDC](https://etherscan.io/token/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48), [COW](https://etherscan.io/token/0xDEf1CA1fb7FBcDC777520aa7f396b4E015F497aB) and [WETH](https://etherscan.io/token/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2) is given below.
 
-```
+```json
 "prices": {    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48": "389193245742363509576247472",    "0xDEf1CA1fb7FBcDC777520aa7f396b4E015F497aB": "137298311435590",    "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2": "1000000000000000000"}
 ```
 
@@ -171,7 +171,7 @@ We now discuss some additional functionality that solvers are allowed to use. Si
 
 If both conditions are satisfied, a solver can set the `internalize` flag to `true` in order to internalize the interaction:
 
-```
+```json
 "internalize": true
 ```
 

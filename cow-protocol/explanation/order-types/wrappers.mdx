@@ -20,7 +20,7 @@ When a settlement uses wrappers, the solver does not call `settle()` on the sett
 
 When multiple wrappers are chained, execution nests like function calls:
 
-```
+```text
 Solver → Wrapper1(pre) → Wrapper2(pre) → Settlement → Wrapper2(post) → Wrapper1(post)
 ```
 

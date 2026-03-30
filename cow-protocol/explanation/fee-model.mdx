@@ -1,6 +1,6 @@
 ---
 title: "Fee Model"
-description: "How fees work in CoW Protocol — from the quote response to on-chain settlement. Everything you need to understand protocol fees, network costs, partner fees, and how to retrieve fee data for accounting."
+description: "How fees work in CoW Protocol — protocol fees, network costs, partner fees, and retrieving fee data from quotes to settlement."
 ---
 
 <Note>
@@ -29,7 +29,7 @@ There is no separate fee transfer, no gas token deduction, and no invoice. If yo
 
 Fees are applied in a specific order, transforming the raw spot price into the final signed amounts:
 
-```
+```text
 Spot Price (beforeAllFees)
   → after Protocol Fee
     → after Network Costs

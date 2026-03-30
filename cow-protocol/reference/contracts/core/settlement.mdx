@@ -1,6 +1,6 @@
 ---
 title: "GPv2Settlement"
-description: "import HistoricalFact from './_gpv2.md'"
+description: "Reference for the GPv2Settlement contract — the core CoW Protocol smart contract that executes batch auction settlements."
 ---
 
 ## Architecture
@@ -59,7 +59,7 @@ The `GPV2Order.Data` is the one of the most important data structures in the Pro
 
 In code, it is defined as:
 
-```
+```solidity
 struct Data {    IERC20 sellToken;    IERC20 buyToken;    address receiver;    uint256 sellAmount;    uint256 buyAmount;    uint32 validTo;    bytes32 appData;    uint256 feeAmount;    bytes32 kind;    bool partiallyFillable;    bytes32 sellTokenBalance;    bytes32 buyTokenBalance;}
 ```
 
@@ -92,7 +92,7 @@ struct Data {    IERC20 sellToken;    IERC20 buyToken;    address receiver;    u
 
 The `orderUid` is a unique identifier for an order. It is 56 bytes and defined as:
 
-```
+```text
 orderUid = orderDigest ‖ owner ‖ validTo
 ```
 
@@ -107,7 +107,7 @@ Where:
 
 The `filledAmounts` mapping stores the amount of an order that has been filled. It is defined as:
 
-```
+```solidity
 mapping(bytes => uint256) public filledAmounts;
 ```
 
@@ -127,7 +127,7 @@ This section will cover the main functions that are used by users and solvers.
 
 This function allows a user to pre-sign an order, which can be used if for some reason the user is unable to sign with `eth_sign`, `EIP-712`, or `ERC-1271`. This is most useful for smart contracts that have neither a private key, nor implement `ERC-1271`, but still want to use CoW Protocol.
 
-```
+```solidity
 function setPreSignature(bytes calldata orderUid, bool signed) external;
 ```
 
@@ -135,7 +135,7 @@ function setPreSignature(bytes calldata orderUid, bool signed) external;
 
 This function allows a user to invalidate (cancel) an order:
 
-```
+```solidity
 function invalidateOrder(bytes calldata orderUid) external;
 ```
 
@@ -145,7 +145,7 @@ function invalidateOrder(bytes calldata orderUid) external;
 
 This function is permissioned and can only be called by solvers passing the allow-list authentication. It executes a settlement:
 
-```
+```solidity
 function settle(    IERC20[] calldata tokens,    uint256[] calldata clearingPrices,    GPv2Trade.Data[] calldata trades,    GPv2Interaction.Data[][3] calldata interactions) external nonReentrant onlySolver;
 ```
 

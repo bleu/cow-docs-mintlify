@@ -1,6 +1,7 @@
 ---
 title: "Solver competition accounting process"
-description: "There is an accounting process in place for the solver competition. It is performed separately on each chain. Currently, the execution of the accounting process takes place once a week for all chains the protocol operates on, and each accounting week starts on Tuesday at midnight UTC and concludes a week later at midnight UTC. This accounting process consists of the following:"
+sidebarTitle: "Accounting Process"
+description: "Weekly accounting process for the CoW Protocol solver competition — performance tracking, reward distribution, and penalties."
 ---
 
 * calculation of total rewards/penalties, as specified by the [mechanism](/cow-protocol/reference/core/auctions/rewards);
@@ -58,7 +59,7 @@ In this section, we share a few details about how protocol/partner/network fees 
 
 To use an example, suppose that we have a sell order that sells 1 WETH and the user receives 3000 USDC. When checking the api, we might see the following:
 
-```
+```json
     "executedProtocolFees": [      {        "policy": {          "surplus": {            "factor": 0.5,            "maxVolumeFactor": 0.01          }        },        "amount": "5000000",        "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"      }    ]
 ```
 

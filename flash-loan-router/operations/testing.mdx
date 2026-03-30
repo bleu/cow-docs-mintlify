@@ -68,7 +68,7 @@ This is useful for:
 
 Tests are typically organized in the following structure:
 
-```
+```text
 test/
 ├── e2e/                    # End-to-end integration tests
 │   ├── AaveFlashLoan.t.sol
@@ -120,7 +120,7 @@ forge test
 
 Benchmark data is saved to the `snapshots/` directory:
 
-```
+```text
 snapshots/
 ├── FlashLoanRouterTest.snap
 ├── AaveBorrowerTest.snap
@@ -137,7 +137,7 @@ forge test --gas-report
 
 Example output:
 
-```
+```text
 | Contract          | Function           | min  | avg   | max   | calls |
 |-------------------|--------------------|------|-------|-------|-------|
 | FlashLoanRouter   | flashLoanAndSettle | 1234 | 12456 | 23456 | 45    |

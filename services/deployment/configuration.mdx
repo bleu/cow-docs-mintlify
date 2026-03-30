@@ -24,7 +24,7 @@ Services use PostgreSQL with sqlx connection pooling. The default pool size is 1
 
 Connection strings follow PostgreSQL format:
 
-```
+```text
 postgresql://[user[:password]@][host][:port][/database]
 ```
 
@@ -49,7 +49,7 @@ It is recommended to include "Native" and "Web3" for compatibility across all EV
 
 The system uses `tracing-subscriber` with flexible EnvFilter syntax:
 
-```
+```text
 target[span{field=value}]=level
 ```
 
@@ -62,7 +62,7 @@ target[span{field=value}]=level
 
 Connect to UNIX sockets to modify log filtering without restart:
 
-```
+```text
 /tmp/log_filter_override_<program_name>_<pid>.sock
 ```
 

@@ -53,7 +53,7 @@ Solvers may use the `HooksTrampoline` contract to execute hooks, as it offers a 
 
 Hooks are passed to the trampoline contract as a `Hook` struct:
 
-```
+```solidity
 struct Hook {    address target;    bytes callData;    uint256 gasLimit;}
 ```
 
@@ -71,7 +71,7 @@ struct Hook {    address target;    bytes callData;    uint256 gasLimit;}
 
 This function is called by the settlement contract during the course of settlement as an *interaction* to execute the user's hooks.
 
-```
+```solidity
 function execute(Hook[] calldata hooks) external onlySettlement;
 ```
 

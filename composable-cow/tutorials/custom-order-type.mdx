@@ -12,7 +12,7 @@ A `TradeAboveThreshold` programmatic order that:
 - When the balance exceeds a threshold, generates a sell order for the excess
 - Automatically repeats until cancelled
 
-```
+```text
 Safe balance: 15,000 USDC (threshold: 10,000)
 → Generates order: sell 5,000 USDC for WETH
 → Watch Tower submits it to CoW Protocol
@@ -36,7 +36,7 @@ forge install cowprotocol/composable-cow
 
 Create `remappings.txt`:
 
-```
+```text
 @cowprotocol/=lib/composable-cow/
 @openzeppelin/=lib/composable-cow/lib/openzeppelin-contracts/
 safe/=lib/composable-cow/lib/safe-contracts/contracts/
@@ -348,7 +348,7 @@ revert IConditionalOrder.PollNever("Order permanently invalid");
 
 ## Architecture
 
-```
+```text
 Safe Wallet
   └── ComposableCoW (fallback handler)
         └── Your Handler (TradeAboveThreshold)

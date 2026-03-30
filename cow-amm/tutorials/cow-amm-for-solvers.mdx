@@ -1,5 +1,6 @@
 ---
 title: "CoW AMM Liquidity for Solvers"
+description: "How CoW Protocol solvers can access and route through CoW AMM liquidity pools, including integration details and surplus optimization."
 ---
 
 ## I'm a solver. How do I use CoW AMM liquidity?
@@ -87,7 +88,7 @@ When creating a CoW AMM order it is therefore encouraged to use the smallest pos
 
 If we call `X` (resp. `Y`) the reserves of sell (resp. buy) token, and `x` (resp. `y`) the executed sell (resp. buy) amount, then the minimal buy amount is `x Y / (X - x)` and the order surplus with that choice for the limit amount is:
 
-```
+```text
                  x Ysurplus =  y -  ----- .                X - x
 ```
 

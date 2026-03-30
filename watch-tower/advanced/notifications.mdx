@@ -48,7 +48,7 @@ When the watch-tower encounters an error during execution:
 
 Example notification:
 
-```
+```text
 Error: Failed to process block 12345678. More info https://dashboard.tenderly.co/devcow/project/actions
 ```
 
@@ -90,7 +90,7 @@ This prevents flooding your Slack channel during incidents while still ensuring 
 
 When a notification is rate limited, you'll see a log message:
 
-```
+```text
 Last error notification happened earlier than 120 minutes ago.
 Next notification will happen after 2024-03-04T14:34:56.789Z
 ```
@@ -130,7 +130,7 @@ Slack notifications require one of:
 
 If neither condition is met, the watch-tower will throw an error:
 
-```
+```text
 SLACK_WEBHOOK_URL must be set if not running in silent mode
 ```
 
