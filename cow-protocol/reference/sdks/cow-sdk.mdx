@@ -1,5 +1,6 @@
 ---
 title: "CoW SDK"
+description: "Reference for the CoW SDK — the official TypeScript library for interacting with the CoW Protocol orderbook and trading."
 hidden: true
 ---
 
@@ -56,11 +57,11 @@ The SDK supports all CoW Protocol enabled networks:
 
 ### Installation
 
-```
+```bash
 pnpm add @cowprotocol/cow-sdk
 ```
 
-```
+```bash
 yarn add @cowprotocol/cow-sdk
 ```
 
@@ -91,25 +92,25 @@ The versions are 99% backward compatible. The only difference is that in v7 you 
 
 **Before (v6):**
 
-```
+```typescript
 import { SupportedChainId, TradingSdk, MetadataApi, OrderBookApi } from '@cowprotocol/cow-sdk'const options = {}const sdk = new TradingSdk({  chainId: SupportedChainId.SEPOLIA,  appCode: 'YOUR_APP_CODE',}, options)
 ```
 
 **After (v7):**
 
-```
+```typescript
 import { SupportedChainId, OrderKind, TradeParameters, TradingSdk } from '@cowprotocol/cow-sdk'import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'import { createPublicClient, http, privateKeyToAccount } from 'viem'import { sepolia } from 'viem/chains'// NEW: Instantiate and set adapterconst adapter = new ViemAdapter({  provider: createPublicClient({    chain: sepolia,    transport: http('YOUR_RPC_URL')  }),  // You can also set `walletClient` instead of `signer` using `useWalletClient` from wagmi  signer: privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`)})const options = {}const sdk = new TradingSdk({  chainId: SupportedChainId.SEPOLIA,  appCode: 'YOUR_APP_CODE',}, options, adapter)
 ```
 
 Most other packages (e.g., `MetadataApi` or `BridgingSdk`) have a parameter to set an adapter. You can also set an adapter using `setGlobalAdapter`:
 
-```
+```typescript
 import { setGlobalAdapter, CowShedSdk } from '@cowprotocol/cow-sdk'const adapter = {...}// Set global adaptersetGlobalAdapter(adapter)const cowShedSdk = new CowShedSdk()
 ```
 
 You will likely also need to bind the SDK to your app's account state. When the account or network changes in the app/wallet, it should be updated in the SDK as well. Here's an example for `WAGMI` (see `examples/react/wagmi`):
 
-```
+```typescript
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi'import { useEffect, useState } from 'react'import { ViemAdapter, ViemAdapterOptions } from '@cowprotocol/sdk-viem-adapter'import { tradingSdk } from '../cowSdk.ts'import { setGlobalAdapter } from '@cowprotocol/cow-sdk'export function useBindCoWSdkToWagmi(): boolean {  const { chainId } = useAccount()  const { data: walletClient } = useWalletClient()  const publicClient = usePublicClient()  const [isSdkReady, setIsSdkReady] = useState(false)  /**   * Sync Trading SDK with wagmi account state (chainId and signer)   */  useEffect(() => {    if (!walletClient || !chainId) return    setGlobalAdapter(      new ViemAdapter({        provider: publicClient,        walletClient,      } as unknown as ViemAdapterOptions),    )    tradingSdk.setTraderParams({ chainId })    setIsSdkReady(true)  }, [publicClient, walletClient, chainId])  return isSdkReady}
 ```
 
@@ -122,7 +123,7 @@ This example demonstrates the main use case of creating a swap and shows how to:
 * Adjust swap parameters
 * Sign and post an order
 
-```
+```typescript
 import { SupportedChainId, OrderKind, TradeParameters, TradingSdk } from '@cowprotocol/cow-sdk'import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'import { createPublicClient, http, privateKeyToAccount } from 'viem'import { sepolia } from 'viem/chains'// EthersV5Adapter and EthersV6Adapter are also available// @cowprotocol/sdk-ethers-v5-adapter, @cowprotocol/sdk-ethers-v6-adapterconst adapter = new ViemAdapter({  provider: createPublicClient({    chain: sepolia,    transport: http('YOUR_RPC_URL')  }),  // You can also set `walletClient` instead of `signer` using `useWalletClient` from wagmi  signer: privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`)})const sdk = new TradingSdk({  chainId: SupportedChainId.SEPOLIA,  appCode: 'YOUR_APP_CODE',}, {}, adapter)const parameters: TradeParameters = {  kind: OrderKind.SELL,  sellToken: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',  sellTokenDecimals: 18,  buyToken: '0x0625afb445c3b6b7b929342a04a22599fd5dbb59',  buyTokenDecimals: 18,  amount: '120000000000000',}// Get quoteconst { quoteResults, postSwapOrderFromQuote } = await sdk.getQuote(parameters)const buyAmount = quoteResults.amountsAndCosts.afterSlippage.buyAmount// Verify amountif (confirm(`You will receive at least: ${buyAmount}. Proceed?`)) {  // Sign and post order  const orderId = await postSwapOrderFromQuote()  console.log('Order created, ID:', orderId)}
 ```
 
@@ -134,13 +135,13 @@ For more advanced use cases, you can use additional parameters such as `receiver
 
 The SDK automatically includes UTM tracking in all orders to attribute trading volume to developers. Default parameters:
 
-```
+```javascript
 {  utmSource: 'cowmunity',  utmMedium: 'cow-sdk@7.1.6',  // SDK version  utmCampaign: 'developer-cohort',  utmContent: '',  utmTerm: 'js'}
 ```
 
 **Customize or disable** via `advancedSettings.appData.metadata.utm`:
 
-```
+```typescript
 // Custom UTMawait sdk.getQuote(parameters, {  appData: {    metadata: {      utm: { utmContent: 'my-integration-v2' }    }  }})// Disable UTMawait sdk.getQuote(parameters, {  appData: {    metadata: {      utm: {}    }  }})
 ```
 
@@ -152,7 +153,7 @@ The SDK automatically includes UTM tracking in all orders to attribute trading v
 
 Partners can use authenticated API access with higher rate limits via the Partner API gateway. Pass your API key when creating an `OrderBookApi` instance:
 
-```
+```typescript
 import { OrderBookApi, SupportedChainId } from '@cowprotocol/cow-sdk'const orderBookApi = new OrderBookApi({  chainId: SupportedChainId.MAINNET,  apiKey: 'your-partner-api-key',})
 ```
 
@@ -172,7 +173,7 @@ The CoW SDK supports multiple blockchain adapters to work with different Web3 li
 
 ### Installation
 
-```
+```bash
 # For ethers v6pnpm add @cowprotocol/sdk-ethers-v6-adapter ethers# For ethers v5pnpm add @cowprotocol/sdk-ethers-v5-adapter ethers@^5.7.0# For viempnpm add @cowprotocol/sdk-viem-adapter viem
 ```
 
@@ -180,19 +181,19 @@ The CoW SDK supports multiple blockchain adapters to work with different Web3 li
 
 #### EthersV6Adapter
 
-```
+```typescript
 import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter'import { JsonRpcProvider, Wallet } from 'ethers'const provider = new JsonRpcProvider('YOUR_RPC_URL')const wallet = new Wallet('YOUR_PRIVATE_KEY', provider)const adapter = new EthersV6Adapter({ provider, signer: wallet })
 ```
 
 #### EthersV5Adapter
 
-```
+```typescript
 import { EthersV5Adapter } from '@cowprotocol/sdk-ethers-v5-adapter'import { ethers } from 'ethers'const provider = new ethers.providers.JsonRpcProvider('YOUR_RPC_URL')const wallet = new ethers.Wallet('YOUR_PRIVATE_KEY', provider)const adapter = new EthersV5Adapter({ provider, signer: wallet })
 ```
 
 #### ViemAdapter
 
-```
+```typescript
 import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'import { http, createPublicClient, privateKeyToAccount } from 'viem'import { sepolia } from 'viem/chains'const account = privateKeyToAccount('YOUR_PRIVATE_KEY' as `0x${string}`)const transport = http('YOUR_RPC_URL')const provider = createPublicClient({ chain: sepolia, transport })// You can also set `walletClient` instead of `signer` using `useWalletClient` from wagmiconst adapter = new ViemAdapter({ provider, signer: account })
 ```
 
@@ -211,6 +212,6 @@ We will perform the following operations:
 
 > Try it live: [https://codesandbox.io/p/devbox/cow-sdk-example-forked-x63k52](https://codesandbox.io/p/devbox/cow-sdk-example-forked-x63k52)
 
-```
+```typescript
 import { OrderBookApi, OrderSigningUtils, SupportedChainId, OrderQuoteSideKindSell, SigningScheme, setGlobalAdapter } from '@cowprotocol/cow-sdk'import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter'import { JsonRpcProvider, Wallet } from 'ethers'const account = 'YOUR_WALLET_ADDRESS'const chainId = 100 // Gnosis Chainconst provider = new JsonRpcProvider('YOUR_RPC_URL')const wallet = new Wallet('YOUR_PRIVATE_KEY', provider)const adapter = new EthersV6Adapter({ provider, signer: wallet })setGlobalAdapter(adapter)const receiver = accountconst quoteRequest = {  sellToken: '0x6a023ccd1ff6f2045c3309768ead9e68f978f6e1', // WETH on Gnosis Chain  buyToken: '0x9c58bacc331c9aa871afd802db6379a98e80cedb', // GNO on Gnosis Chain  from: account,  receiver,  sellAmountBeforeFee: (0.4 * 10 ** 18).toString(), // 0.4 WETH  kind: OrderQuoteSideKindSell.SELL,}const orderBookApi = new OrderBookApi({ chainId: SupportedChainId.GNOSIS_CHAIN })async function main() {  const { quote } = await orderBookApi.getQuote(quoteRequest)  const orderData = {    ...quote,    // Add fee to sellAmount for sell orders    sellAmount: (BigInt(quote.sellAmount) + BigInt(quote.feeAmount)).toString(),    receiver,    feeAmount: "0",  };  const orderSigningResult = await OrderSigningUtils.signOrder(orderData, chainId, adapter.signer)  const orderId = await orderBookApi.sendOrder({    ...orderData,    ...orderSigningResult,    signingScheme: SigningScheme.EIP712,  })  const order = await orderBookApi.getOrder(orderId)  const trades = await orderBookApi.getTrades({ orderId })  const orderCancellationSigningResult = await OrderSigningUtils.signOrderCancellations([orderId], chainId, adapter.signer)  const cancellationResult = await orderBookApi.sendSignedOrderCancellations({    ...orderCancellationSigningResult,    orderUids: [orderId],  })  console.log('Results:', { orderId, order, trades, orderCancellationSigningResult, cancellationResult })}
 ```

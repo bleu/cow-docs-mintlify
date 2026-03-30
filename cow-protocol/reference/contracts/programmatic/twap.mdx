@@ -1,11 +1,11 @@
 ---
 title: "TWAP"
-description: "A simple  (TWAP) trade may be thought of as  smaller trades happening every  time interval, commencing at time . Additionally, it is possible to limit a part's validity of the order to a certain  of time interval ."
+description: "TWAP contract reference — time-weighted average price orders that split trades into parts at regular intervals on CoW Protocol."
 ---
 
 ## Data Structure
 
-```
+```solidity
 struct Data {    IERC20 sellToken;    IERC20 buyToken;    address receiver; // address(0) if the safe    uint256 partSellAmount; // amount to sell in each part    uint256 minPartLimit; // minimum buy amount in each part (limit)    uint256 t0;    uint256 n;    uint256 t;    uint256 span;    bytes32 appData;}
 ```
 

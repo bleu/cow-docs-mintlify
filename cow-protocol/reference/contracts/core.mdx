@@ -90,7 +90,7 @@ The CoW Protocol API allows you to specify some signed [metadata](/cow-protocol/
 
 The signer property in the `metadata` is used by the CoW Protocol API to check that the signature is meant for the specified wallet. If this doesn't match the order origin, the order is rejected. A minimal example of app data is the following:
 
-```
+```json
 { "metadata": { "signer": "0x291cf356e5639fb4c19ba5bfb4e2f8f82b371573" } }
 ```
 

@@ -1,6 +1,6 @@
 ---
 title: "API Integration Guide"
-description: "Step-by-step guide to integrating with the CoW Protocol orderbook API — from requesting a quote, to computing signing amounts, to creating and monitoring orders."
+description: "Guide to integrating with the CoW Protocol orderbook API — quotes, order signing, submission, and monitoring."
 ---
 
 import { InlineResource } from '/snippets/resource-actions.jsx'
@@ -43,7 +43,7 @@ Interactive endpoint docs: [Order Book API Reference](/cow-protocol/reference/ap
 
 Send your trading intention to the `/quote` endpoint:
 
-```
+```text
 POST https://api.cow.fi/mainnet/api/v1/quote
 ```
 
@@ -178,13 +178,13 @@ The protocol fee is expressed as basis points (`protocolFeeBps`) in the quote re
 
 **Sell orders** (buy token units) — `quote.buyAmount` is already after the protocol fee has been deducted:
 
-```
+```text
 protocolFeeAmount = quote.buyAmount × (protocolFeeBps / 10000) / (1 − protocolFeeBps / 10000)
 ```
 
 **Buy orders** (sell token units) — the protocol fee is applied to the sum of sell amount and network costs:
 
-```
+```text
 protocolFeeAmount = (quote.sellAmount + quote.feeAmount) × (protocolFeeBps / 10000) / (1 + protocolFeeBps / 10000)
 ```
 
@@ -194,7 +194,7 @@ The partner (integrator) fee is calculated as a percentage of the **spot price**
 
 **Sell orders** (buy token units):
 
-```
+```text
 partnerFeeAmount = beforeAllFees.buyAmount × partnerFeeBps / 10000
 ```
 
@@ -204,7 +204,7 @@ partnerFeeAmount = beforeAllFees.buyAmount × partnerFeeBps / 10000
 
 Slippage tolerance is applied to the `afterPartnerFees` amount (not the spot price):
 
-```
+```text
 slippageAmount = afterPartnerFees × slippageBps / 10000
 ```
 
@@ -301,7 +301,7 @@ Below is every stage computation in one place. All values are in token atoms (in
 
 **Sell order — full computation:**
 
-````
+````text
 ── Protocol Fee Amount (buy token units) ──────────────────────────────────────
 protocolFeeAmount = quote.buyAmount × (protocolFeeBps / 10000)
                     / (1 − protocolFeeBps / 10000)
@@ -340,7 +340,7 @@ buyAmount  = afterSlippage.buyAmount       (minimum to receive)
 
 **Buy order — full computation:**
 
-````
+````text
 ── Protocol Fee Amount (sell token units) ─────────────────────────────────────
 protocolFeeAmount = (quote.sellAmount + quote.feeAmount) × (protocolFeeBps / 10000)
                     / (1 + protocolFeeBps / 10000)
@@ -680,7 +680,7 @@ Include `quoteId` (from the quote's `id` field) for slippage analysis. Include `
 
 ## Quick Reference: Full Flow
 
-```
+```text
 1. Approve sell token to Vault Relayer (if not already done)
 2. POST /api/v1/quote              → Get pricing and fee estimates
 3. Compute amount stages            → beforeAllFees, afterNetworkCosts,

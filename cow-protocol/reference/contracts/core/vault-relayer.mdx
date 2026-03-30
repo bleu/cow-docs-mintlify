@@ -1,6 +1,6 @@
 ---
 title: "GPv2VaultRelayer"
-description: "import HistoricalFact from './_gpv2.md'"
+description: "Reference for the GPv2VaultRelayer contract that secures token allowances and protects user funds from malicious solvers."
 ---
 
 ## Architecture
@@ -61,7 +61,7 @@ Nil
 
 This function is used for transferring `ERC-20` tokens from users to the `GPv2Settlement` contract in the course of settling a batch auction.
 
-```
+```solidity
 function transferFromAccounts(   GPv2Transfer.Data[] calldata transfers) external onlyCreator {   vault.transferFromAccounts(transfers, msg.sender);}
 ```
 
@@ -69,7 +69,7 @@ function transferFromAccounts(   GPv2Transfer.Data[] calldata transfers) externa
 
 This function is used in the course of settling a single trade on-chain. It is called by the `GPv2Settlement` contract and is used to perform a batch swap on the Balancer V2 vault. The function is defined as:
 
-```
+```solidity
 function batchSwapWithFee(   IVault.SwapKind kind,   IVault.BatchSwapStep[] calldata swaps,   IERC20[] memory tokens,   IVault.FundManagement memory funds,   int256[] memory limits,   uint256 deadline,   GPv2Transfer.Data calldata feeTransfer) external onlyCreator returns (int256[] memory tokenDeltas)
 ```
 

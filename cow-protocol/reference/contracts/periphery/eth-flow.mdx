@@ -68,7 +68,7 @@ If all verification steps succeed, Eth-flow affirmatively signs the digest with 
 
 This struct contains the parts of a user intent that need to be stored on chain.
 
-```
+```solidity
 struct OnchainData {    address owner;    uint32 validTo;}
 ```
 
@@ -85,7 +85,7 @@ For asserting the validity of the intent, the Eth-flow contract applies some ass
 
 This struct collects all parameters needed to describe a single user trade intent.
 
-```
+```solidity
 struct Data {    IERC20 buyToken;    address receiver;    uint256 sellAmount;    uint256 buyAmount;    bytes32 appData;    uint256 feeAmount;    uint32 validTo;    bool partiallyFillable;    int64 quoteId;}
 ```
 
@@ -102,7 +102,7 @@ struct Data {    IERC20 buyToken;    address receiver;    uint256 sellAmount;   
 
 The Eth-flow contract stores users' intents as a `mapping`:
 
-```
+```solidity
 mapping(bytes32 => EthFlowOrder.OnchainData) public orders;
 ```
 
@@ -124,7 +124,7 @@ The key of the mapping is the intent digest. It is derived by computing the cont
 
 For when a user wants to sell `ETH`:
 
-```
+```solidity
 function createOrder(EthFlowOrder.Data order) payable;
 ```
 
@@ -135,7 +135,7 @@ Eth-flow performs some checks when the user creates an intent. Failing any of th
 
 The intent parameters are used to compute the intent digest according to the [intent mapping](#user-intent--contract-intent). On successful execution of the transaction a new order is added to storage:
 
-```
+```text
 intent digest -> (msg.sender, validTo)
 ```
 
@@ -143,7 +143,7 @@ intent digest -> (msg.sender, validTo)
 
 For when a user wants to invalidate an intent and return the `ETH` to the intent creator:
 
-```
+```solidity
 function invalidateOrder(EthFlowOrder.Data order)
 ```
 

@@ -116,7 +116,7 @@ yarn cli dump-db --chain-id 1 --database-path ./database
 
 When you start the Watch Tower, you should see output similar to:
 
-```
+```log
 [INFO] commands:run - Starting Rest API server...
 [INFO] ApiService - REST API server started on port 8080
 [INFO] commands:run - Starting chain mainnet...
@@ -311,7 +311,7 @@ To gracefully stop the Watch Tower, press `Ctrl+C`. The Watch Tower will:
 4. Close the database connection
 5. Exit cleanly
 
-```
+```log
 [INFO] commands:stop - Caught interrupt signal.
 [INFO] ApiService - Stopping REST API server...
 [INFO] DBService - Closing database...

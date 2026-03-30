@@ -444,17 +444,17 @@ block_time = 12  # seconds
 ### Read Paths
 
 **User Queries Order Status**:
-```
+```text
 User -> Orderbook API -> PostgreSQL -> Response
 ```
 
 **Autopilot Reads Orders**:
-```
+```text
 Autopilot -> PostgreSQL -> Filter -> Create Auction
 ```
 
 **Driver Fetches Liquidity**:
-```
+```text
 Driver -> Uniswap API -> Cache -> Solver
 Driver -> Balancer API -> Cache -> Solver
 Driver -> 1inch API -> Cache -> Solver
@@ -463,17 +463,17 @@ Driver -> 1inch API -> Cache -> Solver
 ### Write Paths
 
 **User Submits Order**:
-```
+```text
 User -> Orderbook API -> Validate -> PostgreSQL
 ```
 
 **Autopilot Stores Auction**:
-```
+```text
 Autopilot -> Create Auction -> PostgreSQL -> Send to Solvers
 ```
 
 **Settlement Execution**:
-```
+```text
 Driver -> Blockchain -> Settlement Contract -> Events -> Database
 ```
 

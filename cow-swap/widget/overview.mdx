@@ -1,6 +1,6 @@
 ---
 title: "Widget Integration"
-description: "The CoW Widget is the fastest way to integrate CoW Protocol's trading functionality into your application. It provides a complete, pre-built trading interface that can be embedded with just a few lines of code."
+description: "Embed CoW Protocol trading in your app with the CoW Widget — a pre-built, customizable interface with just a few lines of code."
 ---
 
 ## Overview
@@ -18,13 +18,13 @@ The CoW Widget is a ready-to-use React component that provides the full CoW Swap
 
 ## Quick Start Example
 
-```
+```typescript
 import { createCowSwapWidget, CowSwapWidgetParams } from '@cowprotocol/widget-lib'// HTML element where the widget will be renderedconst widgetContainer = document.getElementById('cowswap-widget')const params: CowSwapWidgetParams = {  appCode: 'YOUR-APP-NAME', // Required: identifies your app  width: 600,  height: 640,  sell: { asset: 'USDC' },  buy: { asset: 'WETH', amount: '0.1' },  theme: 'light', // 'light' | 'dark' | custom theme object  partnerFee: {    bps: 50, // 0.5% fee    recipient: '0xYourFeeRecipientAddress',  },}createCowSwapWidget(widgetContainer, { params })
 ```
 
 ## Installation
 
-```
+```bash
 # Install the widget librarynpm install @cowprotocol/widget-lib
 ```
 
@@ -41,7 +41,7 @@ The widget supports extensive customization:
 
 ## Example with Custom Theme
 
-```
+```typescript
 import { createCowSwapWidget, CowSwapWidgetPalette } from '@cowprotocol/widget-lib'const customTheme: CowSwapWidgetPalette = {  baseTheme: 'light',  primary: '#00ff85',  background: '#f7f7f7',  paper: '#1a4435',  text: '#ffffff',}const params = {  appCode: 'YOUR-APP-NAME',  theme: customTheme,  // ... other params}createCowSwapWidget(widgetContainer, { params })
 ```
 

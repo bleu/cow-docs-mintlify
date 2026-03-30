@@ -1,5 +1,6 @@
 ---
 title: "Dollar-Cost Averaging with TWAP"
+sidebarTitle: "DCA with TWAP"
 description: "Build a dollar-cost averaging strategy using TWAP orders to accumulate tokens over time"
 ---
 
@@ -9,7 +10,7 @@ Dollar-cost averaging (DCA) is a strategy where you invest a fixed amount at reg
 
 A TWAP order splits your total sell amount into `N` equal parts, each executed at a fixed interval:
 
-```
+```text
 Total: 10,000 USDC → WETH over 10 hours
 ├── Part 1:  1,000 USDC → WETH  (hour 0)
 ├── Part 2:  1,000 USDC → WETH  (hour 1)
@@ -247,7 +248,7 @@ print(f"DCA cancelled: {tx_hash.hex()}")
 
 The `buy_amount` parameter serves as price protection — it sets the **minimum total** amount of buy tokens you'll receive across all parts. Each individual part gets a proportional minimum:
 
-```
+```text
 Total buy_amount: 3 WETH (for 10,000 USDC across 10 parts)
 Per-part minimum: 0.3 WETH (for 1,000 USDC)
 Effective max price: ~3,333 USDC/WETH per part

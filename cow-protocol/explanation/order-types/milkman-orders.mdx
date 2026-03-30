@@ -17,7 +17,7 @@ Finally, once a user places a trade via Milkman, the order gets sent to the CoW 
 
 Milkman follows a UniswapV2-style interface. To interact with Milkman, smart contracts need only to call the following function:
 
-```
+```solidity
 function requestSwapExactTokensForTokens(	uint256 amountIn,	IERC20 fromToken,	IERC20 toToken,	address to,	address priceChecker,	bytes calldata priceCheckerData)
 ```
 

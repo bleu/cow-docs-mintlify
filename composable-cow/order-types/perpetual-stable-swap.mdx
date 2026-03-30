@@ -22,13 +22,13 @@ The contract examines your holdings of both tokens and creates sell orders for w
 
 ### Validity Bucket Calculation
 
-```
+```text
 validTo = ((currentTime / validityBucketSeconds) * validityBucketSeconds) + validityBucketSeconds
 ```
 
 ### Buy Amount Formula
 
-```
+```text
 buyAmount = convertAmount(sellAmount) * (10000 + halfSpreadBps) / 10000
 ```
 
@@ -42,7 +42,7 @@ The contract retrieves both token balances, normalizes them to a common decimal 
 
 Different token decimals receive automatic conversion. For example, converting 1000 USDC (6 decimals) to DAI (18 decimals):
 
-```
+```text
 1000 * 10^6 * 10^(18-6) = 1000 * 10^18
 ```
 

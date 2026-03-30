@@ -101,7 +101,7 @@ function freePreSignatureStorage(bytes[] calldata orderUids) external;
 
 The contract enforces that clearing prices respect order limits:
 
-```
+```text
 order.sellAmount * sellPrice >= order.buyAmount * buyPrice
 ```
 

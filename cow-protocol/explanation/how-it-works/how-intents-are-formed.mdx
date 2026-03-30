@@ -1,6 +1,6 @@
 ---
 title: "How Intents Are Formed"
-description: "An intent in CoW Protocol is a signed message that represents a user's wish to trade. It doesn't execute a trade directly — instead, it delegates execution to solvers who find the optimal path."
+description: "How trade intents work in CoW Protocol — signed messages that delegate execution to competing solvers for optimal pricing."
 ---
 
 An [_intent_](/cow-protocol/explanation/introduction/intents) in CoW Protocol is a signed message that represents a user's wish to trade. It doesn't execute a trade directly — instead, it delegates execution to [solvers](/cow-protocol/explanation/introduction/solvers) who find the optimal path.
@@ -13,7 +13,7 @@ For a step-by-step integration walkthrough, see the **[API Integration Guide](/c
 
 Forming an intent follows three stages:
 
-```
+```text
 Intention → Quote → Intent
 ```
 
@@ -21,7 +21,7 @@ Intention → Quote → Intent
 
 An intention is the user's raw desire to trade. To obtain a quote, you send this intention to the `/quote` API endpoint:
 
-```
+```text
 POST https://api.cow.fi/mainnet/api/v1/quote
 ```
 
@@ -220,7 +220,7 @@ The spot price is the exchange rate before any fees are applied. It serves as th
 
 ### Sell order
 
-```
+```text
 beforeAllFees.sellAmount = quote.sellAmount + quote.feeAmount
 
 Network Costs (buy token) = (quote.buyAmount × quote.feeAmount) / quote.sellAmount
@@ -230,7 +230,7 @@ beforeAllFees.buyAmount = quote.buyAmount + protocolFeeAmount + Network Costs (b
 
 ### Buy order
 
-```
+```text
 beforeAllFees.sellAmount = quote.sellAmount - protocolFeeAmount
 
 beforeAllFees.buyAmount = quote.buyAmount
@@ -244,7 +244,7 @@ The protocol fee is expressed as basis points (`protocolFeeBps`) in the quote re
 
 For sell orders, `quote.buyAmount` is already **after** the protocol fee has been deducted:
 
-```
+```text
 protocolFeeAmount = quote.buyAmount × (protocolFeeBps / 10000) / (1 − protocolFeeBps / 10000)
 ```
 
@@ -252,7 +252,7 @@ protocolFeeAmount = quote.buyAmount × (protocolFeeBps / 10000) / (1 − protoco
 
 For buy orders, the protocol fee is applied to the sum of sell amount and network costs:
 
-```
+```text
 protocolFeeAmount = (quote.sellAmount + quote.feeAmount) × (protocolFeeBps / 10000) / (1 + protocolFeeBps / 10000)
 ```
 
@@ -262,7 +262,7 @@ The partner (integrator) fee is calculated as a percentage of the **spot price**
 
 ### Sell orders (buy token units)
 
-```
+```text
 partnerFeeAmount = beforeAllFees.buyAmount × partnerFeePercent / 100
 ```
 
@@ -274,7 +274,7 @@ The same formula applies, but the result is in sell token units.
 
 Slippage tolerance uses the same calculation as the partner fee, but it is applied to the **`afterPartnerFees`** amount rather than the spot price:
 
-```
+```text
 slippageAmount = afterPartnerFees × slippagePercent / 100
 ```
 
@@ -284,7 +284,7 @@ Below is every stage computation in one place. All values are in token atoms (in
 
 ### Sell order — full computation
 
-````
+````text
 ── Protocol Fee Amount (buy token units) ──────────────────────────────────────
 protocolFeeAmount = quote.buyAmount × (protocolFeeBps / 10000)
                     / (1 − protocolFeeBps / 10000)
@@ -323,7 +323,7 @@ buyAmount  = afterSlippage.buyAmount       (minimum to receive)
 
 ### Buy order — full computation
 
-````
+````text
 ── Protocol Fee Amount (sell token units) ─────────────────────────────────────
 protocolFeeAmount = (quote.sellAmount + quote.feeAmount) × (protocolFeeBps / 10000)
                     / (1 + protocolFeeBps / 10000)

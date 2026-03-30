@@ -79,7 +79,7 @@ function deterministicDeploymentAddress(
 
 The computation follows:
 
-```
+```text
 address = keccak256(0xff ++ deployerAddress ++ salt ++ keccak256(initCode))[12:]
 ```
 

@@ -1,6 +1,6 @@
 ---
 title: "Signing schemes"
-description: "As CoW Protocol handles user's orders that were provided off-chain, the authenticity of a user's order needs to be asserted. Authenticity is asserted by the user  their order. A user may be an EOA or a smart contract."
+description: "Signing schemes in CoW Protocol — how order authenticity is verified for EOA wallets (EIP-712) and smart contracts (ERC-1271)."
 ---
 
 ## Order digest
@@ -13,7 +13,7 @@ Replay protection for the signing schemes is achieved by using an [`EIP-712`](ht
 
 When computing the domain separator, the following parameters are used:
 
-```
+```javascript
 {  name: "Gnosis Protocol",  version: "v2",  chainId: /* chain ID for the current network: e.g. 1 for mainnet */,  verifyingContract: "0x9008D19f58AAbD9eD0D60971565AA8510560ab41"}
 ```
 
@@ -33,7 +33,7 @@ The actual domain separator is the result of hashing the previous `EIP712Domain`
 
 To encode the order into the order digest, the [`EIP-712`](https://eips.ethereum.org/EIPS/eip-712#specification) specification is used:
 
-```
+```text
 orderDigest = keccak256("\x19\x01" ‖ domainSeparator ‖ hashStruct(orderStruct))
 ```
 
@@ -46,7 +46,7 @@ The components are:
 * `hashStruct`, the [identically named function in the EIP-712 standard](https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct)
 
 <Accordion title="hashStruct pseudocode">
-  ```
+  ```text
   hashStruct(typeHash, data) = keccak256(typeHash ‖ encodeData(data))
   ```
 
@@ -66,7 +66,7 @@ Phew, that was a lot of hashing! Feeling dizzy? Don't worry, we got you covered.
 
 The [`@cowprotocol/contracts`](https://www.npmjs.com/package/@cowprotocol/contracts) package provides a function to compute the order digest for you:
 
-```
+```typescript
 import {  Order,  OrderBalance,  OrderKind,  domain,  hashOrder} from "@cowprotocol/contracts"// Define an orderconst order: Order = {  sellToken: "0x6b175474e89094c44da98b954eedeac495271d0f", // dai  buyToken: "0xdef1ca1fb7fbcdc777520aa7f396b4e015f497ab", // cow  sellAmount: "10000000000000000000000000", // 10m dai  buyAmount: "10000", // 10k cow  validTo: 1704067200,  appData: "0xc85ef7d79691fe79573b1a7064c19c1a9819ebdbd1faaab1a8ec92344438aaf4", // keccak256("cow")  feeAmount: "0",  kind: OrderKind.SELL,  partiallyFillable: false,  sellTokenBalance: OrderBalance.ERC20,  buyTokenBalance: OrderBalance.ERC20,};// hash the order to generate the order digestconst digest = hashOrder(domain(1, "0x9008D19f58AAbD9eD0D60971565AA8510560ab41"), order);// output the digestconsole.log(`Order digest: ${digest}`)
 ```
 
@@ -109,7 +109,7 @@ This signature type is the most commonly supported signing mechanism for EOAs.
 
 The signature is computed as:
 
-```
+```text
 signature = ethSign(orderDigest)
 ```
 
@@ -126,7 +126,7 @@ This signing method, also known as typed structured data signing, is the recomme
 
 The signature is computed as:
 
-```
+```text
 signature = ecdsaSign(orderDigest)
 ```
 
@@ -145,7 +145,7 @@ This signing mechanism is the only option that can be used by smart contracts to
 
 In order to support smart-contract orders, the trading smart contract (the user) must implement the [EIP-1271](https://eips.ethereum.org/EIPS/eip-1271#specification) interface.
 
-```
+```text
 signature = eip1271Signature
 ```
 
@@ -159,7 +159,7 @@ The components are:
 
 For an order to be accepted, the `eip1271Signature` must be valid for the `orderDigest` message, that is in Solidity:
 
-```
+```solidity
 isValidSignature(orderDigest, eip1271Signature) == MAGICVALUE
 ```
 
@@ -169,7 +169,7 @@ This is the only signing method that supports both EOA and smart-contract trader
 
 Together with submitting a `PreSign` order, the user must submit the order on-chain. This is done by calling the settlement contract `setPreSignature` function:
 
-```
+```solidity
 setPreSignature(orderUid, true);
 ```
 
@@ -180,7 +180,7 @@ The components are:
 
 The signature is an empty `bytes` string:
 
-```
+```text
 signature = 0x
 ```
 
