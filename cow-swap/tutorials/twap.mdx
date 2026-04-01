@@ -40,7 +40,7 @@ This is a *critical* step where you'll define how your order will be executed ov
 
 1. **Price Protection**: This is a measure to prevent your order from being executed at a price that's too far from the market price when the order was placed. Set the percentage of price protection to define the acceptable price range for your trades. For instance, a 10% price protection means that your order will not execute if the price moves unfavorably by more than 10% from the price at the time the order was made.
 
-2. **Number of Parts**: Decide how many discrete parts you want to divide your order into. This choice will determine the granularity of your TWAP strategy. For example, if you choose to split your order into 2 parts and you are selling a total of 2 WETH, each part will involve selling 1 WETH. The parts have a minimum size of `$5k` on Mainnet or `$5` on Gnosis Chain because each part will need to be executed on-chain, meaning there's a cost associated with each execution.
+2. **Number of Parts**: Decide how many discrete parts you want to divide your order into. This choice will determine the granularity of your TWAP strategy. For example, if you choose to split your order into 2 parts and you are selling a total of 2 WETH, each part will involve selling 1 WETH. The parts have a minimum size of `$1,000` on Mainnet or `$1` on other supported chains because each part will need to be executed on-chain, meaning there's a cost associated with each execution.
 
 3. **Total Duration**: Choose the total time frame over which your order should be executed. The TWAP strategy will distribute your trades evenly across this duration. Select from predefined durations like 1 hour, or set a custom duration based on your trading strategy.
 
