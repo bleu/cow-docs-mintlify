@@ -1,6 +1,6 @@
 ---
 title: "GPv2AllowlistAuthentication"
-description: "import HistoricalFact from './_gpv2.md'"
+description: "GPv2AllowlistAuthentication contract reference — manages solver authorization for CoW Protocol settlement."
 ---
 
 ## Architecture
@@ -26,7 +26,7 @@ The smart contract allows a manager to add or remove solvers with an on-chain tr
 
 The manager is the address that can add or remove solvers.
 
-```
+```solidity
 address public manager;
 ```
 
@@ -34,7 +34,7 @@ address public manager;
 
 The `solvers` mapping stores whether an address is a solver.
 
-```
+```solidity
 mapping(address => bool) private solvers;
 ```
 
@@ -50,7 +50,7 @@ mapping(address => bool) private solvers;
 
 Allows the `owner` or the `manager` to set a new manager.
 
-```
+```solidity
 function setManager(address manager_) external onlyManagerOrOwner;
 ```
 
@@ -60,7 +60,7 @@ function setManager(address manager_) external onlyManagerOrOwner;
 
 Allows the `manager` to add a solver.
 
-```
+```solidity
 function addSolver(address solver) external onlyManager;
 ```
 
@@ -68,7 +68,7 @@ function addSolver(address solver) external onlyManager;
 
 Allows the `manager` to remove a solver.
 
-```
+```solidity
 function removeSolver(address solver) external onlyManager;
 ```
 
@@ -78,7 +78,7 @@ function removeSolver(address solver) external onlyManager;
 
 A view function that returns whether an address is a solver. This method is used by the settlement contract to ensure critical functions can only be invoked by accounts passing the allow-list authentication.
 
-```
+```solidity
 function isSolver(    address prospectiveSolver) external view override returns (bool);
 ```
 
