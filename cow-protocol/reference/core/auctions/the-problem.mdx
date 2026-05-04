@@ -1,6 +1,7 @@
 ---
 title: "What is solving? A mathematical, high-level description"
-description: "At a high level, a solver is an algorithm that takes as inputs the orders that are valid for an auction, the state of the liquidity sources that the solver can access, the rules set by the protocol (including those specifying the protocol fees), and returns one or multiple solutions, where a solution selects a subset of the orders valid in an auction and specifies feasible in and out amounts for each of those orders. The solutions proposed by each solver during a given auction are the outcome of a two-step optimization problem: optimal routing and then optimal bidding."
+sidebarTitle: "The solving problem"
+description: "Mathematical overview of CoW Protocol solving — order selection, routing, and bidding as a two-step optimization problem."
 ---
 
 In this section, we describe mathematically the different components of the "solving" problem. We discuss optimal routing and optimal bidding [in the solvers' strategy section](/cow-protocol/reference/core/auctions/rewards#solvers-strategy).
